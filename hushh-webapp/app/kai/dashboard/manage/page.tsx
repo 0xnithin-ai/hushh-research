@@ -172,7 +172,7 @@ export default function ManagePortfolioPage() {
         
         if (financialDomain && financialDomain.attributeCount > 0) {
           // Priority 1: CacheProvider (shared with dashboard)
-          let parsed = getPortfolioData(user.uid);
+          let parsed: PortfolioData | null = getPortfolioData(user.uid);
           
           // Priority 2: Decrypt from World Model (fallback)
           if (!parsed) {
@@ -200,7 +200,7 @@ export default function ManagePortfolioPage() {
                 const allData = JSON.parse(decrypted.plaintext);
                 const rawFinancial = allData.financial || allData;
                 // Normalize Review-format → Dashboard-format field names
-                parsed = normalizeStoredPortfolio(rawFinancial) as typeof parsed;
+                parsed = normalizeStoredPortfolio(rawFinancial) as unknown as PortfolioData;
                 
                 // Update cache for future use
                 if (parsed) {

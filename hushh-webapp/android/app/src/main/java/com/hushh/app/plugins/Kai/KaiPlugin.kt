@@ -632,11 +632,11 @@ class KaiPlugin : Plugin() {
             try {
                 val response = httpClient.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    bridge.runOnUiThread { pluginCall.reject("HTTP ${response.code}") }
+                    activity.runOnUiThread { pluginCall.reject("HTTP ${response.code}") }
                     return@Thread
                 }
                 val body = response.body ?: run {
-                    bridge.runOnUiThread { pluginCall.reject("No response body") }
+                    activity.runOnUiThread { pluginCall.reject("No response body") }
                     return@Thread
                 }
                 body.byteStream().use { stream ->
@@ -653,10 +653,10 @@ class KaiPlugin : Plugin() {
                         }
                     }
                 }
-                bridge.runOnUiThread { pluginCall.resolve(JSObject().put("success", true)) }
+                activity.runOnUiThread { pluginCall.resolve(JSObject().put("success", true)) }
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "streamPortfolioImport error", e)
-                bridge.runOnUiThread { pluginCall.reject("Stream error: ${e.message}") }
+                activity.runOnUiThread { pluginCall.reject("Stream error: ${e.message}") }
             }
         }.start()
     }
@@ -685,11 +685,11 @@ class KaiPlugin : Plugin() {
             try {
                 val response = httpClient.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    bridge.runOnUiThread { pluginCall.reject("HTTP ${response.code}") }
+                    activity.runOnUiThread { pluginCall.reject("HTTP ${response.code}") }
                     return@Thread
                 }
                 val body = response.body ?: run {
-                    bridge.runOnUiThread { pluginCall.reject("No response body") }
+                    activity.runOnUiThread { pluginCall.reject("No response body") }
                     return@Thread
                 }
                 body.byteStream().use { stream ->
@@ -706,10 +706,10 @@ class KaiPlugin : Plugin() {
                         }
                     }
                 }
-                bridge.runOnUiThread { pluginCall.resolve(JSObject().put("success", true)) }
+                activity.runOnUiThread { pluginCall.resolve(JSObject().put("success", true)) }
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "streamPortfolioAnalyzeLosers error", e)
-                bridge.runOnUiThread { pluginCall.reject("Stream error: ${e.message}") }
+                activity.runOnUiThread { pluginCall.reject("Stream error: ${e.message}") }
             }
         }.start()
     }

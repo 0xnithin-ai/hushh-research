@@ -164,23 +164,22 @@ class ChatServiceImpl {
     agentId?: string
   ): Promise<ChatResponse> {
     try {
-      const data = await apiJson<any>("/api/chat", {
+      const data = await apiJson<any>("/api/kai/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          user_id: userId,
           message,
-          userId,
-          agentId: agentId || session.agentId,
-          sessionState: session.sessionState,
-          conversationHistory: session.messages.slice(-10),
+          // Kai chat supports conversation_id; keep session.id as a stable thread id.
+          conversation_id: session.id,
         }),
       });
 
       // Handle both snake_case and camelCase responses
       return {
-        message: data.response || data.message,
+        message: data.response || data.message || data.content || "",
         sessionState: data.sessionState || data.session_state,
         collectedData: data.collectedData || data.collected_data,
         isComplete: data.isComplete || data.is_complete || false,

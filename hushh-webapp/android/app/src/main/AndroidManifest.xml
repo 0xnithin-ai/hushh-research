@@ -19,6 +19,15 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Required for Firebase Auth OAuth redirect flows (e.g., Apple Sign-In via OAuthProvider) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Firebase Auth uses this custom scheme to return to the app -->
+                <data android:scheme="com.googleusercontent.apps.1006304528804-3dnrnqrga1nrv9p823bos2itrg5bra1c" />
+            </intent-filter>
         </activity>
 
         <provider

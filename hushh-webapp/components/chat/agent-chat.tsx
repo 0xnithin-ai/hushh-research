@@ -151,6 +151,8 @@ export function AgentChat({
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const currentUserId = user?.uid ?? null; // Ensure consent token matches vault user
+
     const userMessage = input;
     setInput("");
 
@@ -163,18 +165,17 @@ export function AgentChat({
     setIsLoading(true);
 
     // Get current user ID to ensure consent token matches vault user
-    const userId = user?.uid ?? null;
+    const userId = currentUserId;
 
     // Real API Call
     try {
-      const response = await ApiService.apiFetch("/api/chat", {
+      const response = await ApiService.apiFetch("/api/kai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user_id: userId,
           message: userMessage,
-          userId, // Send user ID so token is issued for correct user
-          agentId: activeAgent,
-          sessionState: sessionState,
+          conversation_id: sessionState?.conversation_id,
         }),
       });
 
@@ -221,7 +222,7 @@ export function AgentChat({
         ...prev,
         {
           role: "agent",
-          content: data.content,
+          content: data.content || data.message || data.response,
           timestamp: new Date(),
           isStreaming: false,
         },
@@ -328,14 +329,13 @@ export function AgentChat({
 
     // Send to agent
     try {
-      const response = await ApiService.apiFetch("/api/chat", {
+      const response = await ApiService.apiFetch("/api/kai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user_id: userId,
           message: userMessage,
-          userId, // CRITICAL: Include userId for consent token matching
-          agentId: activeAgent,
-          sessionState: sessionState,
+          conversation_id: sessionState?.conversation_id,
         }),
       });
 
