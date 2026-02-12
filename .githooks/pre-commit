@@ -1,9 +1,18 @@
 #!/bin/sh
-# .githooks/pre-commit -- Subtree reminder for consent-protocol/
+# .githooks/pre-commit -- Lint gate + subtree reminder for consent-protocol/
 #
 # Install: git config core.hooksPath .githooks
 
 if git diff --cached --name-only | grep -q "^consent-protocol/"; then
   printf "\n\033[33m[subtree]\033[0m consent-protocol/ files staged.\n"
   printf "         After merge, run: \033[36mmake push-protocol\033[0m to sync upstream.\n\n"
+
+  # Quick lint check on consent-protocol (fast, ~2s)
+  echo "[pre-commit] Running quick lint on consent-protocol..."
+  cd consent-protocol && ruff check . && ruff format --check . || {
+    echo ""
+    echo "[pre-commit] Lint failed. Run: cd consent-protocol && make fix"
+    exit 1
+  }
+  cd ..
 fi
