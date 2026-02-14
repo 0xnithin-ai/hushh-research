@@ -9,6 +9,24 @@
 
 The Hushh mobile app uses **Next.js static export** in a native WebView, with **8 native plugins** handling security-critical operations. Both iOS and Android achieve feature parity through aligned plugin implementations.
 
+### Dev mode (hot reload) vs plugin parity
+
+- The **WebView UI** can point to a running `next dev` server for hot reload.
+- **Native plugins must always call the Python backend** (FastAPI) via `NEXT_PUBLIC_BACKEND_URL` for parity with production.
+- Next.js `app/api/**` routes are treated as **web-only proxy routes**; native plugins are the proxy layer on mobile.
+
+Recommended commands (from `hushh-webapp`):
+
+- Terminal A: `npm run dev`
+- Terminal B:
+  - Android: `npm run cap:android:dev:run`
+  - iOS: `npm run cap:ios:dev:run`
+
+Required env:
+
+- `NEXT_PUBLIC_BACKEND_URL` must point to your dev/staging Python backend.
+  - If you use a local backend on your host machine, remember Android emulator needs `10.0.2.2` instead of `localhost`.
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │              CAPACITOR MOBILE APP (iOS/Android)                │

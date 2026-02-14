@@ -1643,12 +1643,14 @@ export class ApiService {
     userId: string;
     ticker: string;
     riskProfile: string;
+    userContext?: any;
     vaultOwnerToken: string;
   }): Promise<Response> {
     const body = {
       user_id: data.userId,
       ticker: data.ticker.toUpperCase(),
       risk_profile: data.riskProfile,
+      context: data.userContext,
     };
 
     // Native: use Kai plugin and expose a ReadableStream of SSE text

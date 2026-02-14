@@ -25,12 +25,14 @@ interface ColumnsProps {
   onView: (entry: AnalysisHistoryEntry) => void;
   onDelete: (entry: AnalysisHistoryEntry) => void;
   onDeleteTicker: (ticker: string) => void;
+  onViewVersions?: (ticker: string) => void;
 }
 
 export const getColumns = ({
   onView,
   onDelete,
   onDeleteTicker,
+  onViewVersions,
 }: ColumnsProps): ColumnDef<HistoryEntryWithVersion>[] => [
   {
     accessorKey: "ticker",
@@ -116,15 +118,21 @@ export const getColumns = ({
               <Eye className="mr-2 h-4 w-4" />
               View Analysis
             </DropdownMenuItem>
+            {onViewVersions && (
+              <DropdownMenuItem onClick={() => onViewVersions(entry.ticker)}>
+                <ArrowRight className="mr-2 h-4 w-4" />
+                View Previous Versions
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => onDelete(entry)}
               className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-500/10"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Entry
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => onDeleteTicker(entry.ticker)}
               className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-500/10"
             >

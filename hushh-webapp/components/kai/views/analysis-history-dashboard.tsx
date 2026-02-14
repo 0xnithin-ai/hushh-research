@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/lib/morphy-ux/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StockSearch } from "@/components/kai/views/stock-search";
+// Search is provided globally via Kai layout (bottom bar)
 import {
   KaiHistoryService,
   type AnalysisHistoryEntry,
@@ -22,6 +22,14 @@ import {
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns, type HistoryEntryWithVersion } from "./columns";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 
 // ============================================================================
 // Props
@@ -96,27 +104,36 @@ function decisionStyles(decision: string): {
   };
 }
 
-/** Flatten AnalysisHistoryMap → sorted flat list (newest first) */
-/** Flatten AnalysisHistoryMap → sorted flat list (newest first) with versioning */
+/**
+ * Dedupe history table to one row per ticker.
+ *
+ * - We still compute a `version` for each entry (oldest=1 ... newest=N)
+ * - The table shows ONLY the latest entry per ticker
+ * - Older versions are accessible via the row action menu (handled in columns)
+ */
 function processHistory(map: AnalysisHistoryMap): HistoryEntryWithVersion[] {
-  const result: HistoryEntryWithVersion[] = [];
+  const latestPerTicker: HistoryEntryWithVersion[] = [];
 
   Object.entries(map).forEach(([ticker, entries]) => {
+    if (!entries?.length) return;
+
     // Sort entries for this ticker by date ASC to assign version numbers
     const sortedByDateAsc = [...entries].sort(
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
-    sortedByDateAsc.forEach((entry, index) => {
-      result.push({
-        ...entry,
-        version: index + 1,
-      });
-    });
+    const withVersions: HistoryEntryWithVersion[] = sortedByDateAsc.map((entry, index) => ({
+      ...entry,
+      version: index + 1,
+    }));
+
+    // Latest is the newest timestamp
+    const latest = withVersions[withVersions.length - 1];
+    if (latest) latestPerTicker.push(latest);
   });
 
-  // Return all entries sorted by date DESC (newest overall first)
-  return result.sort(
+  // Sort tickers by latest analysis date DESC
+  return latestPerTicker.sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 }
@@ -220,7 +237,7 @@ function HistoryCard({
 // Empty State
 // ============================================================================
 
-function EmptyState({ onSelectTicker }: { onSelectTicker: (t: string) => void }) {
+function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 space-y-6">
       <div className="p-4 rounded-full bg-primary/5 border border-primary/10">
@@ -233,7 +250,6 @@ function EmptyState({ onSelectTicker }: { onSelectTicker: (t: string) => void })
           debate engine give you a data-driven recommendation.
         </p>
       </div>
-      <StockSearch onSelect={onSelectTicker} className="w-full max-w-xs" />
     </div>
   );
 }
@@ -246,21 +262,26 @@ export function AnalysisHistoryDashboard({
   userId,
   vaultKey,
   vaultOwnerToken,
-  onSelectTicker,
+  onSelectTicker: _onSelectTicker,
   onViewHistory,
 }: AnalysisHistoryDashboardProps) {
   const [entries, setEntries] = useState<HistoryEntryWithVersion[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [historyMap, setHistoryMap] = useState<AnalysisHistoryMap>({});
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [versionsTicker, setVersionsTicker] = useState<string | null>(null);
+
   const fetchHistory = useCallback(async () => {
     try {
       setLoading(true);
-      const historyMap = await KaiHistoryService.getAllHistory({
+      const nextMap = await KaiHistoryService.getAllHistory({
         userId,
         vaultKey,
         vaultOwnerToken,
       });
-      setEntries(processHistory(historyMap));
+      setHistoryMap(nextMap);
+      setEntries(processHistory(nextMap));
     } catch (err) {
       console.error("[AnalysisHistoryDashboard] Failed to load history:", err);
       setEntries([]);
@@ -305,11 +326,37 @@ export function AnalysisHistoryDashboard({
   }, [userId, vaultKey, vaultOwnerToken, fetchHistory]);
 
   // ----- Columns -----
+  const openVersions = useCallback((ticker: string) => {
+    setVersionsTicker(ticker);
+    setVersionsOpen(true);
+  }, []);
+
   const columns = getColumns({
     onView: onViewHistory,
     onDelete: handleDeleteEntry,
     onDeleteTicker: handleDeleteTicker,
+    onViewVersions: openVersions,
   });
+
+  const versionsForTicker: HistoryEntryWithVersion[] = useMemo(() => {
+    if (!versionsTicker) return [];
+    const list = historyMap[versionsTicker] || [];
+
+    // Oldest -> newest for version numbering
+    const sortedAsc = [...list].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    const withVersions = sortedAsc.map((entry, index) => ({
+      ...entry,
+      version: index + 1,
+    }));
+
+    // Show newest first in the modal
+    return withVersions.sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }, [historyMap, versionsTicker]);
 
   useEffect(() => {
     if (userId && vaultKey) {
@@ -339,36 +386,100 @@ export function AnalysisHistoryDashboard({
 
   // ----- Empty state -----
   if (entries.length === 0) {
-    return <EmptyState onSelectTicker={onSelectTicker} />;
+    return <EmptyState />;
   }
 
   // ----- Populated state -----
   return (
     <div className="space-y-6 px-4 sm:px-6 pb-safe max-w-4xl mx-auto">
-      {/* Header with search */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Analysis History
-          </h2>
-          <Badge variant="secondary" className="text-[10px]">
-            {entries.length}
-          </Badge>
-        </div>
-        <StockSearch onSelect={onSelectTicker} className="max-w-sm" />
+      {/* Header (search is global in Kai layout) */}
+      <div className="flex items-center gap-2">
+        <Search className="w-4 h-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Analysis History
+        </h2>
+        <Badge variant="secondary" className="text-[10px]">
+          {entries.length}
+        </Badge>
       </div>
 
-      {/* Card grid */}
-      {/* Data Table replacing Card Grid */}
-      <div className="bg-background/40 backdrop-blur-xl border rounded-xl overflow-hidden shadow-sm">
-        <DataTable 
-          columns={columns} 
-          data={entries} 
+      {/* Data Table */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <DataTable
+          columns={columns}
+          data={entries}
           searchKey="ticker"
-          searchPlaceholder="Filter by ticker..."
+          filterKey="decision"
+          filterOptions={[
+            { label: "Buy", value: "buy" },
+            { label: "Hold", value: "hold" },
+            { label: "Reduce", value: "reduce" },
+          ]}
         />
       </div>
+
+      {/* Versions Modal */}
+      <Dialog
+        open={versionsOpen}
+        onOpenChange={(open) => {
+          setVersionsOpen(open);
+          if (!open) setVersionsTicker(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {versionsTicker ? `${versionsTicker} — Previous Versions` : "Previous Versions"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {versionsForTicker.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No previous versions found.</div>
+          ) : (
+            <div className="space-y-2">
+              {versionsForTicker.map((entry) => {
+                const styles = decisionStyles(entry.decision);
+                const ts = entry.timestamp ? new Date(entry.timestamp) : null;
+
+                return (
+                  <Button
+                    key={`${entry.ticker}-${entry.timestamp}`}
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-between h-auto py-3 px-3"
+                    onClick={() => {
+                      onViewHistory(entry);
+                      setVersionsOpen(false);
+                      setVersionsTicker(null);
+                    }}
+                  >
+                    <div className="flex flex-col items-start gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">v{entry.version}</span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                            styles.bg,
+                            styles.text,
+                            styles.border
+                          )}
+                        >
+                          {styles.icon}
+                          {entry.decision}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {ts ? format(ts, "PPpp") : ""}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">Open</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

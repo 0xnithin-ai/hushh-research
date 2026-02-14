@@ -213,32 +213,16 @@ export async function resetPreferences(
 
 /**
  * Get User's Encrypted Investor Profile (Ciphertext)
- * Platform-aware: Uses HushhIdentity plugin on native, Next.js API on web.
- * 
- * Returns camelCase for React components.
+ *
+ * NOTE: `/api/identity/profile` has been removed from the product flow.
+ * This helper is kept as a hard-fail to surface any hidden callers.
  */
-export async function getEncryptedProfile(token: string): Promise<{
+export async function getEncryptedProfile(_token: string): Promise<{
   profileData: { ciphertext: string; iv: string; tag: string } | null;
 }> {
-  let result: any;
-  
-  if (Capacitor.isNativePlatform()) {
-    // Native: Use HushhIdentity plugin (direct backend call)
-    result = await HushhIdentity.getEncryptedProfile({
-      vaultOwnerToken: token,
-    });
-  } else {
-    // Web: Use Next.js API route
-    result = await apiJson("/api/identity/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ consent_token: token }),
-    });
-  }
-  
-  // Transform snake_case to camelCase
-  const profileData = result?.profile_data || result?.profileData || null;
-  return { profileData };
+  throw new Error(
+    "getEncryptedProfile() is deprecated: /api/identity/profile has been removed from the flow"
+  );
 }
 
 /**

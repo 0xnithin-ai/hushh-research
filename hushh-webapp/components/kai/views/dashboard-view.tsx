@@ -70,7 +70,6 @@ import { YtdSummaryCard, type YtdData } from "../cards/ytd-summary-card";
 import { KPICard } from "../cards/kpi-card";
 import { TopMoversCard } from "../cards/top-movers-card";
 import { PortfolioMetricsCard } from "../cards/portfolio-metrics-card";
-import { StockSearch } from "@/components/kai/views/stock-search";
 
 
 // =============================================================================
@@ -485,12 +484,7 @@ export function DashboardView({
           )}
         </div>
 
-        <div className="hidden md:block flex-1 max-w-sm mx-4">
-           <StockSearch 
-             onSelect={(ticker) => handleAnalyzeStock(ticker)} 
-             className="w-full"
-           />
-        </div>
+        {/* Search is global in Kai layout (bottom bar) */}
 
         <div className="flex items-center gap-2">
             <div className="md:hidden">

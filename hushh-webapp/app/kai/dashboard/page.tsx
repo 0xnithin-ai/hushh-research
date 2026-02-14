@@ -18,8 +18,11 @@ import { useStepProgress } from "@/lib/progress/step-progress-context";
 import { KaiFlow, FlowState } from "@/components/kai/kai-flow";
 import { KaiSearchBar } from "@/components/kai/kai-search-bar";
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function KaiPage() {
+  const _searchParams = useSearchParams();
+
   const { user, loading: authLoading } = useAuth();
   const { vaultOwnerToken } = useVault();
   const [_holdings, setHoldings] = useState<string[]>([]);
@@ -107,12 +110,7 @@ export default function KaiPage() {
         />
       </div>
  
-      {/* Fixed search bar above bottom navbar */}
-      <KaiSearchBar
-        onCommand={handleCommand}
-        holdings={_holdings}
-        disabled={!vaultOwnerToken || flowState === "checking"}
-      />
+      {/* Search bar is global in [`hushh-webapp/app/kai/layout.tsx`](hushh-webapp/app/kai/layout.tsx:14) */}
     </div>
   );
 }

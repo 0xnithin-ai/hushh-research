@@ -9,6 +9,7 @@ interface AgentAnalysisCardProps {
   icon: ReactNode;
   color: string; // Tailwind class e.g. "text-blue-500"
   state: AgentState;
+  disableStreaming?: boolean;
 }
 
 export function AgentAnalysisCard({
@@ -16,6 +17,7 @@ export function AgentAnalysisCard({
   icon,
   color,
   state,
+  disableStreaming = false,
 }: AgentAnalysisCardProps) {
   // Color is now passed as a tailwind class directly (text-blue-500, etc.)
   const accentClass = color.startsWith("text-") ? color : "text-primary";
@@ -46,6 +48,7 @@ export function AgentAnalysisCard({
       valuationMetrics={state.valuationMetrics}
       peerComparison={state.peerComparison}
       priceTargets={state.priceTargets}
+      disableStreaming={disableStreaming}
     />
   );
 }

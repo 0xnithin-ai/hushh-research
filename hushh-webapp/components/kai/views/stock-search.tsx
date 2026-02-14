@@ -1,28 +1,28 @@
 "use client";
 
 import * as React from "react";
-import { ChevronsUpDown, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
+import {
+  Combobox,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+} from "@/lib/morphy-ux/ui/combobox";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useMediaQuery } from "@/lib/morphy-ux/use-media-query";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
-import { ApiService } from "@/lib/services/api-service";
+  preloadTickerUniverse,
+  searchTickerUniverse,
+  type TickerUniverseRow,
+} from "@/lib/kai/ticker-universe-cache";
 
-// Top 50 popular stocks for instant suggestion (offline fallback)
+// Top popular stocks for instant suggestion (offline fallback)
 const TOP_STOCKS = [
   { value: "AAPL", label: "Apple Inc." },
   { value: "MSFT", label: "Microsoft Corp." },
@@ -76,12 +76,14 @@ const TOP_STOCKS = [
   { value: "GLD", label: "Gold Trust" },
 ];
 
-/** Set of known ticker values for fast lookup */
-const TOP_STOCKS_SET = new Set(TOP_STOCKS.map((s) => s.value));
-
 /** Returns true when `text` looks like a valid 1-5 letter ticker */
 function isTickerLike(text: string): boolean {
-  return /^[A-Z]{1,5}$/.test(text);
+  return /^[A-Z]{1,5}$/.test(text.toUpperCase());
+}
+
+/** Returns true if text contains invalid characters for a ticker */
+function hasInvalidChars(text: string): boolean {
+  return !/^[A-Za-z]*$/.test(text);
 }
 
 type TickerSearchResult = {
@@ -91,206 +93,269 @@ type TickerSearchResult = {
   exchange?: string | null;
 };
 
+type StockSearchItem = {
+  value: string;
+  label: string;
+  keywords: string;
+  group: "remote" | "escape" | "popular";
+};
+
 export function StockSearch({
   onSelect,
   className,
 }: {
-  onSelect: (ticker: string) => void;
+  onSelect?: (ticker: string) => void;
   className?: string;
 }) {
-  const [open, setOpen] = React.useState(false);
+  const router = useRouter();
+
   const [search, setSearch] = React.useState("");
-  const [remoteResults, setRemoteResults] = React.useState<TickerSearchResult[]>([]);
-  const [remoteLoading, setRemoteLoading] = React.useState(false);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const [error, setError] = React.useState<string | null>(null);
 
-  // Measure trigger width so popover content matches exactly.
-  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
-  const [triggerWidth, setTriggerWidth] = React.useState<number>(288);
+  const [universe, setUniverse] = React.useState<TickerUniverseRow[] | null>(null);
+  const [universeLoading, setUniverseLoading] = React.useState(false);
 
+  const [open, setOpen] = React.useState(false);
+  const [value, setValue] = React.useState<string | null>(null);
+
+  // Preload full ticker universe once (cached in memory + localStorage)
   React.useEffect(() => {
-    if (!isDesktop) return;
-    const el = triggerRef.current;
-    if (!el) return;
-    const measure = () => setTriggerWidth(el.getBoundingClientRect().width);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [isDesktop]);
+    let cancelled = false;
 
-  // Fetch tickers from backend (Supabase-backed) for real SEC-wide search.
-  // Debounced to avoid hammering the API while typing.
-  React.useEffect(() => {
-    const q = search.trim();
-    if (!q) {
-      setRemoteResults([]);
-      setRemoteLoading(false);
-      return;
-    }
-
-    const handle = setTimeout(async () => {
+    (async () => {
       try {
-        setRemoteLoading(true);
-        const resp = await ApiService.apiFetch(`/api/tickers/search?q=${encodeURIComponent(q)}&limit=25`, {
-          method: "GET",
-        });
-        if (!resp.ok) {
-          setRemoteResults([]);
-          return;
-        }
-        const json = (await resp.json()) as TickerSearchResult[];
-        setRemoteResults(Array.isArray(json) ? json : []);
+        setUniverseLoading(true);
+        const rows = await preloadTickerUniverse();
+        if (!cancelled) setUniverse(rows);
       } catch {
-        setRemoteResults([]);
+        // Keep universe null; we still have TOP_STOCKS as offline fallback.
       } finally {
-        setRemoteLoading(false);
+        if (!cancelled) setUniverseLoading(false);
       }
-    }, 200);
+    })();
 
-    return () => clearTimeout(handle);
-  }, [search]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  // Derive escape-hatch ticker: show when typed value is a valid ticker
-  // that doesn't exactly match any entry in TOP_STOCKS
   const escapeTicker = React.useMemo(() => {
     const upper = search.trim().toUpperCase();
     if (!upper || !isTickerLike(upper)) return null;
-    if (TOP_STOCKS_SET.has(upper)) return null;
-    return upper;
-  }, [search]);
 
-  // Handle selection logic
-  const handleSelect = (value: string) => {
+    // If it already appears in local results, don't show escape hatch.
+    if (universe?.some((r) => r.ticker.toUpperCase() === upper)) return null;
+
+    return upper;
+  }, [search, universe]);
+
+  const handleSelect = (rawValue: string) => {
+    const ticker = rawValue.toUpperCase();
+
+    if (!isTickerLike(ticker)) {
+      setError("Invalid ticker symbol");
+      toast.error("Invalid ticker symbol");
+      return;
+    }
+
+    // If we have the universe loaded, require the ticker to exist.
+    if (universe && !universe.some((r) => r.ticker.toUpperCase() === ticker)) {
+      setError("Ticker not found");
+      toast.error("Ticker not found", { description: "Please enter a valid stock symbol." });
+      return;
+    }
+
+    setError(null);
+    setSearch(ticker);
+    setValue(ticker);
     setOpen(false);
-    setSearch("");
-    onSelect(value);
+
+    if (onSelect) {
+      // Preferred: delegate to parent (KaiSearchBar/KaiFlow) so behavior matches Prime Assets.
+      onSelect(ticker);
+      return;
+    }
+
+    // Fallback: navigate to analysis route.
+    // Note: analysis start is driven by Zustand in KaiFlow; query param is only a fallback.
+    router.push(`/kai/dashboard/analysis?ticker=${ticker}`);
   };
 
-  // Shared content for Popover (Desktop) and Drawer (Mobile)
-  const SearchContent = (
-    <Command
-      className="rounded-xl border shadow-md"
-      // We rely on our own backend search results, so avoid client filtering that
-      // can hide results when value strings differ.
-      shouldFilter={false}
-    >
-      <CommandInput
-        placeholder="Search ticker (e.g. AAPL)..."
-        value={search}
-        onValueChange={setSearch}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            const trimmed = search.trim().toUpperCase();
-            if (trimmed && isTickerLike(trimmed)) {
-              handleSelect(trimmed);
-            }
-          }
-        }}
-      />
-      <CommandList className="max-h-72 overflow-y-auto">
-        <CommandEmpty>{remoteLoading ? "Searching…" : "No results found."}</CommandEmpty>
+  const items: StockSearchItem[] = React.useMemo(() => {
+    const q = search.trim();
 
-        {/* Remote results (SEC-wide). Shown when user types anything. */}
-        {remoteResults.length > 0 && (
-          <CommandGroup heading="All SEC tickers">
-            {remoteResults.map((r) => (
-              <CommandItem
-                key={`${r.ticker}-${r.cik ?? ""}`}
-                value={`${r.ticker} ${r.title ?? ""}`}
-                onSelect={() => handleSelect(r.ticker)}
-                className="cursor-pointer"
-              >
-                <span className="font-bold w-16">{r.ticker}</span>
-                <span className="mx-2 text-muted-foreground/40">—</span>
-                <span className="text-muted-foreground truncate">{r.title ?? ""}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
+    const localMatches: StockSearchItem[] = universe
+      ? searchTickerUniverse(universe, q, 25).map((r) => ({
+          value: r.ticker.toUpperCase(),
+          label: `${r.ticker.toUpperCase()} — ${r.title ?? ""}`.trim(),
+          keywords: `${r.ticker} ${r.title ?? ""} ${r.exchange ?? ""} ${r.cik ?? ""}`,
+          group: "remote", // keep existing rendering/group label
+        }))
+      : [];
 
-        {/* Escape hatch: type any ticker not in the list */}
-        {escapeTicker && (
-          <CommandGroup heading="Type any ticker">
-            <CommandItem
-              value={`custom-${escapeTicker}`}
-              onSelect={() => handleSelect(escapeTicker)}
-              className="cursor-pointer"
-              forceMount
-            >
-              <span className="font-bold">Analyze {escapeTicker}</span>
-            </CommandItem>
-          </CommandGroup>
-        )}
+    const escapeItems: StockSearchItem[] = escapeTicker
+      ? [
+          {
+            value: escapeTicker,
+            label: `${escapeTicker} — Type any ticker`,
+            keywords: escapeTicker,
+            group: "escape",
+          },
+        ]
+      : [];
 
-        <CommandGroup heading="Popular Stocks">
-          {TOP_STOCKS.map((stock) => (
-            <CommandItem
-              key={stock.value}
-              value={`${stock.value} ${stock.label}`} // Allow searching by name or ticker
-              onSelect={() => handleSelect(stock.value)}
-              className="cursor-pointer"
-            >
-              <span className="font-bold w-12">{stock.value}</span>
-              <span className="mx-2 text-muted-foreground/40">—</span>
-              <span className="text-muted-foreground truncate">{stock.label}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </Command>
-  );
+    // Popular stocks are only shown when search is empty (initial suggestions)
+    const popularItems: StockSearchItem[] = q
+      ? []
+      : TOP_STOCKS.map((s) => ({
+          value: s.value,
+          label: `${s.value} — ${s.label}`,
+          keywords: `${s.value} ${s.label}`,
+          group: "popular",
+        }));
 
-  if (isDesktop) {
-    return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            ref={triggerRef}
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className={cn("w-full max-w-md lg:max-w-lg justify-between text-muted-foreground", className)}
-          >
-            <span className="flex items-center">
-                <Search className="mr-2 h-4 w-4" />
-                Analyze a stock...
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          style={{ ['--stock-search-width' as any]: `${triggerWidth}px` }}
-          className="w-[var(--stock-search-width)] p-0"
-          align="start"
-        >
-          {SearchContent}
-        </PopoverContent>
-      </Popover>
-    );
-  }
+    // Dedupe by ticker value (local wins over escape/popular)
+    const byValue = new Map<string, StockSearchItem>();
+    for (const it of [...popularItems, ...escapeItems, ...localMatches]) {
+      byValue.set(it.value, it);
+    }
+
+    return Array.from(byValue.values());
+  }, [escapeTicker, search, universe]);
+
+  const filteredItems = items;
+
+  const showRemoteGroup = filteredItems.some((i) => i.group === "remote");
+  const showEscapeGroup = filteredItems.some((i) => i.group === "escape");
+  const showPopularGroup = filteredItems.some((i) => i.group === "popular");
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full max-w-md lg:max-w-lg justify-between text-muted-foreground", className)}
+    <div className={cn("w-full", className)}>
+      <Combobox
+        open={open}
+        onOpenChange={setOpen}
+        value={value}
+        onValueChange={(val) => {
+          if (val) handleSelect(val);
+        }}
+        items={filteredItems}
+      >
+        <ComboboxInput
+          placeholder="Analyze a stock..."
+          value={search}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            const next = e.target.value;
+            if (hasInvalidChars(next)) return;
+            setSearch(next);
+          }}
+          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSelect(search.trim());
+            }
+          }}
+          onFocus={() => setOpen(true)}
+          className={cn(
+            "w-full rounded-full text-muted-foreground",
+            "pointer-events-auto"
+          )}
+          showClear
+          showTrigger
         >
-          <span className="flex items-center">
-            <Search className="mr-2 h-4 w-4" />
-            Analyze a stock...
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </DrawerTrigger>
-      <DrawerContent>
-        <div className="mt-4 border-t h-[60vh]">
-          {SearchContent}
+          <ComboboxValue />
+        </ComboboxInput>
+
+        <ComboboxContent className="w-[var(--anchor-width)]">
+          <ComboboxList>
+            <ComboboxEmpty>
+              {universeLoading ? "Loading tickers…" : "No results found."}
+            </ComboboxEmpty>
+
+            {showRemoteGroup && (
+              <ComboboxGroup>
+                <div className="px-2 py-1.5 text-xs text-muted-foreground pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-sm">
+                  All SEC tickers
+                </div>
+                <ComboboxCollection>
+                  {(item: StockSearchItem) =>
+                    item.group === "remote" ? (
+                      <ComboboxItem
+                        key={`remote-${item.value}`}
+                        className="cursor-pointer"
+                        // Morphy safety: ensure tap/click selects even if Base UI press handling is flaky.
+                        onClick={() => handleSelect(item.value)}
+                      >
+                        <div className="grid w-full grid-cols-[72px_1fr] items-center gap-2">
+                          <span className="font-semibold tabular-nums">{item.value}</span>
+                          <span className="truncate text-muted-foreground">
+                            {item.label.replace(`${item.value} — `, "")}
+                          </span>
+                        </div>
+                      </ComboboxItem>
+                    ) : null
+                  }
+                </ComboboxCollection>
+              </ComboboxGroup>
+            )}
+
+            {showEscapeGroup && (
+              <ComboboxGroup>
+                <div className="px-2 py-1.5 text-xs text-muted-foreground pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-sm">
+                  Type any ticker
+                </div>
+                <ComboboxCollection>
+                  {(item: StockSearchItem) =>
+                    item.group === "escape" ? (
+                      <ComboboxItem
+                        key={`escape-${item.value}`}
+                        className="cursor-pointer"
+                        onClick={() => handleSelect(item.value)}
+                      >
+                        <div className="grid w-full grid-cols-[72px_1fr] items-center gap-2">
+                          <span className="font-semibold tabular-nums">{item.value}</span>
+                          <span className="truncate text-muted-foreground">Type any ticker</span>
+                        </div>
+                      </ComboboxItem>
+                    ) : null
+                  }
+                </ComboboxCollection>
+              </ComboboxGroup>
+            )}
+
+            {showPopularGroup && (
+              <ComboboxGroup>
+                <div className="px-2 py-1.5 text-xs text-muted-foreground pointer-coarse:px-3 pointer-coarse:py-2 pointer-coarse:text-sm">
+                  Popular Stocks
+                </div>
+                <ComboboxCollection>
+                  {(item: StockSearchItem) =>
+                    item.group === "popular" ? (
+                      <ComboboxItem
+                        key={`popular-${item.value}`}
+                        className="cursor-pointer"
+                        onClick={() => handleSelect(item.value)}
+                      >
+                        <div className="grid w-full grid-cols-[72px_1fr] items-center gap-2">
+                          <span className="font-semibold tabular-nums">{item.value}</span>
+                          <span className="truncate text-muted-foreground">
+                            {item.label.replace(`${item.value} — `, "")}
+                          </span>
+                        </div>
+                      </ComboboxItem>
+                    ) : null
+                  }
+                </ComboboxCollection>
+              </ComboboxGroup>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+
+      {error && (
+        <div className="mt-2 rounded-md border border-red-500/20 bg-red-500/10 p-2 text-xs font-medium text-red-500">
+          {error}
         </div>
-      </DrawerContent>
-    </Drawer>
+      )}
+    </div>
   );
 }

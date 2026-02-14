@@ -191,8 +191,8 @@ function AgentConfidenceRadar({ result }: { result: DecisionResult }) {
           <ChartTooltip content={<ChartTooltipContent hideLabel />} />
           <Radar
             dataKey="value"
-            stroke="var(--color-value)"
-            fill="var(--color-value)"
+            stroke="hsl(var(--primary))"
+            fill="hsl(var(--primary))"
             fillOpacity={0.2}
             strokeWidth={2}
           />
@@ -205,11 +205,11 @@ function AgentConfidenceRadar({ result }: { result: DecisionResult }) {
 const consensusChartConfig = {
   agree: {
     label: "Agree",
-    color: "hsl(142, 76%, 36%)", // Emerald-600
+    color: "hsl(var(--emerald-500))", // Morphy Token
   },
   dissent: {
     label: "Dissent",
-    color: "hsl(45, 93%, 47%)", // Amber-500
+    color: "hsl(var(--amber-500))", // Morphy Token
   },
 } satisfies ChartConfig;
 
@@ -222,8 +222,8 @@ function ConsensusDonut({ result }: { result: DecisionResult }) {
   const dissentCount = votes.length - agreeCount;
 
   const data = [
-    { name: "Agree", value: agreeCount, fill: "var(--color-agree)" },
-    { name: "Dissent", value: dissentCount, fill: "var(--color-dissent)" },
+    { name: "Agree", value: agreeCount, fill: consensusChartConfig.agree.color },
+    { name: "Dissent", value: dissentCount, fill: consensusChartConfig.dissent.color },
   ].filter((d) => d.value > 0);
 
   return (
@@ -304,7 +304,7 @@ function QuantMetricsBarChart({ metrics }: { metrics: Record<string, any> }) {
           <ChartTooltip cursor={{ fill: isDark ? "#ffffff10" : "#00000005" }} content={<ChartTooltipContent hideLabel />} />
           <Bar 
             dataKey="value" 
-            fill="var(--color-value)" 
+            fill="hsl(var(--primary))" 
             radius={[0, 4, 4, 0]} 
             barSize={12}
             background={{ fill: isDark ? "#ffffff05" : "#00000005" }}
@@ -451,6 +451,10 @@ export function DecisionCard({ result }: { result: DecisionResult }) {
     (k) => rawCard.quant_metrics![k] !== null && rawCard.quant_metrics![k] !== undefined && typeof rawCard.quant_metrics![k] !== "object"
   ).length > 0;
 
+  // Fallback for empty/missing decision to prevent layout shift
+  const safeDecision = result.decision || "HOLD";
+  const safeConfidence = result.confidence || 0;
+
   return (
     <Card
       variant="none"
@@ -496,11 +500,11 @@ export function DecisionCard({ result }: { result: DecisionResult }) {
                     : "bg-blue-500/10 border-blue-500/20 text-blue-500 shadow-blue-500/10"
                 )}
             >
-                {result.decision}
+                {safeDecision}
             </div>
 
             {/* Confidence Gauge - Replacing Linear Progress */}
-            <ConfidenceGauge confidence={result.confidence} />
+            <ConfidenceGauge confidence={safeConfidence} />
         </div>
 
         <Separator className="bg-primary/10" />
@@ -629,8 +633,9 @@ export function DecisionCard({ result }: { result: DecisionResult }) {
             <p className="text-sm font-medium leading-relaxed">{rawCard?.debate_digest || result.final_statement}</p>
         </div>
 
-        {/* AGENT DETAILED SUMMARIES - Collapsible */}
-        {hasAgentSummaries && (
+        {/* AGENT DETAILED SUMMARIES - Collapsible (REMOVED: Redundant with Debate Tabs) */}
+        {/* User feedback: "We are already showing round 1 and 2 above, the decision card need not again have the Deep analysis section" */}
+        {/* {hasAgentSummaries && (
           <div className="space-y-3 pt-2">
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 pl-1">
               <Sparkles className="w-3.5 h-3.5" />
@@ -663,7 +668,7 @@ export function DecisionCard({ result }: { result: DecisionResult }) {
               )}
             </div>
           </div>
-        )}
+        )} */}
         
         {/* Consensus Donut - Only show here if QuantMetrics took the main spot */}
         {hasQuantMetrics && rawCard?.quant_metrics && (

@@ -54,6 +54,7 @@ export interface StreamingProgressViewProps {
   valuationMetrics?: Record<string, any>;
   peerComparison?: Record<string, any>;
   priceTargets?: Record<string, any>;
+  disableStreaming?: boolean;
 }
 
 // ============================================================================
@@ -337,6 +338,7 @@ export function StreamingProgressView({
   valuationMetrics,
   peerComparison,
   priceTargets,
+  disableStreaming = false,
 }: StreamingProgressViewProps) {
   const isActive = stage === "active";
   const isComplete = stage === "complete";
@@ -387,7 +389,7 @@ export function StreamingProgressView({
           id={`thoughts-${title.toLowerCase().replace(/\s+/g, "-")}`}
           title="Reasoning"
           text={isActive ? streamedText : thoughtsText}
-          isStreaming={isActive}
+          isStreaming={!disableStreaming && isActive} // Disable streaming animation if requested
           isComplete={isComplete}
           icon={isComplete ? "brain" : "spinner"}
           className="border-primary/5 bg-primary/5"

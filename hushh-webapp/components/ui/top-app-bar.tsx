@@ -81,7 +81,7 @@ export function TopAppBar({ className }: TopAppBarProps) {
     setIsNative(Capacitor.isNativePlatform());
   }, []);
 
-  // Don't show TopAppBar only on the landing page
+  // Don't show TopAppBar on landing page
   if (pathname === "/") {
     return null;
   }
@@ -153,7 +153,7 @@ export function TopAppBarSpacer() {
     setIsNative(Capacitor.isNativePlatform());
   }, []);
 
-  // Landing page: No spacer needed, body padding handles safe area
+  // Landing page: no spacer needed (body padding handles safe area)
   if (pathname === "/") {
     return null;
   }

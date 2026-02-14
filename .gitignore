@@ -41,3 +41,4 @@ Pipfile.lock
 Thumbs.db
 CURSOR_TOOLS.md
 continue-dev-tools-usage.md
+/temp

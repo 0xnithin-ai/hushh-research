@@ -51,9 +51,21 @@ Component → Service → [Web Proxy OR Native Plugin] → Python Backend
 
 Hushh uses **Shadcn + Radix** as low-level primitives and **Morphy-UX** for physics, brand, and interaction.
 
-- **`components/ui/*`**: Stock Shadcn/Radix components (updatable via CLI).
+- **`components/ui/*`**: **Stock** Shadcn/Radix components (treat as vendor code; updatable via CLI).
 - **`lib/morphy-ux/*`**: Core Morphy-UX tokens, motion, and primitives (Button, Card, ripple, toasts).
 - **`lib/morphy-ux/ui/*`**: Morphy-enhanced versions of specific UI primitives (e.g., sidebar tabs).
+
+###  Rule: Keep Shadcn components stock
+
+**Do not modify** files under `components/ui/*` to add app-specific behavior, styling, or bug fixes.
+
+If you need changes:
+1. Create a Morphy extension/wrapper in `lib/morphy-ux/ui/*` (preferred), or
+2. Create a feature-specific wrapper component outside `components/ui/*`.
+
+Rationale:
+- `components/ui/*` is treated as vendor code and may be overwritten by shadcn updates.
+- Morphy extensions are the stable place for Hushh-specific UX, physics, and platform quirks.
 
 ### When to use what
 

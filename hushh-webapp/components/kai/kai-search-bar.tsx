@@ -4,14 +4,17 @@
  * Kai Search Bar - Command palette for triggering stock analysis
  *
  * Delegates search UI to StockSearch (Popover on desktop, Drawer on mobile).
- * Wires selection to the onCommand("analyze", { symbol }) callback after
- * verifying the vault is unlocked.
+ *
+ * IMPORTANT UX:
+ * - Must align to the bottom pill navbar container width (centered, px-4)
+ * - Must be clickable (no overlay/pointer-events issues)
+ * - Selecting a ticker navigates immediately; vault gating happens later in the flow
  */
 
 "use client";
 
-import { useVault } from "@/lib/vault/vault-context";
 import { StockSearch } from "@/components/kai/views/stock-search";
+import { cn } from "@/lib/utils";
 
 // =============================================================================
 // TYPES
@@ -34,22 +37,19 @@ export function KaiSearchBar({
   onCommand,
   disabled = false,
 }: KaiSearchBarProps) {
-  const { vaultOwnerToken } = useVault();
-
   const handleSelect = (ticker: string) => {
-    if (!vaultOwnerToken) {
-      console.error("Vault must be unlocked for stock analysis");
-      return;
-    }
     onCommand("analyze", { symbol: ticker });
   };
 
   return (
-    <div className="fixed bottom-[calc(88px+env(safe-area-inset-bottom))] left-0 right-0 z-40 px-6">
-      <div className="max-w-lg mx-auto">
+    <div className="fixed bottom-[calc(88px+env(safe-area-inset-bottom))] inset-x-0 z-[130] flex justify-center px-4 pointer-events-none">
+      <div className="pointer-events-auto w-[315px]">
         <StockSearch
           onSelect={handleSelect}
-          className={disabled ? "pointer-events-none opacity-50" : "w-full"}
+          className={cn(
+            "w-full",
+            disabled ? "pointer-events-none opacity-50" : ""
+          )}
         />
       </div>
     </div>

@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { useVault } from "@/lib/vault/vault-context";
 import { useKaiSession } from "@/lib/stores/kai-session-store";
@@ -46,6 +46,24 @@ export default function KaiAnalysisPage() {
     },
     [userId, setAnalysisParams],
   );
+
+  // If something (e.g. global search bar) pre-set analysisParams without userId,
+  // normalize it once we have userId.
+  //
+  // IMPORTANT: backend streaming endpoint enforces `payload.user_id == body.user_id`.
+  // If we leave a placeholder userId, the backend will 403 (Token user mismatch).
+  useEffect(() => {
+    if (
+      analysisParams &&
+      userId &&
+      (!analysisParams.userId || analysisParams.userId === "__pending__")
+    ) {
+      setAnalysisParams({
+        ...analysisParams,
+        userId,
+      });
+    }
+  }, [analysisParams, setAnalysisParams, userId]);
 
   /** User tapped a previous analysis card — show stored results (not re-debate) */
   const handleViewHistory = useCallback(
@@ -103,6 +121,16 @@ export default function KaiAnalysisPage() {
   }
 
   // ---- State 2: Active analysis ----
+
+  // If analysisParams exist but userId hasn't been normalized yet, wait.
+  // Otherwise the backend stream endpoint will 403 (Token user mismatch).
+  if (analysisParams && (!analysisParams.userId || analysisParams.userId === "__pending__")) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <HushhLoader variant="inline" label="Preparing analysis…" />
+      </div>
+    );
+  }
 
   if (analysisParams) {
     return (
