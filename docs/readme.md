@@ -24,6 +24,7 @@ For repo-level setup instructions, see the root [`README.md`](../README.md) and 
 | Learn how Kai agents work | [kai-agents.md](../consent-protocol/docs/reference/kai-agents.md) |
 | **Build a new agent or operon** | [agent-development.md](../consent-protocol/docs/reference/agent-development.md) |
 | Set up my dev environment | [guides/getting-started.md](./guides/getting-started.md) |
+| Understand subtree sync enforcement | [guides/subtree-sync.md](./guides/subtree-sync.md) |
 | Add a new feature end-to-end | [guides/new-feature.md](./guides/new-feature.md) |
 | Build for iOS or Android | [guides/mobile.md](./guides/mobile.md) |
 | Implement native SSE streaming | [guides/native-streaming.md](./guides/native_streaming.md) |
