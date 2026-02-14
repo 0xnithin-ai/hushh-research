@@ -36,11 +36,17 @@ Follow the architecture and coding standards below.
 Every PR must pass these before merge:
 
 ```bash
-ruff check .                                    # Lint
-ruff format --check .                           # Format
-mypy --config-file pyproject.toml --ignore-missing-imports  # Type check
-pytest tests/ -v                                # Tests
-bandit -r hushh_mcp/ api/ -c pyproject.toml     # Security
+make ci-local  # Runs all checks (lint, format, typecheck, test, security)
+```
+
+Or run individually:
+
+```bash
+make lint          # Lint
+make format-check  # Format check
+make typecheck     # Type check
+make test          # Tests
+make security      # Security scan
 ```
 
 ### 5. Open a Pull Request
@@ -138,16 +144,15 @@ tools:
 2. Use service classes for all DB operations
 3. Add the route to `server.py` router registration
 4. Update `docs/reference/consent-protocol.md` if it involves consent
-5. Update the monorepo `docs/reference/api-contracts.md` route table
+5. Update route documentation in `docs/`
 
 ---
 
 ## Documentation
 
-- Backend-specific docs live in `docs/` within this repo
-- Cross-cutting docs (architecture, API contracts, frontend) live in the [monorepo](https://github.com/hushh-labs/hushh-research/tree/main/docs)
+- All documentation lives in `docs/` within this repository
 - Every new agent or operon must be documented
-- Internal links use relative paths; links to monorepo docs use GitHub URLs
+- Use relative paths for all internal links
 
 ---
 
@@ -155,11 +160,7 @@ tools:
 
 Before submitting, verify:
 
-- [ ] `ruff check .` passes
-- [ ] `ruff format --check .` passes
-- [ ] `mypy --config-file pyproject.toml` passes
-- [ ] `pytest tests/ -v` passes
-- [ ] `bandit -r hushh_mcp/ api/ -c pyproject.toml` passes
+- [ ] `make ci-local` passes (or run checks individually)
 - [ ] Consent validation is present at agent entry AND tool invocation
 - [ ] Tests cover the new code
 - [ ] Documentation is updated
