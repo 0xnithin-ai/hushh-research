@@ -47,7 +47,7 @@ gcloud builds submit --config=deploy/frontend.cloudbuild.yaml
    .\verify-secrets.ps1
    ```
 
-   Required backend secrets (10):
+   Required backend secrets (9):
 
    - `SECRET_KEY`
    - `VAULT_ENCRYPTION_KEY`
@@ -56,11 +56,10 @@ gcloud builds submit --config=deploy/frontend.cloudbuild.yaml
    - `FRONTEND_URL`
    - `DB_USER`
    - `DB_PASSWORD`
-   - `APP_REVIEW_MODE`
-   - `REVIEWER_EMAIL`
-   - `REVIEWER_PASSWORD`
+   - `REVIEWER_UID`
+   - `MCP_DEVELOPER_TOKEN`
 
-   **Note:** `DB_HOST`, `DB_PORT`, `DB_NAME` are set as Cloud Run env vars (not secrets). **Do not use `DATABASE_URL`** — migrations and scripts use DB_* only (strict parity). Delete `DATABASE_URL` from Secret Manager if present.
+   **Note:** `DB_HOST`, `DB_PORT`, `DB_NAME`, `APP_REVIEW_MODE`, `CONSENT_SSE_ENABLED`, and `SYNC_REMOTE_ENABLED` are set as Cloud Run env vars (not secrets). **Do not use `DATABASE_URL`** — migrations and scripts use DB_* only (strict parity). Delete `DATABASE_URL` from Secret Manager if present.
 
 ---
 
@@ -107,6 +106,11 @@ Manual dispatch now supports `scope`:
 2. **Branch flow:** After merging to `main`, update the `deploy` branch (e.g. merge `main` into `deploy` or push to `deploy`) so the workflow builds from an up-to-date state. Then push to `deploy` to trigger the workflow, or run it manually from the Actions tab.
 3. **Approval policy:** reviewer exclusions (for repo owner or specific users) are configured in GitHub Environment settings, not in repo code. Use Settings -> Environments -> `production` -> Required reviewers.
 
+### CI Security Gates
+
+- `.github/workflows/ci.yml` runs `gitleaks` as a mandatory secret-scanning gate.
+- The same workflow validates that committed mobile Firebase artifacts are templates (`npm run verify:mobile-firebase`).
+
 ### Option 1: Cloud Build Triggers (Recommended)
 
 1. **Create Backend Trigger**
@@ -146,10 +150,10 @@ gcloud builds submit --config=deploy/frontend.cloudbuild.yaml
 
 All required secrets must exist in Google Cloud Secret Manager before deployment. Run `verify-secrets.ps1` if available, or create any missing secrets manually.
 
-**Backend (10 secrets):** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `APP_REVIEW_MODE`, `REVIEWER_EMAIL`, `REVIEWER_PASSWORD`
+**Backend (9 secrets):** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `REVIEWER_UID`, `MCP_DEVELOPER_TOKEN`
 
 **Note:** 
-- `DB_HOST`, `DB_PORT`, `DB_NAME` are set as Cloud Run env vars (not secrets) in `backend.cloudbuild.yaml`
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `APP_REVIEW_MODE`, `CONSENT_SSE_ENABLED`, and `SYNC_REMOTE_ENABLED` are set as Cloud Run env vars (not secrets) in `backend.cloudbuild.yaml`
 - Migrations use DB_* only (no DATABASE_URL). See docs/reference/env_and_secrets.md.
 - **Action required:** Create `DB_USER` and `DB_PASSWORD` secrets in Secret Manager if they don't exist:
   ```bash
@@ -157,9 +161,28 @@ All required secrets must exist in Google Cloud Secret Manager before deployment
   echo "your-db-password" | gcloud secrets create DB_PASSWORD --data-file=-
   ```
 
-**Frontend build-time (1 secret):** `BACKEND_URL`
+**Frontend build-time (7 centrally-managed values):**
+- `BACKEND_URL`
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+
+These Firebase values are public client config, but are still centrally injected from Secret Manager to avoid hardcoded deploy YAML values.
 
 See [docs/reference/env_and_secrets.md](../docs/reference/env_and_secrets.md) for full reference.
+
+### Mobile Firebase Artifacts (Regulated)
+
+- Do not commit production `GoogleService-Info.plist` or `google-services.json`.
+- Store production mobile Firebase artifacts in Secret Manager:
+  - `IOS_GOOGLESERVICE_INFO_PLIST_B64`
+  - `ANDROID_GOOGLE_SERVICES_JSON_B64`
+- Inject both during native release CI and overwrite template files before build/sign.
+- Use `npm run inject:mobile-firebase` in `hushh-webapp/` after exporting those secrets into env vars.
+- Run `npm run verify:mobile-firebase` with `REQUIRE_PROD_FIREBASE_ARTIFACTS=true` in release jobs to fail fast if templates were not replaced.
 
 ### Verify Secrets
 

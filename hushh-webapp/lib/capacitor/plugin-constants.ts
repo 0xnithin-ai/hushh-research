@@ -33,18 +33,6 @@ export const PluginParams = {
     FIELD_NAME: "fieldName",
   },
 
-  // HushhIdentity parameters
-  Identity: {
-    INVESTOR_ID: "investorId",
-    VAULT_OWNER_TOKEN: "vaultOwnerToken",
-    PROFILE_DATA_CIPHERTEXT: "profileDataCiphertext",
-    PROFILE_DATA_IV: "profileDataIv",
-    PROFILE_DATA_TAG: "profileDataTag",
-    NAME: "name",
-    LIMIT: "limit",
-    ID: "id",
-  },
-
   // Kai parameters
   Kai: {
     TICKER: "ticker",
@@ -104,7 +92,6 @@ export const PluginNames = {
   AUTH: "HushhAuth",
   VAULT: "HushhVault",
   CONSENT: "HushhConsent",
-  IDENTITY: "HushhIdentity",
   KAI: "Kai",
   SYNC: "HushhSync",
   SETTINGS: "HushhSettings",

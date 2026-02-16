@@ -33,11 +33,10 @@ function ok(msg) {
 }
 
 const REQUIRED_PLUGINS = [
-  // Core 8
+  // Core plugins
   "HushhAuth",
   "HushhVault",
   "HushhConsent",
-  "HushhIdentity",
   "Kai",
   "HushhSync",
   "HushhSettings",
@@ -105,7 +104,6 @@ function checkAndroidRegistrationAndNames() {
     "HushhAuthPlugin",
     "HushhVaultPlugin",
     "HushhConsentPlugin",
-    "HushhIdentityPlugin",
     "KaiPlugin",
     "HushhSyncPlugin",
     "HushhSettingsPlugin",

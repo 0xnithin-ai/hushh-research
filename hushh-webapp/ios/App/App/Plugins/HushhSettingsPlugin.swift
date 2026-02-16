@@ -21,9 +21,9 @@ public class HushhSettingsPlugin: CAPPlugin, CAPBridgedPlugin {
     private let TAG = "HushhSettings"
     private let defaults = UserDefaults.standard
     
-    // Default settings (DEV defaults to remote)
+    // Default settings (regulated cutover defaults to local-only sync)
     private let defaultSettings: [String: Any] = [
-        "useRemoteSync": true,
+        "useRemoteSync": false,
         "syncOnWifiOnly": false,
         "useRemoteLLM": true,
         "preferredLLMProvider": "google",
@@ -104,7 +104,7 @@ public class HushhSettingsPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     
     @objc func shouldSyncToCloud(_ call: CAPPluginCall) {
-        let useRemoteSync = defaults.object(forKey: "useRemoteSync") as? Bool ?? true
+        let useRemoteSync = defaults.object(forKey: "useRemoteSync") as? Bool ?? false
         call.resolve(["value": useRemoteSync])
     }
 }

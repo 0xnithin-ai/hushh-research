@@ -16,6 +16,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithCredential,
+  signInWithCustomToken as firebaseSignInWithCustomToken,
   signInWithPopup,
   signOut as firebaseSignOut,
   User,
@@ -107,6 +108,21 @@ export class AuthService {
         idToken,
       };
     }
+  }
+
+  /**
+   * Sign in with Firebase custom token.
+   *
+   * Used for app-review mode where backend mints a short-lived token
+   * for a pre-approved reviewer UID. No reviewer password is exposed to clients.
+   */
+  static async signInWithCustomToken(customToken: string): Promise<AuthResult> {
+    const result = await firebaseSignInWithCustomToken(auth, customToken);
+    const idToken = await result.user.getIdToken();
+    return {
+      user: result.user,
+      idToken,
+    };
   }
 
   /**

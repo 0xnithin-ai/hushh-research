@@ -46,6 +46,8 @@ POST /api/consent/vault-owner-token  (Firebase Bearer)
 | GET | `/api/investors/cik/{cik}` | Investor profile by SEC CIK |
 | GET | `/api/investors/stats` | Investor database statistics |
 | POST | `/api/validate-token` | Validate a consent token |
+| GET | `/api/app-config/review-mode` | Review mode toggle (enabled only) |
+| POST | `/api/app-config/review-mode/session` | Mint Firebase custom token for `REVIEWER_UID` when review mode enabled |
 
 ### Firebase Auth (Bootstrap)
 
@@ -54,7 +56,6 @@ POST /api/consent/vault-owner-token  (Firebase Bearer)
 | POST | `/api/consent/vault-owner-token` | Issue VAULT_OWNER token |
 | POST | `/api/notifications/register` | Register FCM push token |
 | DELETE | `/api/notifications/unregister` | Unregister FCM tokens (logout) |
-| GET | `/api/identity/auto-detect` | Auto-detect investor from Firebase name |
 | POST | `/api/kai/consent/grant` | Grant consent for Kai scopes |
 
 ### VAULT_OWNER (Consent-Gated)
@@ -129,9 +130,9 @@ Frontend path: first entry auto-opens optional intro modal on `/kai/dashboard`; 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
 | DELETE | `/api/account/delete` | Delete user account and all data |
-| POST | `/api/sync/vault` | Trigger vault sync |
-| POST | `/api/sync/batch` | Push batch of offline changes |
-| GET | `/api/sync/pull` | Pull changes since timestamp |
+| POST | `/api/sync/vault` | Disabled in regulated cutover (`501`, `SYNC_DISABLED`) |
+| POST | `/api/sync/batch` | Disabled in regulated cutover (`501`, `SYNC_DISABLED`) |
+| GET | `/api/sync/pull` | Disabled in regulated cutover (`501`, `SYNC_DISABLED`) |
 
 ### Consent Token (MCP Data Access)
 
@@ -143,8 +144,8 @@ Frontend path: first entry auto-opens optional intro modal on `/kai/dashboard`; 
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| GET | `/api/consent/events/{user_id}` | Real-time consent notifications |
-| GET | `/api/consent/events/{user_id}/poll/{request_id}` | Poll specific consent request |
+| GET | `/api/consent/events/{user_id}` | Disabled in production unless `CONSENT_SSE_ENABLED=true` |
+| GET | `/api/consent/events/{user_id}/poll/{request_id}` | Deprecated and disabled (`410`, `CONSENT_POLL_DEPRECATED`) |
 
 ### Deprecated (410 Gone)
 
@@ -156,6 +157,7 @@ Frontend path: first entry auto-opens optional intro modal on `/kai/dashboard`; 
 | POST | `/api/kai/decision/store` | `POST /api/world-model/store-domain` with domain=`kai_decisions` |
 | GET | `/api/kai/decision/{id}` | `GET /api/kai/decisions/{user_id}` |
 | DELETE | `/api/kai/decision/{id}` | `POST /api/world-model/store-domain` with domain=`kai_decisions` |
+| `*` | `/api/identity/*` | Removed from app surface; compatibility stubs return `410` |
 
 ---
 
@@ -220,7 +222,7 @@ Service:  { userId: "abc", domainSummaries: {...} }
 React:    Uses camelCase throughout
 ```
 
-Plugins requiring camelCase transformation: WorldModel, Kai, Identity.
+Plugins requiring camelCase transformation: WorldModel, Kai.
 
 ---
 

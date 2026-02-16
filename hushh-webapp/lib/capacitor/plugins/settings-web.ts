@@ -2,16 +2,16 @@
  * HushhSettingsWeb - Web implementation for settings
  * 
  * Uses localStorage for persistence on web platform.
- * DEVELOPMENT DEFAULTS: Remote enabled for web parity.
+ * Regulated cutover default: remote sync disabled.
  */
 
 import type { HushhSettingsPlugin, HushhSettingsData } from "../index";
 
 const STORAGE_KEY = "hushh_settings";
 
-// DEVELOPMENT DEFAULTS - Remote enabled
+// Default settings
 const DEFAULT_SETTINGS: HushhSettingsData = {
-  useRemoteSync: true,              // DEV: true
+  useRemoteSync: false,
   syncOnWifiOnly: true,
   useRemoteLLM: true,               // DEV: true
   preferredLLMProvider: "openai",

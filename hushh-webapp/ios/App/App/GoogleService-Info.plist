@@ -3,23 +3,23 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>1006304528804-5f4ni5h8nschgv9gcoa9i07bhqtjeb91.apps.googleusercontent.com</string>
+	<string>__FIREBASE_IOS_CLIENT_ID__</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.1006304528804-5f4ni5h8nschgv9gcoa9i07bhqtjeb91</string>
+	<string>__FIREBASE_IOS_REVERSED_CLIENT_ID__</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>1006304528804-7j0kgvkl7mba30cv817jh129aflos0ks.apps.googleusercontent.com</string>
+	<string>__FIREBASE_ANDROID_CLIENT_ID__</string>
 	<key>API_KEY</key>
-	<string>GOOGLE_API_KEY_REDACTED</string>
+	<string>__FIREBASE_IOS_API_KEY__</string>
 	<key>GCM_SENDER_ID</key>
-	<string>1006304528804</string>
+	<string>__FIREBASE_GCM_SENDER_ID__</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.hushh.app</string>
 	<key>PROJECT_ID</key>
-	<string>hushh-pda</string>
+	<string>__FIREBASE_PROJECT_ID__</string>
 	<key>STORAGE_BUCKET</key>
-	<string>hushh-pda.firebasestorage.app</string>
+	<string>__FIREBASE_STORAGE_BUCKET__</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1006304528804:ios:eb2720b5eda7da4bcfd931</string>
+	<string>__FIREBASE_IOS_GOOGLE_APP_ID__</string>
 </dict>
 </plist>

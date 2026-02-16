@@ -125,11 +125,9 @@ function LoginScreenContent() {
 
   // State
   const [error, setError] = useState<string | null>(null);
-  const [reviewModeConfig, setReviewModeConfig] = useState<{
-    enabled: boolean;
-    reviewer_email?: string;
-    reviewer_password?: string;
-  }>({ enabled: false });
+  const [reviewModeConfig, setReviewModeConfig] = useState<{ enabled: boolean }>({
+    enabled: false,
+  });
 
   // Use Reactive Auth State
   const { user, loading: authLoading, setNativeUser } = useAuth();
@@ -184,20 +182,10 @@ function LoginScreenContent() {
           if (!cancelled) setReviewModeConfig({ enabled: false });
           return;
         }
-        const data = (await response.json()) as {
-          enabled?: unknown;
-          reviewer_email?: unknown;
-          reviewer_password?: unknown;
-        };
+        const data = (await response.json()) as { enabled?: unknown };
         if (!cancelled) {
           setReviewModeConfig({
             enabled: data.enabled === true,
-            reviewer_email:
-              typeof data.reviewer_email === "string" ? data.reviewer_email : undefined,
-            reviewer_password:
-              typeof data.reviewer_password === "string"
-                ? data.reviewer_password
-                : undefined,
           });
         }
       } catch {
@@ -280,17 +268,25 @@ function LoginScreenContent() {
       setError(null);
       console.log("[Login] Reviewer login initiated");
 
-      const reviewerEmail = reviewModeConfig.reviewer_email || "";
-      const reviewerPassword = reviewModeConfig.reviewer_password || "";
-      if (!reviewModeConfig.enabled || !reviewerEmail || !reviewerPassword) {
+      if (!reviewModeConfig.enabled) {
         throw new Error("Reviewer mode is not enabled");
       }
 
-      // Use platform-aware auth flow so native apps behave exactly like web.
-      const authResult = await AuthService.signInWithEmailAndPassword(
-        reviewerEmail,
-        reviewerPassword,
-      );
+      const sessionResponse = await ApiService.apiFetch("/api/app-config/review-mode/session", {
+        method: "POST",
+        cache: "no-store",
+      });
+      if (!sessionResponse.ok) {
+        const payload = await sessionResponse.json().catch(() => ({}));
+        throw new Error(payload?.error || payload?.detail || "Reviewer login unavailable");
+      }
+
+      const sessionPayload = (await sessionResponse.json()) as { token?: unknown };
+      if (typeof sessionPayload.token !== "string" || !sessionPayload.token) {
+        throw new Error("Invalid reviewer session token");
+      }
+
+      const authResult = await AuthService.signInWithCustomToken(sessionPayload.token);
       const user = authResult.user;
 
       console.log("[Login] Reviewer login returned user:", user?.uid);
@@ -327,7 +323,7 @@ function LoginScreenContent() {
             <Card variant="none" effect="glass" className="border-yellow-500/30">
               <CardContent className="flex items-center gap-3 p-3 text-sm font-medium">
                 <Shield className="h-5 w-5 text-yellow-600 dark:text-yellow-400 shrink-0" />
-                <span>App Review Mode Active - Reviewer test account available below</span>
+                <span>App Review Mode Active - Reviewer sign-in available below</span>
               </CardContent>
             </Card>
           )}

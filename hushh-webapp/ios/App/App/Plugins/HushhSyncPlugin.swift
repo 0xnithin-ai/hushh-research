@@ -30,16 +30,13 @@ public class HushhSyncPlugin: CAPPlugin, CAPBridgedPlugin {
     
     // MARK: - Sync
     @objc func sync(_ call: CAPPluginCall) {
-        let authToken = call.getString("authToken")
-        
-        // Placeholder: push + pull
-        let pushResult = performPush(authToken: authToken)
-        let pullResult = performPull(authToken: authToken)
-        
+        _ = call.getString("authToken")
         call.resolve([
-            "success": true,
-            "pushedRecords": pushResult,
-            "pulledRecords": pullResult,
+            "success": false,
+            "error_code": "SYNC_DISABLED",
+            "message": "Remote sync is disabled in this release.",
+            "pushedRecords": 0,
+            "pulledRecords": 0,
             "conflicts": 0,
             "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
         ])
@@ -47,62 +44,38 @@ public class HushhSyncPlugin: CAPPlugin, CAPBridgedPlugin {
     
     // MARK: - Push
     @objc func push(_ call: CAPPluginCall) {
-        let authToken = call.getString("authToken")
-        let pushedRecords = performPush(authToken: authToken)
-        
+        _ = call.getString("authToken")
         call.resolve([
-            "success": true,
-            "pushedRecords": pushedRecords
+            "success": false,
+            "error_code": "SYNC_DISABLED",
+            "message": "Remote sync is disabled in this release.",
+            "pushedRecords": 0
         ])
     }
     
     // MARK: - Pull
     @objc func pull(_ call: CAPPluginCall) {
-        let authToken = call.getString("authToken")
-        let pulledRecords = performPull(authToken: authToken)
-        
+        _ = call.getString("authToken")
         call.resolve([
-            "success": true,
-            "pulledRecords": pulledRecords
+            "success": false,
+            "error_code": "SYNC_DISABLED",
+            "message": "Remote sync is disabled in this release.",
+            "pulledRecords": 0
         ])
     }
     
     // MARK: - Sync Vault
     @objc func syncVault(_ call: CAPPluginCall) {
-        guard let userId = call.getString("userId") else {
+        guard call.getString("userId") != nil else {
             call.reject("Missing required parameter: userId")
             return
         }
-        
-        let authToken = call.getString("authToken")
-        let backendUrl = call.getString("backendUrl") ?? defaultBackendUrl
-        
-        guard let url = URL(string: "\(backendUrl)/api/sync/vault") else {
-            call.reject("Invalid URL")
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = authToken {
-            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: ["userId": userId])
-        } catch {
-            call.reject("Failed to encode body")
-            return
-        }
-        
-        urlSession.dataTask(with: request) { _, response, error in
-            if let httpResponse = response as? HTTPURLResponse {
-                call.resolve(["success": (200...299).contains(httpResponse.statusCode)])
-            } else {
-                call.resolve(["success": false])
-            }
-        }.resume()
+
+        call.resolve([
+            "success": false,
+            "error_code": "SYNC_DISABLED",
+            "message": "Remote sync is disabled in this release."
+        ])
     }
     
     // MARK: - Get Sync Status

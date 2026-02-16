@@ -49,7 +49,7 @@
   .\verify-secrets.ps1 -UpdateValues
   ```
 
-- [x] Verify all 7 required backend secrets exist:
+- [x] Verify all 9 required backend secrets exist:
   - [x] `SECRET_KEY`
   - [x] `VAULT_ENCRYPTION_KEY`
   - [x] `GOOGLE_API_KEY`
@@ -57,8 +57,10 @@
   - [x] `FRONTEND_URL`
   - [x] `DB_USER`
   - [x] `DB_PASSWORD`
+  - [x] `REVIEWER_UID`
+  - [x] `MCP_DEVELOPER_TOKEN`
   
-  **Note:** `DB_HOST`, `DB_PORT`, `DB_NAME` are Cloud Run env vars (not secrets). Do not use `DATABASE_URL`; migrations use DB_* only. Delete `DATABASE_URL` from Secret Manager for strict parity.
+  **Note:** `DB_HOST`, `DB_PORT`, `DB_NAME`, `APP_REVIEW_MODE`, `CONSENT_SSE_ENABLED`, and `SYNC_REMOTE_ENABLED` are Cloud Run env vars (not secrets). Do not use `DATABASE_URL`; migrations use DB_* only. Delete `DATABASE_URL` from Secret Manager for strict parity.
 
 ---
 

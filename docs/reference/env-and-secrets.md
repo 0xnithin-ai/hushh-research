@@ -39,8 +39,10 @@ See also: [deploy/README.md](../../deploy/README.md), [consent-protocol/.env.exa
 | `ROOT_PATH` | `server.py` | No | |
 | `GOOGLE_GENAI_USE_VERTEXAI` | Cloud Run env (Gemini SDK) | No | Set in deploy, not in .env |
 | `APP_REVIEW_MODE` / `HUSHH_APP_REVIEW_MODE` | `api/routes/health.py` (`/api/app-config/review-mode`) | No | Backend runtime toggle for app review login |
-| `REVIEWER_EMAIL` | `api/routes/health.py` | Required when app review is enabled | |
-| `REVIEWER_PASSWORD` | `api/routes/health.py` | Required when app review is enabled | |
+| `REVIEWER_UID` | `api/routes/health.py` (`POST /api/app-config/review-mode/session`) | Required when app review is enabled | Firebase UID used for custom token minting |
+| `CONSENT_SSE_ENABLED` | `api/routes/sse.py` | No | Default off in production unless explicitly enabled |
+| `SYNC_REMOTE_ENABLED` | `api/routes/sync.py` | No | Default false; `/api/sync/*` returns 501 when disabled |
+| `MCP_DEVELOPER_TOKEN` | `api/routes/session.py` (`/api/user/lookup`) | Recommended | Required for protected service-to-service lookup |
 
 **Migrations/scripts:** Use **DB_*** only (same as runtime). `db/migrate.py` uses `db.connection.get_database_url()` and `get_database_ssl()`. No `DATABASE_URL` anywhere.
 
@@ -83,10 +85,12 @@ See also: [deploy/README.md](../../deploy/README.md), [consent-protocol/.env.exa
 | `CONSENT_TIMEOUT_SECONDS` | No | No | `.env` / MCP config | |
 | `PORT` | No | No | Optional (uvicorn/runner) | |
 | `ROOT_PATH` | No | No | Optional (Swagger) | |
-| `APP_REVIEW_MODE` | No | Yes (prod) | Local: `.env`; Prod: Secret Manager | Backend app-review toggle |
+| `APP_REVIEW_MODE` | No | No | Local: `.env`; Prod: Cloud Run env | Backend app-review toggle |
 | `HUSHH_APP_REVIEW_MODE` | No | No | Optional alternative key | Alias toggle for app review |
-| `REVIEWER_EMAIL` | If app review | Yes (prod) | Local: `.env`; Prod: Secret Manager | |
-| `REVIEWER_PASSWORD` | If app review | Yes (prod) | Local: `.env`; Prod: Secret Manager | |
+| `REVIEWER_UID` | If app review | Yes (prod) | Local: `.env`; Prod: Secret Manager | Reviewer Firebase UID for custom token minting |
+| `CONSENT_SSE_ENABLED` | No | No | Local: `.env`; Prod: Cloud Run env | Keep false in production (FCM-first) |
+| `SYNC_REMOTE_ENABLED` | No | No | Local: `.env`; Prod: Cloud Run env | Keep false in production |
+| `MCP_DEVELOPER_TOKEN` | Recommended | Yes (prod) | Local: `.env`; Prod: Secret Manager | Service auth for `/api/user/lookup` |
 
 **CI (GitHub Actions):** Backend tests use `TESTING=true`, dummy `SECRET_KEY`, and dummy `VAULT_ENCRYPTION_KEY`; no `.env` file required.
 
@@ -96,8 +100,7 @@ These are used by MCP modules (`mcp_modules/`) for MCP server functionality, not
 
 - `CONSENT_API_URL` - MCP server FastAPI URL (defaults to `http://localhost:8000`)
 - `PRODUCTION_MODE` - MCP server production mode flag
-- `MCP_DEVELOPER_TOKEN` - MCP developer token for debugging
-- `CONSENT_POLL_INTERVAL_SECONDS` - MCP consent polling interval
+- `MCP_DEVELOPER_TOKEN` - MCP developer token for service-auth protected lookup
 
 **Note:** These are not required for Cloud Run backend deployment; only needed when running the MCP server locally.
 
@@ -138,7 +141,7 @@ These are used by MCP modules (`mcp_modules/`) for MCP server functionality, not
 
 Secret Manager must hold **exactly** the keys the code uses. No extra secrets; no missing secrets. Cloud Build injects only these.
 
-### Backend (10 secrets) — all injected by `deploy/backend.cloudbuild.yaml`
+### Backend (9 secrets) — all injected by `deploy/backend.cloudbuild.yaml`
 
 | Secret name | Env var / usage in code |
 |-------------|-------------------------|
@@ -149,37 +152,44 @@ Secret Manager must hold **exactly** the keys the code uses. No extra secrets; n
 | `FRONTEND_URL` | `FRONTEND_URL` (server.py CORS) |
 | `DB_USER` | `DB_USER` (db/connection.py, db/db_client.py) |
 | `DB_PASSWORD` | `DB_PASSWORD` (same) |
-| `APP_REVIEW_MODE` | `APP_REVIEW_MODE` (api/routes/health.py) |
-| `REVIEWER_EMAIL` | `REVIEWER_EMAIL` (api/routes/health.py) |
-| `REVIEWER_PASSWORD` | `REVIEWER_PASSWORD` (api/routes/health.py) |
+| `REVIEWER_UID` | `REVIEWER_UID` (api/routes/health.py) |
+| `MCP_DEVELOPER_TOKEN` | `MCP_DEVELOPER_TOKEN` (api/routes/session.py) |
 
-**Not in Secret Manager (set as Cloud Run env vars in cloudbuild):** `DB_HOST`, `DB_PORT`, `DB_NAME`, `ENVIRONMENT`, `GOOGLE_GENAI_USE_VERTEXAI`.
+**Not in Secret Manager (set as Cloud Run env vars in cloudbuild):** `DB_HOST`, `DB_PORT`, `DB_NAME`, `ENVIRONMENT`, `GOOGLE_GENAI_USE_VERTEXAI`, `APP_REVIEW_MODE`, `CONSENT_SSE_ENABLED`, `SYNC_REMOTE_ENABLED`.
 
 **Strict parity:** `DATABASE_URL` is not used anywhere. Migrations (`db/migrate.py`) use **DB_*** only, via `db.connection.get_database_url()`. Do **not** create or keep `DATABASE_URL` in Secret Manager; delete it if present.
 
-### Frontend (1 secret, build-time only) — all used by `deploy/frontend.cloudbuild.yaml`
+### Frontend (7 centrally-managed values, build-time only) — all used by `deploy/frontend.cloudbuild.yaml`
 
 | Secret name | Build-arg / usage in code |
 |-------------|---------------------------|
 | `BACKEND_URL` | `NEXT_PUBLIC_BACKEND_URL` (baked into client) |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | `NEXT_PUBLIC_FIREBASE_API_KEY` |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | `NEXT_PUBLIC_FIREBASE_APP_ID` |
 
 ### gcloud CLI: list and create only these secrets
 
 ```bash
-# List existing secrets (ensure only the 11 above exist for this project)
+# List existing secrets (ensure only the 16 above exist for this project)
 gcloud secrets list --project=YOUR_PROJECT_ID
 
-# Create a missing backend secret (repeat for each of the 10 names)
+# Create a missing backend secret (repeat for each of the 9 names)
 gcloud secrets create SECRET_KEY --replication-policy=automatic --project=YOUR_PROJECT_ID
 echo -n "your-value" | gcloud secrets versions add SECRET_KEY --data-file=- --project=YOUR_PROJECT_ID
 
-# Create a missing frontend secret (repeat for each of the 1 names)
+# Create missing frontend values in Secret Manager (repeat for each of the 7 names)
 gcloud secrets create BACKEND_URL --replication-policy=automatic --project=YOUR_PROJECT_ID
 echo -n "https://your-backend.run.app" | gcloud secrets versions add BACKEND_URL --data-file=- --project=YOUR_PROJECT_ID
 ```
 
-**Required backend 10:** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `APP_REVIEW_MODE`, `REVIEWER_EMAIL`, `REVIEWER_PASSWORD`.
-**Required frontend 1:** `BACKEND_URL`.
+**Required backend 9:** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `REVIEWER_UID`, `MCP_DEVELOPER_TOKEN`.
+**Required frontend 7:** `BACKEND_URL`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`.
+
+These Firebase values are public client config, but storing them in Secret Manager keeps deployment manifests free of hardcoded production values.
 
 **Note:** Consent push on web uses FCM and requires `NEXT_PUBLIC_FIREBASE_VAPID_KEY` (from Firebase Console, not Secret Manager). See [fcm-notifications.md](../../consent-protocol/docs/reference/fcm-notifications.md).
 
@@ -189,6 +199,24 @@ gcloud secrets delete DATABASE_URL --project=YOUR_PROJECT_ID
 ```
 
 Verify with `deploy/verify-secrets.ps1` (or equivalent); see [deploy/README.md](../../deploy/README.md).
+
+---
+
+## Mobile Firebase Artifacts (iOS/Android)
+
+Committed files:
+- `hushh-webapp/ios/App/App/GoogleService-Info.plist` (template only)
+- `hushh-webapp/android/app/google-services.json` (template only)
+
+Production release process:
+- Store base64-encoded production artifacts in Secret Manager:
+  - `IOS_GOOGLESERVICE_INFO_PLIST_B64`
+  - `ANDROID_GOOGLE_SERVICES_JSON_B64`
+- Decode and overwrite template files in release CI before native build/sign (or run `npm run inject:mobile-firebase` in `hushh-webapp/`).
+- Run `npm run verify:mobile-firebase:release` to fail fast if templates were not replaced.
+
+Repository guard:
+- CI runs `npm run verify:mobile-firebase` to ensure committed files remain templates (no production artifact commits).
 
 ---
 

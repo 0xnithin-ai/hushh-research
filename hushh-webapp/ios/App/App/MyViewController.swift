@@ -5,7 +5,7 @@ import Capacitor
  * MyViewController - Custom Capacitor Bridge View Controller
  * 
  * This is the iOS equivalent of Android's MainActivity.kt
- * Registers all 10 native Hushh plugins with the Capacitor bridge.
+ * Registers native Hushh plugins with the Capacitor bridge.
  *
  * Following Capacitor 8 documentation:
  * https://capacitorjs.com/docs/ios/custom-code#register-the-plugin
@@ -36,7 +36,6 @@ class MyViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(HushhAuthPlugin())
         bridge?.registerPluginInstance(HushhVaultPlugin())
         bridge?.registerPluginInstance(HushhConsentPlugin())
-        bridge?.registerPluginInstance(HushhIdentityPlugin())
         bridge?.registerPluginInstance(KaiPlugin())
         bridge?.registerPluginInstance(HushhSyncPlugin())
         bridge?.registerPluginInstance(HushhSettingsPlugin())
@@ -46,11 +45,10 @@ class MyViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(HushhAccountPlugin())
         bridge?.registerPluginInstance(HushhNotificationsPlugin())
         
-        print("✅ [MyViewController] All 10 plugins registered successfully:")
+        print("✅ [MyViewController] All 11 plugins registered successfully:")
         print("   - HushhAuth (Google Sign-In)")
         print("   - HushhVault (Encryption + Cloud DB)")
         print("   - HushhConsent (Token Management)")
-        print("   - HushhIdentity (Investor Identity)")
         print("   - Kai (Agent Kai)")
         print("   - HushhSync (Cloud Sync)")
         print("   - HushhSettings (App Settings)")
@@ -72,7 +70,6 @@ class MyViewController: CAPBridgeViewController {
             "HushhAuth",
             "HushhVault", 
             "HushhConsent",
-            "HushhIdentity",
             "Kai",
             "HushhSync",
             "HushhSettings",

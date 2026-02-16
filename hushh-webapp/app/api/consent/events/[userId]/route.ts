@@ -7,8 +7,7 @@
  * Server-Sent Events (consent_update, heartbeat) to the client.
  *
  * Required so that on web (same-origin), EventSource("/api/consent/events/:userId")
- * hits this route instead of 404; the Python backend does not require auth for
- * this endpoint (events are scoped by user_id in the path).
+ * hits this route instead of 404.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -30,6 +29,7 @@ export async function GET(
 
   const backendUrl = getPythonApiUrl();
   const sseUrl = `${backendUrl}/api/consent/events/${userId}`;
+  const authorization = request.headers.get("authorization");
 
   try {
     const backendResponse = await fetch(sseUrl, {
@@ -37,14 +37,24 @@ export async function GET(
       headers: {
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
+        ...(authorization ? { Authorization: authorization } : {}),
       },
     });
 
     if (!backendResponse.ok) {
-      const text = await backendResponse.text();
-      console.error("[API] Consent SSE backend error:", backendResponse.status, text);
+      const responseText = await backendResponse.text();
+      let payload: Record<string, unknown>;
+      try {
+        payload = JSON.parse(responseText) as Record<string, unknown>;
+      } catch {
+        payload = {
+          error: "Failed to connect to consent events stream",
+          backendMessage: responseText || undefined,
+        };
+      }
+      console.error("[API] Consent SSE backend error:", backendResponse.status, payload);
       return NextResponse.json(
-        { error: "Failed to connect to consent events stream" },
+        payload,
         { status: backendResponse.status }
       );
     }

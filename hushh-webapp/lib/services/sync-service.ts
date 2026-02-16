@@ -2,7 +2,7 @@
  * Hushh Data Sync Service
  *
  * Handles synchronization between local storage and cloud.
- * DEVELOPMENT: Sync enabled by default for web parity.
+ * Regulated cutover: remote sync disabled by default.
  */
 
 import { HushhDatabase } from "../capacitor";
@@ -59,13 +59,13 @@ class SyncServiceImpl {
   }
 
   /**
-   * Perform sync (DEV: enabled by default)
+   * Perform sync.
    */
   async sync(): Promise<SyncResult> {
     const enabled = await this.isSyncEnabled();
     if (!enabled) {
       this.setStatus("disabled");
-      return { success: true, synced: 0, failed: 0, errors: [] };
+      return { success: false, synced: 0, failed: 0, errors: ["SYNC_DISABLED"] };
     }
 
     // Check network

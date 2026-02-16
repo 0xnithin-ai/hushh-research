@@ -158,12 +158,26 @@ export async function unlockVaultWithPassphrase(
   // Derive key from passphrase
   const decryptionKey = await deriveKeyFromPassphrase(passphrase, saltBytes);
 
-  // Decrypt vault key
-  const vaultKeyRaw = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: ivBytes },
-    decryptionKey,
-    encryptedBytes
-  );
+  let vaultKeyRaw: ArrayBuffer;
+  try {
+    // Decrypt vault key
+    vaultKeyRaw = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: ivBytes },
+      decryptionKey,
+      encryptedBytes
+    );
+  } catch (error: unknown) {
+    // Wrong passphrase/recovery key should not crash UI flows.
+    if (
+      error &&
+      typeof error === "object" &&
+      "name" in error &&
+      error.name === "OperationError"
+    ) {
+      return "";
+    }
+    throw error;
+  }
 
   // Export to hex
   const vaultKeyHex = Array.from(new Uint8Array(vaultKeyRaw))
@@ -192,12 +206,26 @@ export async function unlockVaultWithRecoveryKey(
   // Derive key from recovery key using stored salt
   const unwrapKey = await deriveKeyFromPassphrase(recoveryKey, saltBytes);
 
-  // Decrypt vault key
-  const vaultKeyRaw = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: ivBytes },
-    unwrapKey,
-    encryptedBytes
-  );
+  let vaultKeyRaw: ArrayBuffer;
+  try {
+    // Decrypt vault key
+    vaultKeyRaw = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: ivBytes },
+      unwrapKey,
+      encryptedBytes
+    );
+  } catch (error: unknown) {
+    // Wrong passphrase/recovery key should not crash UI flows.
+    if (
+      error &&
+      typeof error === "object" &&
+      "name" in error &&
+      error.name === "OperationError"
+    ) {
+      return "";
+    }
+    throw error;
+  }
 
   // Export to hex
   const vaultKeyHex = Array.from(new Uint8Array(vaultKeyRaw))

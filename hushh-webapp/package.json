@@ -18,6 +18,9 @@
     "ci:simulate": "npm run typecheck && npm run lint && npm run test && npm run build",
     "verify:routes": "node scripts/verify-route-contracts.cjs",
     "verify:parity": "node scripts/verify-native-parity.cjs",
+    "verify:mobile-firebase": "node scripts/verify-mobile-firebase-artifacts.cjs",
+    "verify:mobile-firebase:release": "npx cross-env REQUIRE_PROD_FIREBASE_ARTIFACTS=true node scripts/verify-mobile-firebase-artifacts.cjs",
+    "inject:mobile-firebase": "bash scripts/inject-mobile-firebase-artifacts.sh && npm run verify:mobile-firebase:release",
     "cap:build": "npm run cap:build:mobile",
     "cap:build:mobile": "npx cross-env CAPACITOR_BUILD=true next build",
     "cap:clean:web": "rm -rf out .next",
@@ -25,9 +28,9 @@
     "cap:clean:ios": "rm -rf ios/App/build ios/App/DerivedData || true",
     "cap:sync:android:prod": "npx cross-env CAPACITOR_PLATFORM=android npx cap sync android",
     "cap:sync:ios:prod": "npx cross-env CAPACITOR_PLATFORM=ios npx cap sync ios",
-    "cap:android:prod:fresh:run": "npm run cap:clean:web && npm run cap:clean:android && npm run cap:build:mobile && npm run cap:sync:android:prod && npx cap run android --target Pixel_9_Pro",
-    "cap:ios:prod:fresh:run": "npm run cap:clean:web && npm run cap:clean:ios && npm run cap:build:mobile && npm run cap:sync:ios:prod && npx cap run ios",
-    "cap:ios:prod:sync": "npm run cap:build:mobile && npm run cap:sync:ios:prod"
+    "cap:android:prod:fresh:run": "npm run verify:mobile-firebase:release && npm run cap:clean:web && npm run cap:clean:android && npm run cap:build:mobile && npm run cap:sync:android:prod && npx cap run android --target Pixel_9_Pro",
+    "cap:ios:prod:fresh:run": "npm run verify:mobile-firebase:release && npm run cap:clean:web && npm run cap:clean:ios && npm run cap:build:mobile && npm run cap:sync:ios:prod && npx cap run ios",
+    "cap:ios:prod:sync": "npm run verify:mobile-firebase:release && npm run cap:build:mobile && npm run cap:sync:ios:prod"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

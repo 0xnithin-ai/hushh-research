@@ -5,7 +5,6 @@ import android.util.Log
 import com.getcapacitor.BridgeActivity
 import com.hushh.app.plugins.HushhAuth.HushhAuthPlugin
 import com.hushh.app.plugins.HushhConsent.HushhConsentPlugin
-import com.hushh.app.plugins.HushhIdentity.HushhIdentityPlugin
 import com.hushh.app.plugins.HushhVault.HushhVaultPlugin
 import com.hushh.app.plugins.HushhKeystore.HushhKeystorePlugin
 import com.hushh.app.plugins.HushhSettings.HushhSettingsPlugin
@@ -24,7 +23,6 @@ class MainActivity : BridgeActivity() {
         registerPlugin(HushhAuthPlugin::class.java)
         registerPlugin(HushhVaultPlugin::class.java)
         registerPlugin(HushhConsentPlugin::class.java)
-        registerPlugin(HushhIdentityPlugin::class.java) // Investor identity (Kai Preferences)
         registerPlugin(HushhSyncPlugin::class.java)
         registerPlugin(HushhOnboardingPlugin::class.java)
         registerPlugin(HushhSettingsPlugin::class.java)

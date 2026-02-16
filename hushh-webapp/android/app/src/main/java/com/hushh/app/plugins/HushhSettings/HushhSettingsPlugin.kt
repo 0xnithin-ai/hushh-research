@@ -19,9 +19,9 @@ class HushhSettingsPlugin : Plugin() {
     private val TAG = "HushhSettings"
     private val PREFS_NAME = "hushh_settings"
 
-    // Default settings (DEV defaults to remote)
+    // Default settings (regulated cutover defaults to local-only sync)
     private val defaultSettings = mapOf(
-        "useRemoteSync" to true,
+        "useRemoteSync" to false,
         "syncOnWifiOnly" to false,
         "useRemoteLLM" to true,
         "preferredLLMProvider" to "google",
@@ -65,7 +65,7 @@ class HushhSettingsPlugin : Plugin() {
 
         // Update only provided settings
         if (call.hasOption("useRemoteSync")) {
-            editor.putBoolean("useRemoteSync", call.getBoolean("useRemoteSync", true) ?: true)
+            editor.putBoolean("useRemoteSync", call.getBoolean("useRemoteSync", false) ?: false)
         }
         if (call.hasOption("syncOnWifiOnly")) {
             editor.putBoolean("syncOnWifiOnly", call.getBoolean("syncOnWifiOnly", false) ?: false)
@@ -120,7 +120,7 @@ class HushhSettingsPlugin : Plugin() {
 
     @PluginMethod
     fun shouldSyncToCloud(call: PluginCall) {
-        val useRemoteSync = getPrefs().getBoolean("useRemoteSync", true)
+        val useRemoteSync = getPrefs().getBoolean("useRemoteSync", false)
         call.resolve(JSObject().put("value", useRemoteSync))
     }
 }

@@ -5,8 +5,7 @@
  *
  * Manages user preferences for local vs remote operation.
  *
- * DEVELOPMENT DEFAULTS: Remote enabled (iOS matches web production)
- * PRODUCTION DEFAULTS: Will flip to local-first
+ * Regulated cutover defaults: remote sync disabled by default.
  */
 
 import { Preferences } from "@capacitor/preferences";
@@ -15,7 +14,7 @@ import { Preferences } from "@capacitor/preferences";
 
 export interface HushhSettings {
   // Data Storage Mode
-  useRemoteSync: boolean; // DEV: true, PROD: false
+  useRemoteSync: boolean; // Regulated default: false
   syncOnWifiOnly: boolean;
 
   // LLM Processing Mode
@@ -36,14 +35,12 @@ export interface HushhSettings {
 }
 
 // ==================== Default Settings ====================
-// DEVELOPMENT DEFAULTS - Remote enabled for web parity
-
 export const DEFAULT_SETTINGS: HushhSettings = {
-  // Remote sync enabled for dev
-  useRemoteSync: true,
+  // Regulated cutover default: remote sync disabled.
+  useRemoteSync: false,
   syncOnWifiOnly: true,
 
-  // Remote LLM for dev (use cloud API)
+  // Remote LLM remains enabled in current release.
   useRemoteLLM: true,
   preferredLLMProvider: "openai",
 
@@ -158,7 +155,7 @@ class SettingsServiceImpl {
   // ==================== Convenience Methods ====================
 
   /**
-   * Check if should use local agents (DEV default: false)
+   * Check if should use local agents
    */
   async shouldUseLocalAgents(): Promise<boolean> {
     const settings = await this.getSettings();
@@ -166,7 +163,7 @@ class SettingsServiceImpl {
   }
 
   /**
-   * Check if should sync to cloud (DEV default: true)
+   * Check if should sync to cloud
    */
   async shouldSyncToCloud(): Promise<boolean> {
     const settings = await this.getSettings();

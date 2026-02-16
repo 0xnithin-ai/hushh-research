@@ -2,6 +2,8 @@
   "version": 1,
   "allowlistedWebRouteFiles": [
     "hushh-webapp/app/api/chat/route.ts",
+    "hushh-webapp/app/api/app-config/review-mode/route.ts",
+    "hushh-webapp/app/api/app-config/review-mode/session/route.ts",
     "hushh-webapp/app/api/consent/events/[userId]/route.ts",
     "hushh-webapp/app/api/notifications/register/route.ts",
     "hushh-webapp/app/api/notifications/unregister/route.ts",
@@ -179,32 +181,6 @@
           "getIndex",
           "getAttributes",
           "getUserDomains"
-        ]
-      }
-    },
-    {
-      "id": "identityProxy",
-      "webRouteFiles": [
-        "hushh-webapp/app/api/identity/auto-detect/route.ts",
-        "hushh-webapp/app/api/identity/confirm/route.ts",
-        "hushh-webapp/app/api/identity/status/route.ts",
-        "hushh-webapp/app/api/identity/profile/route.ts"
-      ],
-      "backend": {
-        "file": "consent-protocol/api/routes/identity.py",
-        "routerPrefix": "/api/identity",
-        "paths": ["/auto-detect", "/confirm", "/status", "/profile"]
-      },
-      "native": {
-        "tsPluginFile": "hushh-webapp/lib/capacitor/index.ts",
-        "iosPluginFile": "hushh-webapp/ios/App/App/Plugins/HushhIdentityPlugin.swift",
-        "androidPluginFile": "hushh-webapp/android/app/src/main/java/com/hushh/app/plugins/HushhIdentity/HushhIdentityPlugin.kt",
-        "requiredMethodNames": [
-          "autoDetect",
-          "confirmIdentity",
-          "getIdentityStatus",
-          "getEncryptedProfile",
-          "resetIdentity"
         ]
       }
     },

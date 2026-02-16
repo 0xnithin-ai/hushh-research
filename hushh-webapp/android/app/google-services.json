@@ -1,53 +1,24 @@
 {
   "project_info": {
-    "project_number": "1006304528804",
-    "project_id": "hushh-pda",
-    "storage_bucket": "hushh-pda.firebasestorage.app"
+    "project_number": "__FIREBASE_PROJECT_NUMBER__",
+    "project_id": "__FIREBASE_PROJECT_ID__",
+    "storage_bucket": "__FIREBASE_STORAGE_BUCKET__"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1006304528804:android:e38e29d91ba817aecfd931",
+        "mobilesdk_app_id": "__FIREBASE_ANDROID_APP_ID__",
         "android_client_info": {
           "package_name": "com.hushh.app"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "1006304528804-qs73on1daim3t92jeb3dobeg52ccnl02.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.hushh.app",
-            "certificate_hash": "095422162a0cea1251b1af916f531d4e65e4b6ee"
-          }
-        },
-        {
-          "client_id": "1006304528804-3dnrnqrga1nrv9p823bos2itrg5bra1c.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "GCP_API_KEY_PLACEHOLDER"
+          "current_key": "__FIREBASE_ANDROID_API_KEY__"
         }
       ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "1006304528804-3dnrnqrga1nrv9p823bos2itrg5bra1c.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "1006304528804-0kmnav8igjf7qbb3e4a2656d56ecvscm.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.hushh.pda"
-              }
-            }
-          ]
-        }
-      }
+      "services": {}
     }
   ],
   "configuration_version": "1"

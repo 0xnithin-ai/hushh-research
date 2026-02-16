@@ -20,6 +20,16 @@ import type {
   DeriveKeyResult,
 } from "../types";
 
+function bytesToBase64(bytes: Uint8Array): string {
+  // Avoid spreading large arrays into fromCharCode, which can overflow the stack.
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
 export class HushhVaultWeb extends WebPlugin {
   /**
    * Derive key using PBKDF2 - matches consent-protocol key derivation
@@ -114,9 +124,9 @@ export class HushhVaultWeb extends WebPlugin {
     const tag = new Uint8Array(encrypted.slice(-16));
 
     return {
-      ciphertext: btoa(String.fromCharCode(...ciphertext)),
-      iv: btoa(String.fromCharCode(...iv)),
-      tag: btoa(String.fromCharCode(...tag)),
+      ciphertext: bytesToBase64(ciphertext),
+      iv: bytesToBase64(iv),
+      tag: bytesToBase64(tag),
       encoding: "base64",
       algorithm: "aes-256-gcm",
     };

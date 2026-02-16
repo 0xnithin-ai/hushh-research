@@ -11,9 +11,9 @@ import type { HushhSyncPlugin, SyncResult, SyncStatus } from "../index";
 export class HushhSyncWeb extends WebPlugin implements HushhSyncPlugin {
   
   async sync(_options?: { authToken?: string }): Promise<SyncResult> {
-    console.log("[HushhSyncWeb] Sync not implemented in web mode");
+    console.warn("[HushhSyncWeb] Remote sync disabled");
     return {
-      success: true,
+      success: false,
       pushedRecords: 0,
       pulledRecords: 0,
       conflicts: 0,
@@ -22,18 +22,18 @@ export class HushhSyncWeb extends WebPlugin implements HushhSyncPlugin {
   }
 
   async push(_options?: { authToken?: string }): Promise<{ success: boolean; pushedRecords: number }> {
-    console.log("[HushhSyncWeb] Push not implemented in web mode");
-    return { success: true, pushedRecords: 0 };
+    console.warn("[HushhSyncWeb] Remote sync disabled");
+    return { success: false, pushedRecords: 0 };
   }
 
   async pull(_options?: { authToken?: string }): Promise<{ success: boolean; pulledRecords: number }> {
-    console.log("[HushhSyncWeb] Pull not implemented in web mode");
-    return { success: true, pulledRecords: 0 };
+    console.warn("[HushhSyncWeb] Remote sync disabled");
+    return { success: false, pulledRecords: 0 };
   }
 
   async syncVault(_options: { userId: string; authToken?: string }): Promise<{ success: boolean }> {
-    console.log("[HushhSyncWeb] SyncVault not implemented in web mode - using API routes");
-    return { success: true };
+    console.warn("[HushhSyncWeb] Remote sync disabled");
+    return { success: false };
   }
 
   async getSyncStatus(): Promise<SyncStatus> {

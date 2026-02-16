@@ -136,11 +136,15 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
           );
         }
       } else {
-        toast.error("Invalid passphrase");
+        const message = "Invalid passphrase. Please try again.";
+        setError(message);
+        toast.error(message);
       }
     } catch (err: any) {
       console.error("Unlock error:", err);
-      toast.error("Invalid passphrase or failed to unlock");
+      const message = "Failed to unlock vault. Please try again.";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsUnlocking(false);
     }
@@ -172,10 +176,16 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
         }
 
         setStep("success");
+      } else {
+        const message = "Invalid recovery key. Please try again.";
+        setError(message);
+        toast.error(message);
       }
     } catch (err: unknown) {
       console.error("Recovery key unlock failed:", err);
-      setError("Invalid recovery key. Please try again.");
+      const message = "Failed to unlock with recovery key. Please try again.";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsUnlocking(false);
     }
@@ -199,19 +209,21 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
         vaultData.iv
       );
 
-      if (decryptedKey) {
-        // Request VAULT_OWNER consent token (unified path)
-        try {
-          const { token, expiresAt } =
-            await VaultService.getOrIssueVaultOwnerToken(user.uid);
+      if (!decryptedKey) {
+        throw new Error("Auto-unlock returned empty vault key");
+      }
 
-          VaultService.setVaultCheckCache(user.uid, true);
-          // Unlock vault with key + token
-          unlockVault(decryptedKey, token, expiresAt);
-        } catch (tokenError: any) {
-          console.error("Failed to issue VAULT_OWNER token:", tokenError);
-          // Fall through to success anyway, user can retry unlock if needed
-        }
+      // Request VAULT_OWNER consent token (unified path)
+      try {
+        const { token, expiresAt } =
+          await VaultService.getOrIssueVaultOwnerToken(user.uid);
+
+        VaultService.setVaultCheckCache(user.uid, true);
+        // Unlock vault with key + token
+        unlockVault(decryptedKey, token, expiresAt);
+      } catch (tokenError: any) {
+        console.error("Failed to issue VAULT_OWNER token:", tokenError);
+        // Fall through to success anyway, user can retry unlock if needed
       }
     } catch (err) {
       console.error("Auto-unlock after creation failed", err);
@@ -296,7 +308,10 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
                 variant="gradient" 
                 size="xl" 
                 fullWidth
-                onClick={() => setStep("create")}
+                onClick={() => {
+                  setError(null);
+                  setStep("create");
+                }}
                 className="group"
               >
                 I Understand, Create Vault
@@ -380,6 +395,9 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
                   autoFocus
                   className="h-14 text-lg px-4"
                 />
+                {error && (
+                  <p className="text-sm text-destructive">{error}</p>
+                )}
               </div>
               <div className="flex flex-col gap-3 pt-2">
                 <Button
@@ -403,7 +421,10 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
                   size="xl"
                   fullWidth
                   className="text-base"
-                  onClick={() => setStep("recovery")}
+                  onClick={() => {
+                    setError(null);
+                    setStep("recovery");
+                  }}
                   disabled={isUnlocking}
                 >
                   Use Recovery Key
@@ -433,6 +454,9 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
                   }
                   className="h-14 text-lg px-4 font-mono"
                 />
+                {error && (
+                  <p className="text-sm text-destructive">{error}</p>
+                )}
               </div>
               <div className="flex flex-col gap-3 pt-2">
                 <Button
@@ -456,7 +480,10 @@ export function VaultFlow({ user, onSuccess, onStepChange }: VaultFlowProps) {
                   size="xl"
                   fullWidth
                   className="text-base"
-                  onClick={() => setStep("unlock")}
+                  onClick={() => {
+                    setError(null);
+                    setStep("unlock");
+                  }}
                   disabled={isUnlocking}
                 >
                   Use Passphrase
