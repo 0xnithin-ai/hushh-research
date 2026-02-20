@@ -187,8 +187,7 @@ jobs:
           path: hushh-webapp/npm-audit-report.json
 
   # ============================================================================
-  # Backend (Python FastAPI) -- lightweight check; upstream repo has full CI
-  # See: https://github.com/hushh-labs/consent-protocol/actions
+  # Backend (Python FastAPI) -- same shared script as upstream consent-protocol CI
   # ============================================================================
   protocol-check:
     name: "Protocol (Python)"
