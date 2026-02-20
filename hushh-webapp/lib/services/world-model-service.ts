@@ -19,6 +19,7 @@
 import { Capacitor } from "@capacitor/core";
 import { HushhWorldModel } from "@/lib/capacitor";
 import { CacheSyncService } from "@/lib/cache/cache-sync-service";
+import type { PortfolioData as CachedPortfolioData } from "@/lib/cache/cache-context";
 import { ApiService } from "./api-service";
 import { CacheService, CACHE_KEYS, CACHE_TTL } from "./cache-service";
 
@@ -107,6 +108,24 @@ export interface ScopeDisplayInfo {
 // ==================== Service ====================
 
 export class WorldModelService {
+  private static metadataInflight = new Map<string, Promise<WorldModelMetadata>>();
+  private static encryptedDataInflight = new Map<string, Promise<EncryptedUserBlob | null>>();
+  private static domainDataInflight = new Map<string, Promise<EncryptedValue | null>>();
+
+  private static inflightKey(
+    keyParts: Array<string | number | boolean | undefined | null>
+  ): string {
+    return keyParts.map((part) => (part ?? "null").toString()).join(":");
+  }
+
+  private static isLikelyPortfolioData(value: unknown): value is CachedPortfolioData {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return false;
+    }
+    const record = value as Record<string, unknown>;
+    return Array.isArray(record.holdings) || Array.isArray(record.detailed_holdings);
+  }
+
   /**
    * Get auth headers for API requests.
    * 
@@ -148,108 +167,132 @@ export class WorldModelService {
       }
     }
 
-    let result: WorldModelMetadata;
+    const dedupeKey = this.inflightKey([
+      "metadata",
+      userId,
+      Capacitor.isNativePlatform() ? "native" : "web",
+      vaultOwnerToken ? "vault_owner" : "anonymous",
+      forceRefresh ? "refresh" : "cached",
+    ]);
+    const existingRequest = this.metadataInflight.get(dedupeKey);
+    if (existingRequest) {
+      return existingRequest;
+    }
 
-    if (Capacitor.isNativePlatform()) {
-      // Use Capacitor plugin for native platforms
-      // Native plugins return snake_case from backend - transform to camelCase
-      const nativeResult = await HushhWorldModel.getMetadata({
-        userId,
-        vaultOwnerToken: this.getVaultOwnerToken(vaultOwnerToken),
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = nativeResult as any;
-      result = {
-        userId: raw.user_id || raw.userId || userId,
-        domains: (raw.domains || []).map((d: Record<string, unknown>) => ({
-          key: (d.domain_key || d.key) as string,
-          displayName: (d.display_name || d.displayName) as string,
-          icon: (d.icon_name || d.icon) as string,
-          color: (d.color_hex || d.color) as string,
-          attributeCount: (d.attribute_count || d.attributeCount || 0) as number,
-          summary: (d.summary || {}) as Record<string, string | number>,
-          availableScopes: (d.available_scopes || d.availableScopes || []) as string[],
-          lastUpdated: (d.last_updated || d.lastUpdated || null) as string | null,
-        })),
-        totalAttributes: raw.total_attributes || raw.totalAttributes || 0,
-        modelCompleteness: raw.model_completeness || raw.modelCompleteness || 0,
-        suggestedDomains: raw.suggested_domains || raw.suggestedDomains || [],
-        lastUpdated: raw.last_updated || raw.lastUpdated || null,
-      };
-    } else {
-      // Without a VAULT_OWNER token, metadata endpoint is expected to reject with 401.
-      // Return empty metadata so first-time / locked-vault screens can render gracefully.
-      if (!vaultOwnerToken) {
-        return {
+    const request = (async (): Promise<WorldModelMetadata> => {
+      let result: WorldModelMetadata;
+
+      if (Capacitor.isNativePlatform()) {
+        // Use Capacitor plugin for native platforms
+        // Native plugins return snake_case from backend - transform to camelCase
+        const nativeResult = await HushhWorldModel.getMetadata({
           userId,
-          domains: [],
-          totalAttributes: 0,
-          modelCompleteness: 0,
-          suggestedDomains: [],
-          lastUpdated: null,
-        };
-      }
-
-      // Web: Use ApiService.apiFetch() for tri-flow compliance
-      const response = await ApiService.apiFetch(`/api/world-model/metadata/${userId}`, {
-        headers: this.getAuthHeaders(vaultOwnerToken),
-      });
-
-      // Handle 404 as valid "no data" response for new users
-      if (response.status === 404) {
+          vaultOwnerToken: this.getVaultOwnerToken(vaultOwnerToken),
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = nativeResult as any;
         result = {
-          userId,
-          domains: [],
-          totalAttributes: 0,
-          modelCompleteness: 0,
-          suggestedDomains: [],
-          lastUpdated: null,
-        };
-      } else if (response.status === 401 || response.status === 403) {
-        // Token may be missing/expired/revoked during startup transitions.
-        // Return empty metadata instead of throwing noisy runtime errors.
-        console.warn(
-          `[WorldModelService] Metadata unauthorized for ${userId}; returning empty state (${response.status})`
-        );
-        return {
-          userId,
-          domains: [],
-          totalAttributes: 0,
-          modelCompleteness: 0,
-          suggestedDomains: [],
-          lastUpdated: null,
-        };
-      } else if (!response.ok) {
-        throw new Error(`Failed to get metadata: ${response.status}`);
-      } else {
-        const data = await response.json();
-
-        // Transform snake_case to camelCase
-        result = {
-          userId: data.user_id,
-          domains: (data.domains || []).map((d: Record<string, unknown>) => ({
+          userId: raw.user_id || raw.userId || userId,
+          domains: (raw.domains || []).map((d: Record<string, unknown>) => ({
             key: (d.domain_key || d.key) as string,
             displayName: (d.display_name || d.displayName) as string,
             icon: (d.icon_name || d.icon) as string,
             color: (d.color_hex || d.color) as string,
-            attributeCount: (d.attribute_count || d.attributeCount) as number,
+            attributeCount: (d.attribute_count || d.attributeCount || 0) as number,
             summary: (d.summary || {}) as Record<string, string | number>,
-            availableScopes: (d.available_scopes || []) as string[],
-            lastUpdated: (d.last_updated || null) as string | null,
+            availableScopes: (d.available_scopes || d.availableScopes || []) as string[],
+            lastUpdated: (d.last_updated || d.lastUpdated || null) as string | null,
           })),
-          totalAttributes: data.total_attributes || 0,
-          modelCompleteness: data.model_completeness || 0,
-          suggestedDomains: data.suggested_domains || [],
-          lastUpdated: data.last_updated,
+          totalAttributes: raw.total_attributes || raw.totalAttributes || 0,
+          modelCompleteness: raw.model_completeness || raw.modelCompleteness || 0,
+          suggestedDomains: raw.suggested_domains || raw.suggestedDomains || [],
+          lastUpdated: raw.last_updated || raw.lastUpdated || null,
         };
+      } else {
+        // Without a VAULT_OWNER token, metadata endpoint is expected to reject with 401.
+        // Return empty metadata so first-time / locked-vault screens can render gracefully.
+        if (!vaultOwnerToken) {
+          result = {
+            userId,
+            domains: [],
+            totalAttributes: 0,
+            modelCompleteness: 0,
+            suggestedDomains: [],
+            lastUpdated: null,
+          };
+          return result;
+        }
+
+        // Web: Use ApiService.apiFetch() for tri-flow compliance
+        const response = await ApiService.apiFetch(`/api/world-model/metadata/${userId}`, {
+          headers: this.getAuthHeaders(vaultOwnerToken),
+        });
+
+        // Handle 404 as valid "no data" response for new users
+        if (response.status === 404) {
+          result = {
+            userId,
+            domains: [],
+            totalAttributes: 0,
+            modelCompleteness: 0,
+            suggestedDomains: [],
+            lastUpdated: null,
+          };
+        } else if (response.status === 401 || response.status === 403) {
+          // Token may be missing/expired/revoked during startup transitions.
+          // Return empty metadata instead of throwing noisy runtime errors.
+          console.warn(
+            `[WorldModelService] Metadata unauthorized for ${userId}; returning empty state (${response.status})`
+          );
+          result = {
+            userId,
+            domains: [],
+            totalAttributes: 0,
+            modelCompleteness: 0,
+            suggestedDomains: [],
+            lastUpdated: null,
+          };
+        } else if (!response.ok) {
+          throw new Error(`Failed to get metadata: ${response.status}`);
+        } else {
+          const data = await response.json();
+
+          // Transform snake_case to camelCase
+          result = {
+            userId: data.user_id,
+            domains: (data.domains || []).map((d: Record<string, unknown>) => ({
+              key: (d.domain_key || d.key) as string,
+              displayName: (d.display_name || d.displayName) as string,
+              icon: (d.icon_name || d.icon) as string,
+              color: (d.color_hex || d.color) as string,
+              attributeCount: (d.attribute_count || d.attributeCount) as number,
+              summary: (d.summary || {}) as Record<string, string | number>,
+              availableScopes: (d.available_scopes || []) as string[],
+              lastUpdated: (d.last_updated || null) as string | null,
+            })),
+            totalAttributes: data.total_attributes || 0,
+            modelCompleteness: data.model_completeness || 0,
+            suggestedDomains: data.suggested_domains || [],
+            lastUpdated: data.last_updated,
+          };
+        }
+      }
+
+      // Cache the result
+      cache.set(cacheKey, result, CACHE_TTL.MEDIUM);
+      console.log("[WorldModelService] Cached metadata for", userId);
+
+      return result;
+    })();
+
+    this.metadataInflight.set(dedupeKey, request);
+    try {
+      return await request;
+    } finally {
+      if (this.metadataInflight.get(dedupeKey) === request) {
+        this.metadataInflight.delete(dedupeKey);
       }
     }
-
-    // Cache the result
-    cache.set(cacheKey, result, CACHE_TTL.MEDIUM);
-    console.log("[WorldModelService] Cached metadata for", userId);
-
-    return result;
   }
 
   /**
@@ -376,6 +419,7 @@ export class WorldModelService {
     domain: string;
     encryptedBlob: EncryptedValue;
     summary: Record<string, unknown>;
+    portfolioData?: CachedPortfolioData;
     vaultOwnerToken?: string;
   }): Promise<{ success: boolean }> {
     if (Capacitor.isNativePlatform()) {
@@ -394,7 +438,12 @@ export class WorldModelService {
 
       // Invalidate caches after successful native store
       if (result.success) {
-        CacheSyncService.onWorldModelDomainStored(params.userId, params.domain);
+        CacheSyncService.onWorldModelDomainStored(params.userId, params.domain, {
+          portfolioData: params.portfolioData,
+          encryptedBlob: params.encryptedBlob,
+          domainSummary: params.summary,
+          metadataTimestamp: new Date().toISOString(),
+        });
       }
 
       return result;
@@ -428,7 +477,12 @@ export class WorldModelService {
     const data = await response.json();
 
     // Invalidate caches after successful store
-    CacheSyncService.onWorldModelDomainStored(params.userId, params.domain);
+    CacheSyncService.onWorldModelDomainStored(params.userId, params.domain, {
+      portfolioData: params.portfolioData,
+      encryptedBlob: params.encryptedBlob,
+      domainSummary: params.summary,
+      metadataTimestamp: new Date().toISOString(),
+    });
 
     return data;
   }
@@ -761,60 +815,95 @@ export class WorldModelService {
     userId: string,
     vaultOwnerToken?: string
   ): Promise<EncryptedUserBlob | null> {
-    if (Capacitor.isNativePlatform()) {
-      const result = await HushhWorldModel.getEncryptedData({
-        userId,
-        vaultOwnerToken: this.getVaultOwnerToken(vaultOwnerToken),
-      });
-      if (!result?.ciphertext || !result?.iv || !result?.tag) {
-        return null;
+    const cache = CacheService.getInstance();
+    const cacheKey = CACHE_KEYS.WORLD_MODEL_BLOB(userId);
+    const cached = cache.get<EncryptedUserBlob>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const dedupeKey = this.inflightKey([
+      "encrypted_blob",
+      userId,
+      Capacitor.isNativePlatform() ? "native" : "web",
+      vaultOwnerToken ? "vault_owner" : "anonymous",
+    ]);
+    const existingRequest = this.encryptedDataInflight.get(dedupeKey);
+    if (existingRequest) {
+      return existingRequest;
+    }
+
+    const request = (async (): Promise<EncryptedUserBlob | null> => {
+      let result: EncryptedUserBlob | null = null;
+
+      if (Capacitor.isNativePlatform()) {
+        const nativeResult = await HushhWorldModel.getEncryptedData({
+          userId,
+          vaultOwnerToken: this.getVaultOwnerToken(vaultOwnerToken),
+        });
+        if (nativeResult?.ciphertext && nativeResult?.iv && nativeResult?.tag) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = nativeResult as any;
+          result = {
+            ciphertext: raw.ciphertext,
+            iv: raw.iv,
+            tag: raw.tag,
+            algorithm: raw.algorithm || "aes-256-gcm",
+            dataVersion:
+              typeof raw.data_version === "number"
+                ? raw.data_version
+                : typeof raw.dataVersion === "number"
+                  ? raw.dataVersion
+                  : undefined,
+            updatedAt:
+              typeof raw.updated_at === "string"
+                ? raw.updated_at
+                : typeof raw.updatedAt === "string"
+                  ? raw.updatedAt
+                  : undefined,
+          };
+        }
+      } else {
+        const response = await ApiService.apiFetch(`/api/world-model/data/${userId}`, {
+          headers: this.getAuthHeaders(vaultOwnerToken),
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            return null;
+          }
+          throw new Error(`Failed to get encrypted data: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data?.ciphertext && data?.iv && data?.tag) {
+          result = {
+            ciphertext: data.ciphertext,
+            iv: data.iv,
+            tag: data.tag,
+            algorithm: data.algorithm || "aes-256-gcm",
+            dataVersion: typeof data.data_version === "number" ? data.data_version : undefined,
+            updatedAt: typeof data.updated_at === "string" ? data.updated_at : undefined,
+          };
+        }
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = result as any;
-      return {
-        ciphertext: raw.ciphertext,
-        iv: raw.iv,
-        tag: raw.tag,
-        algorithm: raw.algorithm || "aes-256-gcm",
-        dataVersion:
-          typeof raw.data_version === "number"
-            ? raw.data_version
-            : typeof raw.dataVersion === "number"
-              ? raw.dataVersion
-              : undefined,
-        updatedAt:
-          typeof raw.updated_at === "string"
-            ? raw.updated_at
-            : typeof raw.updatedAt === "string"
-              ? raw.updatedAt
-              : undefined,
-      };
-    }
 
-    const response = await ApiService.apiFetch(`/api/world-model/data/${userId}`, {
-      headers: this.getAuthHeaders(vaultOwnerToken),
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
+      if (result) {
+        cache.set(cacheKey, result, CACHE_TTL.SESSION);
+      } else {
+        cache.invalidate(cacheKey);
       }
-      throw new Error(`Failed to get encrypted data: ${response.status}`);
-    }
+      return result;
+    })();
 
-    const data = await response.json();
-    if (!data?.ciphertext || !data?.iv || !data?.tag) {
-      return null;
+    this.encryptedDataInflight.set(dedupeKey, request);
+    try {
+      return await request;
+    } finally {
+      if (this.encryptedDataInflight.get(dedupeKey) === request) {
+        this.encryptedDataInflight.delete(dedupeKey);
+      }
     }
-
-    return {
-      ciphertext: data.ciphertext,
-      iv: data.iv,
-      tag: data.tag,
-      algorithm: data.algorithm || "aes-256-gcm",
-      dataVersion: typeof data.data_version === "number" ? data.data_version : undefined,
-      updatedAt: typeof data.updated_at === "string" ? data.updated_at : undefined,
-    };
   }
 
   /**
@@ -916,12 +1005,17 @@ export class WorldModelService {
       domain_intent: params.domain,
       ...params.summary,
     };
+    const portfolioData =
+      params.domain === "financial" && this.isLikelyPortfolioData(params.domainData)
+        ? (params.domainData as CachedPortfolioData)
+        : undefined;
 
     const result = await this.storeDomainData({
       userId: params.userId,
       domain: params.domain,
       encryptedBlob: merged.encryptedBlob,
       summary: summaryWithIntent,
+      portfolioData,
       vaultOwnerToken: params.vaultOwnerToken,
     });
 
@@ -944,50 +1038,86 @@ export class WorldModelService {
     domain: string,
     vaultOwnerToken?: string
   ): Promise<EncryptedValue | null> {
-    if (Capacitor.isNativePlatform()) {
-      const result = await HushhWorldModel.getDomainData({
-        userId,
-        domain,
-        vaultOwnerToken: this.getVaultOwnerToken(vaultOwnerToken),
-      });
-      if (!result.encrypted_blob) {
-        return null;
-      }
-      return {
-        ciphertext: result.encrypted_blob.ciphertext,
-        iv: result.encrypted_blob.iv,
-        tag: result.encrypted_blob.tag,
-        algorithm: result.encrypted_blob.algorithm || "aes-256-gcm",
-      };
+    const cache = CacheService.getInstance();
+    const cacheKey = CACHE_KEYS.ENCRYPTED_DOMAIN_BLOB(userId, domain);
+    const cached = cache.get<EncryptedValue>(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    // Web: Use ApiService.apiFetch() for tri-flow compliance
-    const response = await ApiService.apiFetch(
-      `/api/world-model/domain-data/${userId}/${domain}`,
-      {
-        headers: this.getAuthHeaders(vaultOwnerToken),
-      }
-    );
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      throw new Error(`Failed to get domain data: ${response.status}`);
+    const dedupeKey = this.inflightKey([
+      "domain_blob",
+      userId,
+      domain,
+      Capacitor.isNativePlatform() ? "native" : "web",
+      vaultOwnerToken ? "vault_owner" : "anonymous",
+    ]);
+    const existingRequest = this.domainDataInflight.get(dedupeKey);
+    if (existingRequest) {
+      return existingRequest;
     }
 
-    const data = await response.json();
-    
-    if (!data.encrypted_blob) {
-      return null;
-    }
+    const request = (async (): Promise<EncryptedValue | null> => {
+      let encryptedBlob: EncryptedValue | null = null;
 
-    return {
-      ciphertext: data.encrypted_blob.ciphertext,
-      iv: data.encrypted_blob.iv,
-      tag: data.encrypted_blob.tag,
-      algorithm: data.encrypted_blob.algorithm || "aes-256-gcm",
-    };
+      if (Capacitor.isNativePlatform()) {
+        const result = await HushhWorldModel.getDomainData({
+          userId,
+          domain,
+          vaultOwnerToken: this.getVaultOwnerToken(vaultOwnerToken),
+        });
+        if (result.encrypted_blob) {
+          encryptedBlob = {
+            ciphertext: result.encrypted_blob.ciphertext,
+            iv: result.encrypted_blob.iv,
+            tag: result.encrypted_blob.tag,
+            algorithm: result.encrypted_blob.algorithm || "aes-256-gcm",
+          };
+        }
+      } else {
+        // Web: Use ApiService.apiFetch() for tri-flow compliance
+        const response = await ApiService.apiFetch(
+          `/api/world-model/domain-data/${userId}/${domain}`,
+          {
+            headers: this.getAuthHeaders(vaultOwnerToken),
+          }
+        );
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            return null;
+          }
+          throw new Error(`Failed to get domain data: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.encrypted_blob) {
+          encryptedBlob = {
+            ciphertext: data.encrypted_blob.ciphertext,
+            iv: data.encrypted_blob.iv,
+            tag: data.encrypted_blob.tag,
+            algorithm: data.encrypted_blob.algorithm || "aes-256-gcm",
+          };
+        }
+      }
+
+      if (encryptedBlob) {
+        cache.set(cacheKey, encryptedBlob, CACHE_TTL.SESSION);
+      } else {
+        cache.invalidate(cacheKey);
+      }
+
+      return encryptedBlob;
+    })();
+
+    this.domainDataInflight.set(dedupeKey, request);
+    try {
+      return await request;
+    } finally {
+      if (this.domainDataInflight.get(dedupeKey) === request) {
+        this.domainDataInflight.delete(dedupeKey);
+      }
+    }
   }
 
   /**

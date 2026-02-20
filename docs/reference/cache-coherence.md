@@ -13,6 +13,7 @@ Source files:
 
 Fixed user keys:
 - `world_model_metadata_${userId}`
+- `world_model_blob_${userId}`
 - `vault_status_${userId}`
 - `vault_check_${userId}`
 - `active_consents_${userId}`
@@ -22,6 +23,7 @@ Fixed user keys:
 
 Dynamic user keys:
 - `domain_data_${userId}_${domain}`
+- `domain_blob_${userId}_${domain}`
 - `stock_context_${userId}_${ticker}`
 
 ## Mutation -> Cache Sync Matrix
@@ -45,6 +47,8 @@ Dynamic user keys:
 
 Do:
 - Centralize invalidation/write-through in `CacheSyncService`.
+- Write through encrypted blob keys when CRUD payloads already include ciphertext.
+- Patch cached world-model metadata in-place when safe summary fields are provided.
 - Keep `CacheContext` as state mirror only.
 - Use `invalidateUser(userId)` when purging a full user session.
 

@@ -65,6 +65,7 @@ import { KaiCommandBarGlobal } from "@/components/kai/kai-command-bar-global";
 describe("KaiCommandBarGlobal visibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    document.cookie = "kai_onboarding_flow_active=0; path=/";
     pathname = "/kai/dashboard";
     authState = { user: { uid: "uid-1" }, loading: false };
     vaultState = { isVaultUnlocked: true };
@@ -95,5 +96,22 @@ describe("KaiCommandBarGlobal visibility", () => {
     const commandBar = screen.getByTestId("kai-search-bar");
     expect(commandBar).toBeTruthy();
     expect(commandBar.getAttribute("data-has-portfolio")).toBe("true");
+  });
+
+  it("hides command bar on onboarding and import routes", () => {
+    pathname = "/kai/onboarding";
+    render(<KaiCommandBarGlobal />);
+    expect(screen.queryByTestId("kai-search-bar")).toBeNull();
+
+    pathname = "/kai/import";
+    render(<KaiCommandBarGlobal />);
+    expect(screen.queryByTestId("kai-search-bar")).toBeNull();
+  });
+
+  it("hides command bar when onboarding flow cookie is active", () => {
+    pathname = "/kai/dashboard";
+    document.cookie = "kai_onboarding_flow_active=1; path=/";
+    render(<KaiCommandBarGlobal />);
+    expect(screen.queryByTestId("kai-search-bar")).toBeNull();
   });
 });

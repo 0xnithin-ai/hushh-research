@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePendingConsentCount } from "@/components/consent/notification-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useKaiSession } from "@/lib/stores/kai-session-store";
-import { isOnboardingFlowActiveCookieEnabled } from "@/lib/services/onboarding-route-cookie";
+import { getKaiChromeState } from "@/lib/navigation/kai-chrome-state";
 import { SegmentedPill, type SegmentedPillOption } from "@/lib/morphy-ux/ui";
 
 type NavKey = "kai" | "consents" | "profile" | "agent-nav";
@@ -22,13 +22,12 @@ export const Navbar = () => {
   const { isAuthenticated } = useAuth();
   const pendingConsents = usePendingConsentCount();
   const pillRef = React.useRef<HTMLDivElement | null>(null);
-  const [onboardingFlowActive, setOnboardingFlowActive] = useState(false);
-  const isKaiOnboarding = Boolean(pathname?.startsWith("/kai/onboarding"));
-  const useOnboardingChrome = isKaiOnboarding || onboardingFlowActive;
+  const [kaiHref, setKaiHref] = useState("/kai");
+  const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
+  const useOnboardingChrome = chromeState.useOnboardingChrome;
 
   const lastKaiPath = useKaiSession((s) => s.lastKaiPath);
   const busyOperations = useKaiSession((s) => s.busyOperations);
-  const [kaiHref, setKaiHref] = useState("/kai");
 
   React.useLayoutEffect(() => {
     const el = pillRef.current;
@@ -56,10 +55,6 @@ export const Navbar = () => {
       window.removeEventListener("resize", update);
     };
   }, [isAuthenticated, useOnboardingChrome]);
-
-  useEffect(() => {
-    setOnboardingFlowActive(isOnboardingFlowActiveCookieEnabled());
-  }, [pathname]);
 
   useEffect(() => {
     if (lastKaiPath) setKaiHref(lastKaiPath);

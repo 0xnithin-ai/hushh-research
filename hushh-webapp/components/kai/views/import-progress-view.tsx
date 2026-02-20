@@ -2,15 +2,14 @@
  * ImportProgressView Component
  *
  * Real-time streaming progress UI for portfolio import.
- * Displays Gemini AI extraction progress with thinking mode support.
+ * Displays extraction progress with a single canonical stage timeline.
  *
  * Features:
- * - Animated progress bar for stream progression
- * - Real-time thought summaries from Gemini thinking mode (in StreamingAccordion)
- * - Parsing timeline surface (indexing/scanning/extracting/parsing/validation)
- * - Character count and chunk count stats
+ * - Factual progress display (indeterminate until measurable counters exist)
+ * - Single stage timeline transcript for stream events
+ * - Parsed holdings preview while extraction/parsing progresses
  * - Cancel button
- * - Auto-collapsing accordions when streaming completes
+ * - Completion summary with review action
  */
 
 "use client";
@@ -41,14 +40,6 @@ export type ImportStage =
   | "complete"
   | "error";
 
-interface QualityReport {
-  raw?: number;
-  validated?: number;
-  dropped?: number;
-  reconciled?: number;
-  mismatch_detected?: number;
-}
-
 interface LiveHoldingPreview {
   symbol?: string;
   name?: string;
@@ -60,26 +51,14 @@ interface LiveHoldingPreview {
 export interface ImportProgressViewProps {
   /** Current processing stage */
   stage: ImportStage;
-  /** Streamed text from backend stream (used for stats/phase awareness) */
-  streamedText: string;
   /** Whether actively streaming */
   isStreaming: boolean;
-  /** Total characters received */
-  totalChars: number;
-  /** Total chunks received */
-  chunkCount: number;
   /** Stream progress percentage from backend canonical payload */
   progressPct?: number;
   /** Optional status message from backend payload */
   statusMessage?: string;
   /** Ordered stage/status trail captured during stream */
   stageTrail?: string[];
-  /** Array of thought summaries from Gemini thinking mode */
-  thoughts?: string[];
-  /** Total thought count */
-  thoughtCount?: number;
-  /** Quality reconciliation summary from backend parser */
-  qualityReport?: QualityReport;
   /** Incremental parsed holdings preview */
   liveHoldings?: LiveHoldingPreview[];
   /** Parsed holdings count so far */
@@ -110,41 +89,36 @@ const stageMessages: Record<ImportStage, string> = {
   error: "Import failed",
 };
 
-const TIMELINE_STEPS: Array<{
-  key: "indexing" | "scanning" | "extracting" | "parsing" | "complete";
-  label: string;
-}> = [
-  { key: "indexing", label: "Indexing document" },
-  { key: "scanning", label: "Scanning pages" },
-  { key: "extracting", label: "Extracting positions" },
-  { key: "parsing", label: "Normalizing holdings" },
-  { key: "complete", label: "Validation complete" },
-];
+function normalizeStageLine(rawLine: string): string {
+  const line = rawLine.trim().replace(/\s+/g, " ");
+  if (!line) return "";
+  const match = line.match(/^\[([^\]]+)\]\s*(.*)$/);
+  if (!match) {
+    return line;
+  }
+  const rawTag = match[1] ?? "";
+  const rawMessage = match[2] ?? "";
+  const tag = rawTag.trim().toUpperCase();
+  const message = rawMessage.trim();
+  return message ? `[${tag}] ${message}` : `[${tag}]`;
+}
 
-const STAGE_ORDER: Record<ImportStage, number> = {
-  idle: 0,
-  uploading: 1,
-  indexing: 2,
-  scanning: 3,
-  thinking: 4,
-  extracting: 5,
-  parsing: 6,
-  complete: 7,
-  error: 7,
-};
+function stageLineKey(line: string): string {
+  const match = line.match(/^\[([^\]]+)\]\s*(.*)$/);
+  if (!match) {
+    return line.trim().toLowerCase();
+  }
+  const rawTag = match[1] ?? "";
+  const rawMessage = match[2] ?? "";
+  return `[${rawTag.trim().toUpperCase()}] ${rawMessage.trim().toLowerCase()}`;
+}
 
 export function ImportProgressView({
   stage,
-  streamedText,
   isStreaming,
-  totalChars,
-  chunkCount,
   progressPct,
   statusMessage,
   stageTrail = [],
-  thoughts = [],
-  thoughtCount = 0,
-  qualityReport,
   liveHoldings = [],
   holdingsExtracted = 0,
   holdingsTotal,
@@ -154,43 +128,35 @@ export function ImportProgressView({
   onBackToDashboard,
   className,
 }: ImportProgressViewProps) {
-  // Determine if we're in a thinking or extracting phase
-  const isThinking = stage === "thinking";
   const isComplete = stage === "complete";
-  const hasStreamedOutput = streamedText.trim().length > 0;
+  const hasMeasuredProgress = useMemo(
+    () => typeof progressPct === "number" && Number.isFinite(progressPct) && progressPct > 0,
+    [progressPct]
+  );
   const resolvedProgress = useMemo(() => {
-    if (typeof progressPct === "number" && Number.isFinite(progressPct)) {
-      return Math.max(0, Math.min(100, progressPct));
+    if (hasMeasuredProgress) {
+      return Math.max(0, Math.min(100, progressPct as number));
     }
-    switch (stage) {
-      case "uploading":
-        return 5;
-      case "indexing":
-        return 18;
-      case "scanning":
-        return 35;
-      case "thinking":
-        return 52;
-      case "extracting":
-        return 72;
-      case "parsing":
-        return 90;
-      case "complete":
-        return 100;
-      case "error":
-        return 100;
-      default:
-        return 0;
+    if (stage === "complete" || stage === "error") {
+      return 100;
     }
-  }, [progressPct, stage]);
+    return 0;
+  }, [hasMeasuredProgress, progressPct, stage]);
   const smoothProgress = useSmoothStreamProgress(resolvedProgress);
 
-  // Format thoughts into a single text string for the accordion
   const stageLines = useMemo(() => {
-    if (stageTrail.length > 0) {
-      return stageTrail;
+    const rawLines = stageTrail.length > 0 ? stageTrail : [statusMessage || stageMessages[stage]];
+    const formatted: string[] = [];
+    let lastKey = "";
+    for (const rawLine of rawLines) {
+      const normalizedLine = normalizeStageLine(rawLine);
+      if (!normalizedLine) continue;
+      const key = stageLineKey(normalizedLine);
+      if (key === lastKey) continue;
+      formatted.push(normalizedLine);
+      lastKey = key;
     }
-    return [statusMessage || stageMessages[stage]];
+    return formatted;
   }, [stageTrail, stage, statusMessage]);
 
   return (
@@ -221,12 +187,22 @@ export function ImportProgressView({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Import progress</span>
-            <span>{Math.round(smoothProgress)}%</span>
+            <span>
+              {hasMeasuredProgress || stage === "complete" || stage === "error"
+                ? `${Math.round(smoothProgress)}%`
+                : "Tracking stages"}
+            </span>
           </div>
-          <Progress
-            value={smoothProgress}
-            className={cn("h-2", isStreaming && "transition-all")}
-          />
+          {hasMeasuredProgress || stage === "complete" || stage === "error" ? (
+            <Progress
+              value={smoothProgress}
+              className={cn("h-2", isStreaming && "transition-all")}
+            />
+          ) : (
+            <div className="h-2 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full w-1/3 rounded-full bg-primary/70 animate-pulse" />
+            </div>
+          )}
         </div>
 
         {/* Status Message */}
@@ -257,88 +233,8 @@ export function ImportProgressView({
                 ))}
               </div>
             </div>
-
-            <div className="rounded-lg border border-border/40 bg-background/70 px-3 py-2">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Reasoning ({thoughtCount})
-              </p>
-              {thoughts.length > 0 ? (
-                <div className="space-y-1">
-                  {thoughts.map((thought, index) => (
-                    <p key={`${thought}-${index}`} className="text-xs leading-relaxed">
-                      {index + 1}. {thought}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {isThinking
-                    ? "Model is preparing reasoning output..."
-                    : "No explicit reasoning tokens emitted yet."}
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-border/40 bg-background/70 px-3 py-2">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Vertex Gemini token stream
-              </p>
-              <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed text-muted-foreground">
-                {streamedText.trim().length > 0
-                  ? streamedText
-                  : isStreaming
-                  ? "Waiting for first response tokens..."
-                  : "No streamed tokens captured."}
-              </pre>
-            </div>
           </div>
         </div>
-
-        {/* Parsing timeline */}
-        <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Parsing Timeline</span>
-            <span>
-              {Math.round(smoothProgress)}%
-            </span>
-          </div>
-          <div className="space-y-2">
-            {TIMELINE_STEPS.map((timelineStep) => {
-              const timelineStage: ImportStage = stage === "thinking" ? "scanning" : stage;
-              const currentOrder = STAGE_ORDER[timelineStage];
-              const stepOrder = STAGE_ORDER[timelineStep.key];
-              const done = currentOrder > stepOrder;
-              const active = !done && currentOrder === stepOrder;
-              return (
-                <div
-                  key={timelineStep.key}
-                  className="flex items-center justify-between rounded-lg border border-border/40 bg-background/70 px-3 py-2"
-                >
-                  <span className="text-xs font-medium">{timelineStep.label}</span>
-                  <span
-                    className={cn(
-                      "text-[10px] font-semibold uppercase tracking-wide",
-                      done && "text-emerald-600 dark:text-emerald-400",
-                      active && "text-primary",
-                      !done && !active && "text-muted-foreground"
-                    )}
-                  >
-                    {done ? "Done" : active ? "Active" : "Pending"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {(hasStreamedOutput || totalChars > 0 || chunkCount > 0) && (
-          <div className="flex items-center justify-between rounded-lg border border-border/40 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-            <span>Streaming stats</span>
-            <span>
-              {totalChars.toLocaleString()} chars • {chunkCount} chunks
-            </span>
-          </div>
-        )}
 
         {/* Parsed holdings preview while parsing */}
         {(holdingsExtracted > 0 || liveHoldings.length > 0) && (
@@ -403,24 +299,14 @@ export function ImportProgressView({
           <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
             <div className="flex items-center gap-2">
               <Icon icon={CheckCircle2} size="md" className="text-emerald-500" />
-              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                Successfully extracted portfolio data
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {totalChars.toLocaleString()} characters processed
-              {thoughtCount > 0 && ` • ${thoughtCount} AI reasoning steps`}
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+              Successfully extracted portfolio data
             </p>
-            {qualityReport && (
+          </div>
+            {holdingsExtracted > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                Validated {qualityReport.validated ?? 0}
-                {qualityReport.reconciled !== undefined
-                  ? ` • Reconciled ${qualityReport.reconciled}`
-                  : ""}
-                {qualityReport.dropped !== undefined ? ` • Dropped ${qualityReport.dropped}` : ""}
-                {qualityReport.mismatch_detected !== undefined
-                  ? ` • Mismatches ${qualityReport.mismatch_detected}`
-                  : ""}
+                Final holdings extracted: {holdingsExtracted}
+                {typeof holdingsTotal === "number" && holdingsTotal > 0 ? ` / ${holdingsTotal}` : ""}
               </p>
             )}
             {onContinue && (

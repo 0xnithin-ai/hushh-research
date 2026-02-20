@@ -14,7 +14,7 @@
  * Place this at the layout level for seamless integration.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "@/lib/navigation/navigation-context";
@@ -53,12 +53,12 @@ import { resolveDeleteAccountAuth } from "@/lib/flows/delete-account";
 import { AccountService } from "@/lib/services/account-service";
 import { PreVaultOnboardingService } from "@/lib/services/pre-vault-onboarding-service";
 import {
-  isOnboardingFlowActiveCookieEnabled,
   setOnboardingFlowActiveCookie,
   setOnboardingRequiredCookie,
 } from "@/lib/services/onboarding-route-cookie";
 import { CacheSyncService } from "@/lib/cache/cache-sync-service";
-import { ROUTES, isKaiOnboardingRoute } from "@/lib/navigation/routes";
+import { getKaiChromeState } from "@/lib/navigation/kai-chrome-state";
+import { ROUTES } from "@/lib/navigation/routes";
 
 /** Shared style so Capacitor status bar area and breadcrumb bar match (masked blur on all platforms) */
 const BAR_GLASS_CLASS = "top-bar-glass";
@@ -105,20 +105,15 @@ interface TopAppBarProps {
 export function TopAppBar({ className }: TopAppBarProps) {
   const { handleBack } = useNavigation();
   const [isNative, setIsNative] = useState(false);
-  const [onboardingFlowActive, setOnboardingFlowActive] = useState(false);
   const pathname = usePathname();
-  const onKaiOnboarding = isKaiOnboardingRoute(pathname);
-  const showOnboardingActions = onKaiOnboarding || onboardingFlowActive;
+  const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
+  const showOnboardingActions = chromeState.useOnboardingChrome;
   const hideChrome = pathname === ROUTES.HOME || pathname.startsWith(ROUTES.LOGIN);
 
   useEffect(() => {
     // Check platform on mount to avoid hydration mismatch
     setIsNative(Capacitor.isNativePlatform());
   }, []);
-
-  useEffect(() => {
-    setOnboardingFlowActive(isOnboardingFlowActiveCookieEnabled());
-  }, [pathname]);
 
   // Don't show TopAppBar on landing page
   if (hideChrome) {

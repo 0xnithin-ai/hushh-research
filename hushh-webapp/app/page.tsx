@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { HushhLoader } from "@/components/ui/hushh-loader";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { OnboardingLocalService } from "@/lib/services/onboarding-local-service";
+import { isOnboardingFlowActiveCookieEnabled } from "@/lib/services/onboarding-route-cookie";
 import { IntroStep } from "@/components/onboarding/IntroStep";
 import { PreviewCarouselStep } from "@/components/onboarding/PreviewCarouselStep";
 import { ROUTES } from "@/lib/navigation/routes";
@@ -46,7 +47,10 @@ function HomeContent() {
     if (loading) return;
 
     if (user) {
-      router.push(ROUTES.KAI_HOME);
+      const nextPath = isOnboardingFlowActiveCookieEnabled()
+        ? ROUTES.KAI_IMPORT
+        : ROUTES.KAI_HOME;
+      router.push(nextPath);
       return;
     }
 

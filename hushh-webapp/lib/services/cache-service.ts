@@ -135,6 +135,7 @@ class CacheService {
   invalidateUser(userId: string): void {
     const keysToDelete = new Set<string>([
       CACHE_KEYS.WORLD_MODEL_METADATA(userId),
+      CACHE_KEYS.WORLD_MODEL_BLOB(userId),
       CACHE_KEYS.VAULT_STATUS(userId),
       CACHE_KEYS.VAULT_CHECK(userId),
       CACHE_KEYS.ACTIVE_CONSENTS(userId),
@@ -146,6 +147,7 @@ class CacheService {
     for (const key of this.cache.keys()) {
       if (
         key.startsWith(`domain_data_${userId}_`) ||
+        key.startsWith(`domain_blob_${userId}_`) ||
         key.startsWith(`stock_context_${userId}_`)
       ) {
         keysToDelete.add(key);
@@ -208,11 +210,13 @@ class CacheService {
 // Cache key constants for consistency
 export const CACHE_KEYS = {
   WORLD_MODEL_METADATA: (userId: string) => `world_model_metadata_${userId}`,
+  WORLD_MODEL_BLOB: (userId: string) => `world_model_blob_${userId}`,
   VAULT_STATUS: (userId: string) => `vault_status_${userId}`,
   VAULT_CHECK: (userId: string) => `vault_check_${userId}`,
   ACTIVE_CONSENTS: (userId: string) => `active_consents_${userId}`,
   PORTFOLIO_DATA: (userId: string) => `portfolio_data_${userId}`,
   DOMAIN_DATA: (userId: string, domain: string) => `domain_data_${userId}_${domain}`,
+  ENCRYPTED_DOMAIN_BLOB: (userId: string, domain: string) => `domain_blob_${userId}_${domain}`,
   PENDING_CONSENTS: (userId: string) => `pending_consents_${userId}`,
   CONSENT_AUDIT_LOG: (userId: string) => `consent_audit_log_${userId}`,
   STOCK_CONTEXT: (userId: string, ticker: string) => `stock_context_${userId}_${ticker}`,

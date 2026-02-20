@@ -10,6 +10,7 @@ import { CacheService, CACHE_KEYS } from "@/lib/services/cache-service";
 import { morphyToast as toast } from "@/lib/morphy-ux/morphy";
 import { ROUTES } from "@/lib/navigation/routes";
 import { useVault } from "@/lib/vault/vault-context";
+import { getKaiChromeState } from "@/lib/navigation/kai-chrome-state";
 
 function parseMaybeNumber(value: unknown): number | undefined {
   if (value === null || value === undefined) return undefined;
@@ -39,6 +40,7 @@ export function KaiCommandBarGlobal() {
   const busyOperations = useKaiSession((s) => s.busyOperations);
   const cache = useMemo(() => CacheService.getInstance(), []);
   const [hasPortfolioData, setHasPortfolioData] = useState(false);
+  const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -83,11 +85,7 @@ export function KaiCommandBarGlobal() {
     return null;
   }
 
-  if (
-    pathname === ROUTES.HOME ||
-    pathname.startsWith(ROUTES.LOGIN) ||
-    pathname.startsWith(ROUTES.LOGOUT)
-  ) {
+  if (chromeState.hideCommandBar) {
     return null;
   }
 

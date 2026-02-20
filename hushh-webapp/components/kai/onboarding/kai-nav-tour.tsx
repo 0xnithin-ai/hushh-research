@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useVault } from "@/lib/vault/vault-context";
 import { KaiNavTourLocalService } from "@/lib/services/kai-nav-tour-local-service";
 import { KaiProfileService } from "@/lib/services/kai-profile-service";
+import { getKaiChromeState } from "@/lib/navigation/kai-chrome-state";
 
 const TOUR_STEPS = [
   {
@@ -54,15 +55,17 @@ export function KaiNavTour() {
   const [stepIndex, setStepIndex] = useState(0);
   const [open, setOpen] = useState(false);
 
+  const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
   const normalizedPath = pathname?.replace(/\/+$/, "") || "";
-  const isEligibleRoute = normalizedPath === "/kai";
+  const isEligibleRoute =
+    normalizedPath === "/kai" || normalizedPath === "/kai/dashboard";
   const activeStep = TOUR_STEPS[stepIndex] ?? TOUR_STEPS[0];
 
   useEffect(() => {
     let cancelled = false;
 
     async function evaluate() {
-      if (loading || !user?.uid || !isEligibleRoute) {
+      if (loading || !user?.uid || !isEligibleRoute || chromeState.useOnboardingChrome) {
         if (!cancelled) setOpen(false);
         return;
       }
@@ -125,6 +128,7 @@ export function KaiNavTour() {
       cancelled = true;
     };
   }, [
+    chromeState.useOnboardingChrome,
     isEligibleRoute,
     isVaultUnlocked,
     loading,

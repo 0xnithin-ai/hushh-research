@@ -9,26 +9,30 @@ vi.mock("@/lib/morphy-ux/hooks/use-smooth-stream-progress", () => ({
 import { ImportProgressView } from "@/components/kai/views/import-progress-view";
 
 describe("ImportProgressView stream surface", () => {
-  it("renders unified transcript with stage/reasoning/token sections from first stage", () => {
+  it("renders stage timeline + extracted holdings only", () => {
     render(
       <ImportProgressView
-        stage="indexing"
+        stage="parsing"
         stageTrail={["[INDEXING] Indexing document structure..."]}
-        streamedText="token-1 token-2"
         isStreaming
-        totalChars={18}
-        chunkCount={2}
-        thoughts={["Detected account summary and holdings table."]}
-        thoughtCount={1}
-        progressPct={15}
+        liveHoldings={[
+          {
+            symbol: "AAPL",
+            name: "Apple Inc.",
+            quantity: 12,
+            market_value: 2450,
+          },
+        ]}
+        holdingsExtracted={1}
+        holdingsTotal={3}
       />
     );
 
     expect(screen.getByText("AI Stream Transcript")).toBeTruthy();
     expect(screen.getByText("Stage timeline")).toBeTruthy();
-    expect(screen.getByText(/reasoning \(1\)/i)).toBeTruthy();
-    expect(screen.getByText(/vertex gemini token stream/i)).toBeTruthy();
     expect(screen.getByText(/\[INDEXING\] Indexing document structure\.\.\./)).toBeTruthy();
-    expect(screen.queryByText(/AI Reasoning/i)).toBeNull();
+    expect(screen.getByText("Extracted Holdings")).toBeTruthy();
+    expect(screen.queryByText(/reasoning/i)).toBeNull();
+    expect(screen.queryByText(/characters processed/i)).toBeNull();
   });
 });

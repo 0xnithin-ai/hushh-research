@@ -1,7 +1,6 @@
 "use client";
 
 import { normalizeStoredPortfolio } from "@/lib/utils/portfolio-normalize";
-import { CacheService, CACHE_KEYS, CACHE_TTL } from "@/lib/services/cache-service";
 import { KaiProfileSyncService } from "@/lib/services/kai-profile-sync-service";
 import { WorldModelService } from "@/lib/services/world-model-service";
 import { CacheSyncService } from "@/lib/cache/cache-sync-service";
@@ -16,8 +15,6 @@ export class PostUnlockSyncService {
     metadataWarmed: boolean;
     financialWarmed: boolean;
   }> {
-    const cache = CacheService.getInstance();
-
     const result = {
       onboardingSynced: false,
       metadataWarmed: false,
@@ -35,18 +32,11 @@ export class PostUnlockSyncService {
       console.warn("[PostUnlockSyncService] Pending onboarding sync failed:", error);
     }
 
-    CacheSyncService.onWorldModelDomainCleared(params.userId, "financial");
-
     try {
-      const metadata = await WorldModelService.getMetadata(
+      await WorldModelService.getMetadata(
         params.userId,
-        true,
+        false,
         params.vaultOwnerToken
-      );
-      cache.set(
-        CACHE_KEYS.WORLD_MODEL_METADATA(params.userId),
-        metadata,
-        CACHE_TTL.MEDIUM
       );
       result.metadataWarmed = true;
     } catch (error) {
@@ -64,7 +54,9 @@ export class PostUnlockSyncService {
         const normalized = normalizeStoredPortfolio(
           financialRaw as Record<string, unknown>
         );
-        CacheSyncService.onPortfolioUpserted(params.userId, normalized);
+        CacheSyncService.onPortfolioUpserted(params.userId, normalized, {
+          invalidateMetadata: false,
+        });
         result.financialWarmed = true;
       }
     } catch (error) {

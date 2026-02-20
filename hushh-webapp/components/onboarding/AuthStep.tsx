@@ -17,9 +17,11 @@ import { AuthProviderButton } from "@/components/onboarding/AuthProviderButton";
 import { PostAuthRouteService } from "@/lib/services/post-auth-route-service";
 import { AuthLegalDialog } from "@/components/onboarding/AuthLegalDialog";
 import {
+  isOnboardingFlowActiveCookieEnabled,
   setOnboardingFlowActiveCookie,
   setOnboardingRequiredCookie,
 } from "@/lib/services/onboarding-route-cookie";
+import { ROUTES } from "@/lib/navigation/routes";
 import { type KaiLegalDocumentType } from "@/lib/legal/kai-legal-content";
 
 export function AuthStep({
@@ -43,18 +45,24 @@ export function AuthStep({
   const resolveAndNavigate = useCallback(
     async (userId: string) => {
       try {
-        const nextPath = await PostAuthRouteService.resolveAfterLogin({
+        const resolvedPath = await PostAuthRouteService.resolveAfterLogin({
           userId,
           redirectPath,
         });
-        setOnboardingRequiredCookie(nextPath === "/kai/onboarding");
-        setOnboardingFlowActiveCookie(false);
+
+        const resumeImportFlow =
+          resolvedPath === ROUTES.KAI_HOME && isOnboardingFlowActiveCookieEnabled();
+        const nextPath = resumeImportFlow ? ROUTES.KAI_IMPORT : resolvedPath;
+
+        setOnboardingRequiredCookie(nextPath === ROUTES.KAI_ONBOARDING);
+        setOnboardingFlowActiveCookie(nextPath === ROUTES.KAI_IMPORT);
         router.push(nextPath);
       } catch (error) {
         console.warn("[AuthStep] Failed to resolve post-auth route:", error);
-        setOnboardingRequiredCookie(false);
-        setOnboardingFlowActiveCookie(false);
-        router.push(redirectPath);
+        const fallbackPath = redirectPath || ROUTES.KAI_HOME;
+        setOnboardingRequiredCookie(fallbackPath === ROUTES.KAI_ONBOARDING);
+        setOnboardingFlowActiveCookie(fallbackPath === ROUTES.KAI_IMPORT);
+        router.push(fallbackPath);
       }
     },
     [redirectPath, router]

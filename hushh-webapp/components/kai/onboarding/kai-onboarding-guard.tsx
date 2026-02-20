@@ -14,7 +14,8 @@ import {
   isOnboardingRequiredCookieEnabled,
   setOnboardingRequiredCookie,
 } from "@/lib/services/onboarding-route-cookie";
-import { ROUTES, isKaiOnboardingRoute } from "@/lib/navigation/routes";
+import { ROUTES } from "@/lib/navigation/routes";
+import { getKaiChromeState } from "@/lib/navigation/kai-chrome-state";
 
 export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -26,7 +27,9 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let cancelled = false;
-    const onOnboardingRoute = isKaiOnboardingRoute(pathname);
+    const chromeState = getKaiChromeState(pathname);
+    const onOnboardingRoute = chromeState.isOnboardingRoute;
+    const onImportRoute = chromeState.isImportRoute;
 
     async function run() {
       if (authLoading) return;
@@ -34,6 +37,11 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
       // VaultLockGuard handles unauthenticated states.
       if (!user) {
         setChecking(false);
+        return;
+      }
+
+      if (chromeState.onboardingFlowActive && !onImportRoute && !onOnboardingRoute) {
+        router.replace(ROUTES.KAI_IMPORT);
         return;
       }
 
@@ -66,6 +74,10 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
         if (!isVaultUnlocked || !vaultKey || !vaultOwnerToken) {
           if (!onOnboardingRoute && isOnboardingRequiredCookieEnabled()) {
             router.replace(ROUTES.KAI_ONBOARDING);
+            return;
+          }
+          if (!onImportRoute && chromeState.onboardingFlowActive) {
+            router.replace(ROUTES.KAI_IMPORT);
             return;
           }
           setChecking(false);
@@ -109,6 +121,11 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
           return;
         }
 
+        if (!onboardingIncomplete && chromeState.onboardingFlowActive && !onImportRoute) {
+          router.replace(ROUTES.KAI_IMPORT);
+          return;
+        }
+
         if (!onboardingIncomplete && onOnboardingRoute) {
           router.replace(ROUTES.KAI_HOME);
           return;
@@ -128,6 +145,7 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
     };
   }, [
     authLoading,
+    user,
     user?.uid,
     isVaultUnlocked,
     vaultKey,

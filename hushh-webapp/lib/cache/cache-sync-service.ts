@@ -1,5 +1,112 @@
 import type { PortfolioData } from "@/lib/cache/cache-context";
 import { CacheService, CACHE_KEYS, CACHE_TTL } from "@/lib/services/cache-service";
+import type { WorldModelMetadata } from "@/lib/services/world-model-service";
+
+type DomainSummaryPatch = Record<string, unknown>;
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function deriveAttributeCount(
+  domainSummary: DomainSummaryPatch | undefined,
+  portfolioData: PortfolioData | undefined
+): number {
+  const candidates = [
+    domainSummary?.attribute_count,
+    domainSummary?.holdings_count,
+    domainSummary?.item_count,
+  ];
+  for (const candidate of candidates) {
+    const parsed = toNumber(candidate);
+    if (parsed !== null && parsed >= 0) {
+      return parsed;
+    }
+  }
+
+  const holdings = (
+    (Array.isArray(portfolioData?.holdings) && portfolioData?.holdings) ||
+    (Array.isArray(portfolioData?.detailed_holdings) && portfolioData?.detailed_holdings) ||
+    []
+  ) as Array<unknown>;
+  return holdings.length;
+}
+
+function sanitizeDomainSummary(summary: DomainSummaryPatch): Record<string, unknown> {
+  const blocked = new Set(["holdings", "total_value", "vault_key", "password"]);
+  const sanitized: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(summary)) {
+    if (blocked.has(key.toLowerCase())) continue;
+    sanitized[key] = value;
+  }
+
+  return sanitized;
+}
+
+function patchMetadataDomain(
+  cachedMetadata: WorldModelMetadata,
+  userId: string,
+  domain: string,
+  options?: {
+    domainSummary?: DomainSummaryPatch;
+    portfolioData?: PortfolioData;
+    metadataTimestamp?: string;
+  }
+): WorldModelMetadata {
+  const sanitizedSummary = sanitizeDomainSummary(options?.domainSummary ?? {});
+  const metadataTimestamp =
+    options?.metadataTimestamp ??
+    (typeof sanitizedSummary.last_updated === "string"
+      ? sanitizedSummary.last_updated
+      : new Date().toISOString());
+
+  const existing = cachedMetadata.domains.find((entry) => entry.key === domain);
+  const patchedDomain = {
+    key: domain,
+    displayName:
+      (typeof options?.domainSummary?.display_name === "string"
+        ? options.domainSummary.display_name
+        : typeof options?.domainSummary?.displayName === "string"
+          ? options.domainSummary.displayName
+          : existing?.displayName) || domain,
+    icon:
+      (typeof options?.domainSummary?.icon === "string" ? options.domainSummary.icon : existing?.icon) ||
+      "database",
+    color:
+      (typeof options?.domainSummary?.color === "string" ? options.domainSummary.color : existing?.color) ||
+      "var(--brand-500)",
+    attributeCount: deriveAttributeCount(options?.domainSummary, options?.portfolioData),
+    summary: sanitizedSummary as Record<string, string | number>,
+    availableScopes: existing?.availableScopes ?? [],
+    lastUpdated: metadataTimestamp,
+  };
+
+  const domains = [...cachedMetadata.domains];
+  const existingIndex = domains.findIndex((entry) => entry.key === domain);
+  if (existingIndex >= 0) {
+    domains[existingIndex] = patchedDomain;
+  } else {
+    domains.push(patchedDomain);
+  }
+
+  const totalAttributes = domains.reduce((sum, current) => {
+    return sum + (Number.isFinite(current.attributeCount) ? current.attributeCount : 0);
+  }, 0);
+
+  return {
+    ...cachedMetadata,
+    userId,
+    domains,
+    totalAttributes,
+    lastUpdated: metadataTimestamp,
+  };
+}
 
 /**
  * Deterministic cache mutation coordinator for all DB-backed CRUD paths.
@@ -11,9 +118,19 @@ export class CacheSyncService {
     domain: string,
     options?: {
       portfolioData?: PortfolioData;
+      encryptedBlob?: {
+        ciphertext: string;
+        iv: string;
+        tag: string;
+        algorithm?: string;
+      };
+      domainSummary?: DomainSummaryPatch;
+      metadataTimestamp?: string;
+      writeThroughMetadata?: boolean;
     }
   ): void {
     const cache = CacheService.getInstance();
+    const writeThroughMetadata = options?.writeThroughMetadata !== false;
 
     if (domain === "financial" && options?.portfolioData) {
       cache.set(CACHE_KEYS.PORTFOLIO_DATA(userId), options.portfolioData, CACHE_TTL.SESSION);
@@ -29,23 +146,60 @@ export class CacheSyncService {
       }
     }
 
-    cache.invalidate(CACHE_KEYS.WORLD_MODEL_METADATA(userId));
+    if (options?.encryptedBlob) {
+      cache.set(CACHE_KEYS.WORLD_MODEL_BLOB(userId), options.encryptedBlob, CACHE_TTL.SESSION);
+      cache.set(
+        CACHE_KEYS.ENCRYPTED_DOMAIN_BLOB(userId, domain),
+        options.encryptedBlob,
+        CACHE_TTL.SESSION
+      );
+    } else {
+      cache.invalidate(CACHE_KEYS.ENCRYPTED_DOMAIN_BLOB(userId, domain));
+      cache.invalidate(CACHE_KEYS.WORLD_MODEL_BLOB(userId));
+    }
+
+    if (!writeThroughMetadata) {
+      return;
+    }
+
+    const cachedMetadata = cache.get<WorldModelMetadata>(CACHE_KEYS.WORLD_MODEL_METADATA(userId));
+    if (!cachedMetadata || !options?.domainSummary) {
+      cache.invalidate(CACHE_KEYS.WORLD_MODEL_METADATA(userId));
+      return;
+    }
+
+    const patched = patchMetadataDomain(cachedMetadata, userId, domain, {
+      domainSummary: options.domainSummary,
+      portfolioData: options.portfolioData,
+      metadataTimestamp: options.metadataTimestamp,
+    });
+    cache.set(CACHE_KEYS.WORLD_MODEL_METADATA(userId), patched, CACHE_TTL.MEDIUM);
   }
 
   static onWorldModelDomainCleared(userId: string, domain: string): void {
     const cache = CacheService.getInstance();
     cache.invalidate(CACHE_KEYS.DOMAIN_DATA(userId, domain));
+    cache.invalidate(CACHE_KEYS.ENCRYPTED_DOMAIN_BLOB(userId, domain));
+    cache.invalidate(CACHE_KEYS.WORLD_MODEL_BLOB(userId));
     cache.invalidate(CACHE_KEYS.WORLD_MODEL_METADATA(userId));
     if (domain === "financial") {
       cache.invalidate(CACHE_KEYS.PORTFOLIO_DATA(userId));
     }
   }
 
-  static onPortfolioUpserted(userId: string, portfolioData: PortfolioData): void {
+  static onPortfolioUpserted(
+    userId: string,
+    portfolioData: PortfolioData,
+    options?: {
+      invalidateMetadata?: boolean;
+    }
+  ): void {
     const cache = CacheService.getInstance();
     cache.set(CACHE_KEYS.PORTFOLIO_DATA(userId), portfolioData, CACHE_TTL.SESSION);
     cache.set(CACHE_KEYS.DOMAIN_DATA(userId, "financial"), portfolioData, CACHE_TTL.SESSION);
-    cache.invalidate(CACHE_KEYS.WORLD_MODEL_METADATA(userId));
+    if (options?.invalidateMetadata !== false) {
+      cache.invalidate(CACHE_KEYS.WORLD_MODEL_METADATA(userId));
+    }
   }
 
   static onVaultStateChanged(
