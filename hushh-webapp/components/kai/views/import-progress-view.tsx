@@ -156,7 +156,6 @@ export function ImportProgressView({
 }: ImportProgressViewProps) {
   // Determine if we're in a thinking or extracting phase
   const isThinking = stage === "thinking";
-  const isExtracting = stage === "extracting" || stage === "parsing";
   const isComplete = stage === "complete";
   const hasStreamedOutput = streamedText.trim().length > 0;
   const resolvedProgress = useMemo(() => {
