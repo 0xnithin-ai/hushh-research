@@ -97,6 +97,11 @@ function toSafeHolding(raw: Holding): Holding | null {
     cost_basis: toNumber(raw.cost_basis),
     unrealized_gain_loss: toNumber(raw.unrealized_gain_loss),
     unrealized_gain_loss_pct: toNumber(raw.unrealized_gain_loss_pct),
+    estimated_annual_income: toNumber(
+      (raw as unknown as Record<string, unknown>).estimated_annual_income ??
+        (raw as unknown as Record<string, unknown>).est_annual_income
+    ),
+    est_yield: toNumber(raw.est_yield),
     sector,
     asset_type: assetType,
   };
@@ -131,16 +136,61 @@ function derivePortfolioConcentrationLabel(holdings: Holding[]): string {
   return "Diversified";
 }
 
+function normalizeAllocationBucket(holding: Holding): string {
+  const hint = `${holding.asset_type || ""} ${holding.asset_class || ""} ${holding.name || ""}`.toLowerCase();
+  if (
+    hint.includes("cash")
+    || hint.includes("money market")
+    || hint.includes("sweep")
+  ) {
+    return "Cash";
+  }
+  if (
+    hint.includes("fixed income")
+    || hint.includes("bond")
+    || hint.includes("treasury")
+    || hint.includes("income fund")
+  ) {
+    return "Fixed Income";
+  }
+  if (
+    hint.includes("real asset")
+    || hint.includes("real estate")
+    || hint.includes("commodit")
+    || hint.includes("gold")
+  ) {
+    return "Real Assets";
+  }
+  if (
+    hint.includes("equity")
+    || hint.includes("stock")
+    || hint.includes("developed markets")
+    || hint.includes("emerging markets")
+    || hint.includes("mid cap")
+    || hint.includes("small cap")
+    || hint.includes("large cap")
+    || hint.includes("etf")
+  ) {
+    return "Equities";
+  }
+  return "Other";
+}
+
 function computeAllocationFromAssetTypes(
   holdings: Holding[],
   totalValue: number
 ): AllocationDatum[] {
+  const bucketColors: Record<string, string> = {
+    Equities: "#2563eb",
+    "Fixed Income": "#0ea5e9",
+    Cash: "#14b8a6",
+    "Real Assets": "#f59e0b",
+    Other: "#8b5cf6",
+  };
+
   const grouped = new Map<string, number>();
   for (const holding of holdings) {
-    const bucket = (holding.asset_type || holding.asset_class || "Other")
-      .toString()
-      .trim();
-    const key = bucket.length > 0 ? bucket : "Other";
+    const key = normalizeAllocationBucket(holding);
     grouped.set(key, (grouped.get(key) || 0) + (toNumber(holding.market_value) ?? 0));
   }
 
@@ -148,7 +198,7 @@ function computeAllocationFromAssetTypes(
     .map(([name, value], index) => ({
       name,
       value,
-      color: `var(--chart-${(index % 5) + 1})`,
+      color: bucketColors[name] ?? `var(--chart-${(index % 5) + 1})`,
     }))
     .filter((row) => row.value > 0)
     .sort((a, b) => b.value - a.value)
@@ -165,16 +215,21 @@ function computeAllocation(data: PortfolioData, holdings: Holding[], totalValue:
     const cashPct = toNumber(allocation.cash_pct ?? allocation.cash_percent) ?? 0;
     const equitiesPct = toNumber(allocation.equities_pct ?? allocation.equities_percent) ?? 0;
     const bondsPct = toNumber(allocation.bonds_pct ?? allocation.bonds_percent) ?? 0;
-    const otherPct = toNumber(allocation.other_percent) ?? Math.max(0, 100 - cashPct - equitiesPct - bondsPct);
+    const otherPct =
+      toNumber(allocation.other_percent) ??
+      toNumber((allocation as Record<string, unknown>).other_pct) ??
+      Math.max(0, 100 - cashPct - equitiesPct - bondsPct);
+    const pctTotal = cashPct + equitiesPct + bondsPct + otherPct;
 
     const fromPct: AllocationDatum[] = [
       { name: "Equities", value: (equitiesPct / 100) * totalValue, color: "var(--chart-2)" },
       { name: "Cash", value: (cashPct / 100) * totalValue, color: "var(--chart-1)" },
-      { name: "Bonds", value: (bondsPct / 100) * totalValue, color: "var(--chart-4)" },
+      { name: "Fixed Income", value: (bondsPct / 100) * totalValue, color: "var(--chart-4)" },
       { name: "Other", value: (otherPct / 100) * totalValue, color: "var(--chart-3)" },
     ].filter((row) => row.value > 0);
 
-    if (fromPct.length > 0) {
+    // Guard against partial parser payloads (common in real statements): fallback to holdings if coverage is weak.
+    if (fromPct.length > 0 && pctTotal >= 95) {
       return fromPct;
     }
   }

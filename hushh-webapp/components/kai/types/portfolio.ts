@@ -55,6 +55,11 @@ export interface PortfolioData {
         bonds_percent?: number;
         bonds_pct?: number;
         other_percent?: number;
+        other_pct?: number;
+        cash_value?: number;
+        equities_value?: number;
+        bonds_value?: number;
+        other_value?: number;
       }
     | Array<{ category: string; market_value: number; percentage: number }>;
   income_summary?: {

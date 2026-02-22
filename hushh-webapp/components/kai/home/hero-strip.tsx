@@ -9,7 +9,13 @@ interface HeroStripProps {
 export function HeroStrip({ onOpenDashboard }: HeroStripProps) {
   return (
     <div className="flex justify-end">
-      <Button variant="blue-gradient" effect="fill" size="sm" onClick={onOpenDashboard}>
+      <Button
+        variant="none"
+        effect="fill"
+        size="sm"
+        onClick={onOpenDashboard}
+        className="bg-black px-5 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+      >
         Open Dashboard
       </Button>
     </div>

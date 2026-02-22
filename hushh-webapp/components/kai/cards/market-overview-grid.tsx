@@ -27,7 +27,7 @@ export function MarketOverviewGrid({ metrics = [] }: { metrics?: MarketOverviewM
     return (
       <Card variant="muted" effect="fill" className="rounded-xl p-0">
         <CardContent className="p-4 text-sm text-muted-foreground">
-          No market overview metrics are available from the current cache snapshot.
+          Market overview metrics are not available at the moment.
         </CardContent>
       </Card>
     );

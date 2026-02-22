@@ -10,7 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { KaiPreferencesWizard } from "@/components/kai/onboarding/KaiPreferencesWizard";
 import { KaiProfileService, type KaiProfileV2 } from "@/lib/services/kai-profile-service";
 import { useFadeInOnReady } from "@/lib/morphy-ux/hooks/use-fade-in-on-ready";

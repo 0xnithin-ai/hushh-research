@@ -210,7 +210,7 @@ export function KaiCommandBarGlobal() {
         }
 
         if (command === "manage") {
-          router.push(`${ROUTES.KAI_DASHBOARD}?tab=holdings`);
+          router.push(ROUTES.KAI_DASHBOARD);
           return;
         }
 

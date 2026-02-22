@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/lib/morphy-ux/morphy";
 import { Input } from "@/components/ui/input";
 import { Send, Bot, User, Sparkles, ShieldCheck } from "lucide-react";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { cn } from "@/lib/utils";
 import { formatMessage } from "@/lib/format-message";
 import { Icon } from "@/lib/morphy-ux/ui";

@@ -19,7 +19,7 @@ export function ThemeFocusList({ themes = [] }: { themes?: ThemeFocusItem[] }) {
     return (
       <Card variant="muted" effect="fill" className="rounded-xl p-0">
         <CardContent className="p-4 text-sm text-muted-foreground">
-          No active theme rows are available from the current market cache.
+          No active market themes are available right now.
         </CardContent>
       </Card>
     );

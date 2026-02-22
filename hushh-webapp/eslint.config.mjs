@@ -110,6 +110,13 @@ export default [
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+  // Override: registry-owned vendor files (keep parity-safe without local lint edits)
+  {
+    files: ["components/ui/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
   // Override for API routes, services, and plugins (fetch allowed, storage allowed)
   {
     files: [

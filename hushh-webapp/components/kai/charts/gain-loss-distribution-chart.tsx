@@ -84,14 +84,15 @@ export function GainLossDistributionChart({
               cursor={false}
               content={
                 <ChartTooltipContent
-                  formatter={(_value, _name, item) => {
-                    const payload = item.payload as GainLossBandDatum;
-                    return (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-semibold">{payload.band}</span>
-                        <span className="text-sm">{payload.count} holding(s)</span>
-                      </div>
-                    );
+                  hideIndicator
+                  labelFormatter={(_label, payload) => {
+                    const first = payload?.[0]?.payload as GainLossBandDatum | undefined;
+                    return first?.band || "Range";
+                  }}
+                  formatter={(value) => {
+                    const count = typeof value === "number" ? value : Number(value || 0);
+                    const suffix = count === 1 ? "" : "s";
+                    return <span className="text-sm text-muted-foreground">{count} holding{suffix}</span>;
                   }}
                 />
               }

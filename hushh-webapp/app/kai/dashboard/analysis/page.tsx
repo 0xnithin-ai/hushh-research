@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { DebateStreamView } from "@/components/kai/debate-stream-view";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { AnalysisHistoryDashboard } from "@/components/kai/views/analysis-history-dashboard";
 import { AnalysisSummaryView } from "@/components/kai/views/analysis-summary-view";
 import { HistoryDetailView } from "@/components/kai/views/history-detail-view";

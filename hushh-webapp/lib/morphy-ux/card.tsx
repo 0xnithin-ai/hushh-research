@@ -2,20 +2,23 @@
 
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { cn } from "@/lib/utils";
-import {
-  type MorphyCardBaseProps,
-} from "@/lib/morphy-ux/types";
 import { type IconWeight } from "@phosphor-icons/react";
+
+import {
+  Card as StockCard,
+  CardContent as StockCardContent,
+  CardDescription as StockCardDescription,
+  CardFooter as StockCardFooter,
+  CardHeader as StockCardHeader,
+  CardTitle as StockCardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { type MorphyCardBaseProps } from "@/lib/morphy-ux/types";
 import {
   getVariantStyles,
   getVariantStylesNoHover,
 } from "@/lib/morphy-ux/utils";
 import { MaterialRipple } from "@/lib/morphy-ux/material-ripple";
-
-// ============================================================================
-// CARD COMPONENT
-// ============================================================================
 
 export interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -28,6 +31,8 @@ export interface CardProps
     gradient?: boolean;
   };
 }
+
+type IconPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   (
@@ -48,86 +53,57 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "div";
-
-    // Get centralized styles - use no-hover version when ripple is disabled
+    const Comp = asChild ? Slot : StockCard;
     const variantStyles = showRipple
       ? getVariantStyles(variant, effect)
       : getVariantStylesNoHover(variant, effect);
 
-    // Icon component
     const IconComponent = icon?.icon;
     const iconPosition = icon?.position || "top-left";
 
-    // Icon alignment classes for in-flow layout
-    const iconAlignClasses = {
+    const iconAlignClasses: Record<IconPosition, string> = {
       "top-left": "justify-start mb-4",
       "top-right": "justify-end mb-4 flex-row-reverse",
       "bottom-left": "justify-start mt-4",
       "bottom-right": "justify-end mt-4 flex-row-reverse",
     };
 
-    // Accent color for icon (blue in light, yellow in dark)
-    const accentColor = "text-[var(--morphy-primary-start)]";
-
-    // Decoupled icon background and color logic (muted to gradient)
     const getIconBoxStyle = (isGradient: boolean) => {
       if (isGradient) {
-        // Always: solid brand gradient background
-        return "bg-gradient-to-r from-[var(--morphy-primary-start)] to-[var(--morphy-primary-end)] border border-transparent";
+        return "bg-gradient-to-r from-[var(--morphy-primary-start)] to-[var(--morphy-primary-end)] border-transparent";
       }
-      // For false, transparent bg, accent border on hover
-      return `bg-transparent border border-solid transition-colors duration-75 border-transparent`;
+      return "bg-transparent border-transparent";
     };
 
     const getIconColor = (isGradient: boolean) => {
       if (isGradient) {
-        // Always: white (light), black (dark)
         return "text-white dark:text-black";
       }
-      return accentColor;
+      return "text-[var(--morphy-primary-start)]";
     };
 
-    // Helper to render the icon block
     const renderIconBlock = () => {
       if (!IconComponent) return null;
 
-      // Check if gradient icon is requested
-      const isGradientIcon = icon?.gradient;
-
-      const gradient = !!isGradientIcon;
+      const gradient = Boolean(icon?.gradient);
       return (
-        <div
-          className={cn(
-            "flex items-center gap-3 w-full",
-            iconAlignClasses[iconPosition]
-          )}
-        >
-          <div className="relative">
-            <div
-              className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center transition-colors duration-200 border",
-                getIconBoxStyle(gradient)
-              )}
-            >
-              <IconComponent
-                className={cn(
-                  "h-5 w-5 transition-colors duration-200",
-                  getIconColor(gradient)
-                )}
-                weight="regular"
-              />
-            </div>
+        <div className={cn("flex items-center gap-3 w-full", iconAlignClasses[iconPosition])}>
+          <div
+            className={cn(
+              "h-10 w-10 rounded-lg border flex items-center justify-center transition-colors duration-200",
+              getIconBoxStyle(gradient)
+            )}
+          >
+            <IconComponent
+              className={cn("h-5 w-5 transition-colors duration-200", getIconColor(gradient))}
+              weight="regular"
+            />
           </div>
-          {icon?.title && (
-            <div className="flex flex-col">
-              {icon?.title && (
-                <span className="text-sm font-semibold group-hover:underline group-hover:underline-offset-4">
-                  {icon.title}
-                </span>
-              )}
-            </div>
-          )}
+          {icon?.title ? (
+            <span className="text-sm font-semibold group-hover:underline group-hover:underline-offset-4">
+              {icon.title}
+            </span>
+          ) : null}
         </div>
       );
     };
@@ -136,16 +112,15 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <Comp
         ref={ref}
         className={cn(
-          "rounded-lg border border-solid text-card-foreground shadow-[0_1px_3px_0_rgb(0_0_0_/_0.3),_0_1px_2px_-1px_rgb(0_0_0_/_0.2)] relative p-6 transition-[border-color,box-shadow,background-color] duration-200",
+          "relative rounded-lg border border-solid text-card-foreground p-6 transition-[border-color,box-shadow,background-color] duration-200",
+          "shadow-[0_1px_3px_0_rgb(0_0_0_/_0.3),_0_1px_2px_-1px_rgb(0_0_0_/_0.2)]",
           preset === "hero" &&
             "p-0 rounded-3xl shadow-[0_18px_60px_rgba(0,0,0,0.10)]",
-          // Theme-aware background based on variant
           variant === "muted"
             ? "bg-white/60 dark:bg-background/40 border-border/30"
             : effect === "glass"
             ? ""
             : "bg-white/80 dark:bg-gray-900/40",
-          // Conditional backdrop blur based on effect - 6px for performance (4x faster than 12px)
           effect === "fade" ? "!backdrop-blur-none" : "backdrop-blur-[6px]",
           variantStyles,
           showRipple ? "overflow-hidden" : "",
@@ -161,7 +136,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         )}
         {...props}
       >
-        {effect === "glass" && glassAccent !== "none" && (
+        {effect === "glass" && glassAccent !== "none" ? (
           <div
             aria-hidden
             className={cn(
@@ -172,20 +147,21 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
             )}
             style={{ borderRadius: "inherit" }}
           />
-        )}
+        ) : null}
 
         <div className="relative z-[1]">
-          {/* Render icon block at top or bottom, in flow, never absolute */}
           {IconComponent &&
-            (iconPosition === "top-left" || iconPosition === "top-right") &&
-            renderIconBlock()}
+          (iconPosition === "top-left" || iconPosition === "top-right")
+            ? renderIconBlock()
+            : null}
           {children}
           {IconComponent &&
-            (iconPosition === "bottom-left" || iconPosition === "bottom-right") &&
-            renderIconBlock()}
+          (iconPosition === "bottom-left" || iconPosition === "bottom-right")
+            ? renderIconBlock()
+            : null}
         </div>
-        {/* Material 3 Expressive Ripple */}
-        {showRipple && <MaterialRipple variant={variant} effect={effect} />}
+
+        {showRipple ? <MaterialRipple variant={variant} effect={effect} /> : null}
       </Comp>
     );
   }
@@ -193,42 +169,31 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
 
 Card.displayName = "Card";
 
-// ============================================================================
-// CARD SUBCOMPONENTS
-// ============================================================================
-
 const CardHeader = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  React.ComponentProps<typeof StockCardHeader>
 >(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-4 pb-2", className)}
-    {...props}
-  />
+  <StockCardHeader ref={ref} className={cn("px-0 space-y-4 pb-2", className)} {...props} />
 ));
 CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
+  HTMLDivElement,
+  React.ComponentProps<typeof StockCardTitle>
 >(({ className, ...props }, ref) => (
-  <h3
+  <StockCardTitle
     ref={ref}
-    className={cn(
-      "text-xl font-semibold leading-none tracking-tight",
-      className
-    )}
+    className={cn("text-xl leading-none tracking-tight", className)}
     {...props}
   />
 ));
 CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
+  HTMLDivElement,
+  React.ComponentProps<typeof StockCardDescription>
 >(({ className, ...props }, ref) => (
-  <p
+  <StockCardDescription
     ref={ref}
     className={cn("text-sm text-muted-foreground leading-relaxed", className)}
     {...props}
@@ -238,32 +203,22 @@ CardDescription.displayName = "CardDescription";
 
 const CardContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  React.ComponentProps<typeof StockCardContent>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("space-y-4", className)} {...props} />
+  <StockCardContent ref={ref} className={cn("px-0 space-y-4", className)} {...props} />
 ));
 CardContent.displayName = "CardContent";
 
 const CardFooter = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  React.ComponentProps<typeof StockCardFooter>
 >(({ className, ...props }, ref) => (
-  <div
+  <StockCardFooter
     ref={ref}
-    className={cn(
-      "flex items-center justify-between pt-4 border-t border-border",
-      className
-    )}
+    className={cn("px-0 pt-4 border-t border-border", className)}
     {...props}
   />
 ));
 CardFooter.displayName = "CardFooter";
 
-export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-  CardContent,
-};
+export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter };

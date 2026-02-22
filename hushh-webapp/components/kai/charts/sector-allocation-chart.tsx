@@ -44,16 +44,16 @@ interface SectorAllocationChartProps {
   responsive?: boolean;
 }
 
-// Theme-aware colors using CSS variables (oklch in globals - use var() directly)
+// Distinct palette so neighboring sectors are easy to scan.
 const CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--primary)",
-  "var(--accent)",
-  "var(--destructive)",
+  "#2563eb",
+  "#0ea5e9",
+  "#14b8a6",
+  "#22c55e",
+  "#f59e0b",
+  "#f97316",
+  "#8b5cf6",
+  "#ec4899",
 ];
 
 function formatCurrency(value: number): string {

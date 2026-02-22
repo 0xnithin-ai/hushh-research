@@ -25,14 +25,14 @@ export function NewsTape({ rows }: NewsTapeProps) {
     return (
       <Card variant="muted" effect="fill" className="rounded-xl p-0">
         <CardContent className="p-4 text-sm text-muted-foreground">
-          No recent market headlines available for tracked symbols.
+          No recent market headlines are available right now.
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="-mx-4 overflow-x-auto overflow-y-visible px-6 py-3">
+    <div className="-mx-4 overflow-x-auto overflow-y-visible px-8 py-4">
       <div className="flex min-w-0 gap-3">
         {rows.slice(0, 8).map((row, index) => (
           <a
@@ -45,7 +45,7 @@ export function NewsTape({ rows }: NewsTapeProps) {
             <Card
               variant="none"
               effect="glass"
-              className="h-full rounded-xl p-0 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
+              className="h-full rounded-xl p-0 shadow-[0_6px_18px_rgba(15,23,42,0.04)]"
             >
               <CardContent className="space-y-2 p-3">
                 <div className="flex items-center justify-between gap-2">

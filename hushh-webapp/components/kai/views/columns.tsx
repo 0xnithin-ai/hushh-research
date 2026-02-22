@@ -105,20 +105,23 @@ export const getColumns = ({
     accessorKey: "decision",
     header: "Decision",
     cell: ({ row }) => {
-      const decision = row.original.decision.toLowerCase();
+      const decisionValue =
+        typeof row.original.decision === "string" && row.original.decision.trim().length > 0
+          ? row.original.decision.trim().toLowerCase()
+          : "unknown";
       let colorClass = "bg-muted text-muted-foreground border-border";
       
-      if (decision === "buy") {
+      if (decisionValue === "buy") {
         colorClass = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
-      } else if (decision === "sell" || decision === "reduce") {
+      } else if (decisionValue === "sell" || decisionValue === "reduce") {
         colorClass = "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30";
-      } else if (decision === "hold") {
+      } else if (decisionValue === "hold") {
         colorClass = "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30";
       }
 
       return (
         <Badge variant="outline" className={cn("capitalize font-bold", colorClass)}>
-          {decision}
+          {decisionValue === "unknown" ? "n/a" : decisionValue}
         </Badge>
       );
     },

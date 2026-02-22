@@ -213,10 +213,12 @@ export const getVariantStyles = (
     case "none":
     default:
       if (effect === "fill") {
-        return "bg-transparent border-transparent hover:bg-transparent hover:text-accent-foreground transition-colors duration-200";
-      } else {
-        return "bg-white/40 dark:bg-black/40 border border-white/20 dark:border-white/10 shadow-sm backdrop-blur-md hover:bg-white/50 dark:hover:bg-black/50 transition-all duration-200";
+        return "bg-background text-foreground border border-border/60 hover:bg-muted/60 hover:text-foreground shadow-none transition-colors duration-200";
       }
+      if (effect === "fade") {
+        return "bg-muted/55 text-foreground border border-transparent shadow-none backdrop-blur-none hover:bg-muted/80 hover:text-foreground transition-colors duration-200";
+      }
+      return "bg-white/40 dark:bg-black/40 border border-white/20 dark:border-white/10 shadow-sm backdrop-blur-md hover:bg-white/50 dark:hover:bg-black/50 transition-all duration-200";
   }
 };
 
@@ -334,10 +336,12 @@ export const getVariantStylesNoHover = (
     case "none":
     default:
       if (effect === "fill") {
-        return "bg-background border border-border transition-colors duration-200";
-      } else {
-        return "bg-[var(--activeGlassColor)] shadow-[0px_10px_30px_var(--activeShadowColor)] border border-[var(--fadeGrey)] backdrop-blur-[6px] transition-all duration-200";
+        return "bg-background text-foreground border border-border/60 shadow-none transition-colors duration-200";
       }
+      if (effect === "fade") {
+        return "bg-muted/55 text-foreground border border-transparent shadow-none backdrop-blur-none transition-colors duration-200";
+      }
+      return "bg-[var(--activeGlassColor)] shadow-[0px_10px_30px_var(--activeShadowColor)] border border-[var(--fadeGrey)] backdrop-blur-[6px] transition-all duration-200";
   }
 };
 

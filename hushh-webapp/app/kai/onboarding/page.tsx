@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { morphyToast as toast } from "@/lib/morphy-ux/morphy";
 
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { KaiPersonaScreen } from "@/components/kai/onboarding/KaiPersonaScreen";
 import { KaiPreferencesWizard } from "@/components/kai/onboarding/KaiPreferencesWizard";
 import {

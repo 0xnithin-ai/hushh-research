@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { WorldModelService } from "@/lib/services/world-model-service";
 import { normalizeStoredPortfolio } from "@/lib/utils/portfolio-normalize";
 import { useCache } from "@/lib/cache/cache-context";
@@ -600,85 +600,6 @@ export function KaiFlow({
   }, [state]);
 
   useScrollReset(`${mode}:${state}`, { enabled: true, behavior: "auto" });
-
-  const handleAnalyzeLosers = useCallback(() => {
-    if (!flowData.portfolioData) {
-      toast.error("No portfolio data available.");
-      return;
-    }
-
-    const rawHoldings = (flowData.portfolioData.holdings ||
-      flowData.portfolioData.detailed_holdings ||
-      []) as unknown as Array<{
-      symbol?: string;
-      name?: string;
-      unrealized_gain_loss_pct?: number;
-      unrealized_gain_loss?: number;
-      market_value?: number;
-      sector?: string;
-      asset_type?: string;
-    }>;
-
-    const totalValue = rawHoldings.reduce(
-      (sum, h) => sum + (h.market_value !== undefined ? parseNumberOrZero(h.market_value) : 0),
-      0
-    );
-
-    const holdingsForOptimize = rawHoldings
-      .map((h) => {
-        const mv = h.market_value !== undefined ? parseMaybeNumber(h.market_value) : undefined;
-        const gainLoss =
-          h.unrealized_gain_loss !== undefined
-            ? parseMaybeNumber(h.unrealized_gain_loss)
-            : undefined;
-        const gainLossPct =
-          h.unrealized_gain_loss_pct !== undefined
-            ? parseMaybeNumber(h.unrealized_gain_loss_pct)
-            : undefined;
-
-        const symbol = String(h.symbol || "").toUpperCase().trim();
-
-        return {
-          symbol,
-          name: h.name ? String(h.name) : undefined,
-          gain_loss_pct: gainLossPct,
-          gain_loss: gainLoss,
-          market_value: mv,
-          weight_pct:
-            totalValue > 0 && mv !== undefined ? (mv / totalValue) * 100 : undefined,
-          sector: h.sector ? String(h.sector) : undefined,
-          asset_type: h.asset_type ? String(h.asset_type) : undefined,
-        };
-      })
-      .filter((h) => h.symbol);
-
-    const losers = holdingsForOptimize
-      .filter(
-        (l) => l.gain_loss_pct === undefined || (l.gain_loss_pct as number) <= -5
-      )
-      .slice(0, 25);
-
-    const forceOptimize = losers.length === 0;
-    toast.info(
-      "Optimizing suggestions using curated rulesets across your portfolio context."
-    );
-
-    useKaiSession.getState().setLosersInput({
-      userId,
-      thresholdPct: -5,
-      maxPositions: 10,
-      losers,
-      holdings: holdingsForOptimize,
-      forceOptimize,
-      hadBelowThreshold: losers.length > 0,
-    });
-
-    router.push(`${ROUTES.KAI_DASHBOARD}/portfolio-health`);
-  }, [flowData.portfolioData, router, userId]);
-
-  const handleViewHistory = useCallback(() => {
-    router.push(`${ROUTES.KAI_DASHBOARD}/analysis`);
-  }, [router]);
 
   // Check World Model for financial data on mount
   useEffect(() => {
@@ -1479,11 +1400,6 @@ export function KaiFlow({
     setState("import_required");
   }, [mode, router]);
 
-  // Handle manage portfolio navigation
-  const handleManagePortfolio = useCallback(() => {
-    router.push(`${ROUTES.KAI_DASHBOARD}?tab=holdings`);
-  }, [router]);
-
   // Handle analyze stock - starts streaming analysis
   const handleAnalyzeStock = useCallback((symbol: string) => {
     console.log("[KaiFlow] handleAnalyzeStock called with:", symbol);
@@ -1632,11 +1548,8 @@ export function KaiFlow({
           userId={userId}
           vaultOwnerToken={effectiveVaultOwnerToken}
           portfolioData={flowData.portfolioData}
-          onManagePortfolio={handleManagePortfolio}
           onAnalyzeStock={handleAnalyzeStock}
-          onAnalyzeLosers={handleAnalyzeLosers}
           onReupload={handleReimport}
-          onViewHistory={handleViewHistory}
         />
       )}
 

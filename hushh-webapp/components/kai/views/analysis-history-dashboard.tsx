@@ -19,7 +19,7 @@ import {
   type AnalysisHistoryEntry,
   type AnalysisHistoryMap,
 } from "@/lib/services/kai-history-service";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable } from "@/components/app-ui/data-table";
 import { getColumns, type HistoryEntryWithVersion } from "./columns";
 import { toast } from "sonner";
 import {

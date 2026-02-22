@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { KaiProfileService } from "@/lib/services/kai-profile-service";
 import { KaiProfileSyncService } from "@/lib/services/kai-profile-sync-service";
 import { PreVaultOnboardingService } from "@/lib/services/pre-vault-onboarding-service";

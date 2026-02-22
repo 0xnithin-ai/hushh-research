@@ -67,7 +67,7 @@ function checkRequiredCoordinatorUsage() {
     ["components/kai/views/manage-portfolio-view.tsx", ["CacheSyncService.onPortfolioUpserted"]],
     ["lib/firebase/auth-context.tsx", ["CacheSyncService.onAuthSignedOut"]],
     ["app/profile/page.tsx", ["CacheSyncService.onAccountDeleted"]],
-    ["components/ui/top-app-bar.tsx", ["CacheSyncService.onAccountDeleted"]],
+    ["components/app-ui/top-app-bar.tsx", ["CacheSyncService.onAccountDeleted"]],
     ["app/logout/page.tsx", ["CacheSyncService.onAuthSignedOut"]],
   ];
 

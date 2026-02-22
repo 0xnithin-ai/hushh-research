@@ -599,8 +599,10 @@ export default function PortfolioHealthPage() {
             </div>
             <Progress
               value={resolvedProgress}
-              className="h-2"
-              indicatorClassName={cn("transition-all duration-500", isStreaming && "animate-pulse")}
+              className={cn(
+                "h-2 [&_[data-slot=progress-indicator]]:transition-all [&_[data-slot=progress-indicator]]:duration-500",
+                isStreaming && "[&_[data-slot=progress-indicator]]:animate-pulse"
+              )}
             />
           </CardContent>
         </Card>
@@ -673,9 +675,9 @@ export default function PortfolioHealthPage() {
                 size="default"
                 variant="blue-gradient"
                 effect="fade"
-                onClick={() => router.push("/kai/dashboard?tab=holdings")}
+                onClick={() => router.push("/kai/dashboard")}
               >
-                Manage portfolio
+                Back to dashboard
               </Button>
             </div>
           </CardContent>

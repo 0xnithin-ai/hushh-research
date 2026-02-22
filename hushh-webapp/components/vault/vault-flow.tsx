@@ -31,7 +31,7 @@ import { morphyToast as toast } from "@/lib/morphy-ux/morphy";
 import { User } from "firebase/auth";
 
 import { useVault } from "@/lib/vault/vault-context";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { Icon } from "@/lib/morphy-ux/ui";
 import type { GeneratedVaultKeyMode } from "@/lib/services/vault-bootstrap-service";
 import { VaultMethodService, type VaultMethod } from "@/lib/services/vault-method-service";

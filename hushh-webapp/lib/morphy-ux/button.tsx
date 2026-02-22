@@ -1,47 +1,23 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { type IconWeight } from "@phosphor-icons/react";
+
 import {
-  type MorphyButtonBaseProps,
-} from "@/lib/morphy-ux/types";
+  Button as StockButton,
+  buttonVariants as stockButtonVariants,
+} from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { type MorphyButtonBaseProps } from "@/lib/morphy-ux/types";
 import { getVariantStyles } from "@/lib/morphy-ux/utils";
 import { MaterialRipple } from "@/lib/morphy-ux/material-ripple";
-import { type IconWeight } from "@phosphor-icons/react";
 import { useIconWeight } from "@/lib/morphy-ux/icon-theme-context";
 
-// ============================================================================
-// BUTTON VARIANTS
-// ============================================================================
-
-const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer focus-visible:outline-none focus:outline-none focus-visible:outline-none",
-  {
-    variants: {
-      size: {
-        sm: "h-10 px-4 text-sm",
-        default: "h-12 px-6 py-3",
-        lg: "h-14 px-8 text-base",
-        xl: "h-16 px-12 text-lg",
-        icon: "h-12 w-12",
-        "icon-sm": "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      size: "default",
-    },
-  }
-);
-
-//  ============================================================================
-// BUTTON COMPONENT - Material 3 Expressive + Morphy-UX
-// ============================================================================
+type MorphyButtonSize = "sm" | "default" | "lg" | "xl" | "icon" | "icon-sm";
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants>,
+  extends Omit<React.ComponentProps<typeof StockButton>, "variant" | "size">,
     MorphyButtonBaseProps {
   asChild?: boolean;
+  size?: MorphyButtonSize;
   icon?: {
     icon: React.ComponentType<{ className?: string; weight?: IconWeight }>;
     title?: string;
@@ -50,159 +26,135 @@ export interface ButtonProps
   };
 }
 
+function mapToStockVariant(variant: ButtonProps["variant"]) {
+  if (variant === "link") return "link" as const;
+  if (variant === "destructive") return "destructive" as const;
+  return "ghost" as const;
+}
+
+function mapToStockSize(size: MorphyButtonSize | undefined) {
+  switch (size) {
+    case "sm":
+      return "sm" as const;
+    case "lg":
+      return "lg" as const;
+    case "icon":
+      return "icon" as const;
+    case "icon-sm":
+      return "icon-sm" as const;
+    default:
+      return "default" as const;
+  }
+}
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       className,
-      // Default to primary CTA look (design-system requirement).
       variant = "blue-gradient",
       effect = "fill",
-      size,
+      size = "default",
       asChild = false,
       showRipple = true,
       icon,
       fullWidth,
       loading = false,
       children,
+      disabled,
       ...props
     },
     ref
   ) => {
     const iconWeight = useIconWeight();
-    const Comp = asChild ? Slot : "button";
-
-    // Normalize disabled/loading state
-    const { disabled, ...restProps } = props;
-    const isDisabled = disabled || loading;
-
-    // Get centralized styles
+    const IconComponent = icon?.icon;
+    const isDisabled = Boolean(disabled || loading);
     const variantStyles = getVariantStyles(variant, effect);
 
-    // Icon component
-    const IconComponent = icon?.icon;
+    const stockVariant = mapToStockVariant(variant);
+    const stockSize = mapToStockSize(size);
+    const isXl = size === "xl";
 
-    // Accent color for icon (blue in light, yellow in dark)
-    const accentColor = "text-[var(--morphy-primary-start)]";
-
-    // Decoupled icon background and color logic (muted to gradient)
-    const getIconBoxStyle = (isGradient: boolean) => {
-      if (isGradient) {
-        // Always: solid brand gradient background
-        return "bg-gradient-to-r from-[var(--morphy-primary-start)] to-[var(--morphy-primary-end)] border border-transparent";
+    const getIconBoxSize = () => {
+      switch (size) {
+        case "sm":
+          return "h-6 w-6";
+        case "lg":
+          return "h-10 w-10";
+        case "xl":
+          return "h-12 w-12";
+        default:
+          return "h-8 w-8";
       }
-      // For false, transparent bg, accent border on hover
-      return `bg-transparent border border-solid transition-colors duration-300 border-transparent`;
     };
 
-    const getIconColor = (isGradient: boolean) => {
-      if (isGradient) {
-        // Always: white (light), black (dark)
-        return "text-white dark:text-black";
+    const getIconSize = () => {
+      switch (size) {
+        case "sm":
+          return "h-3 w-3";
+        case "lg":
+          return "h-5 w-5";
+        case "xl":
+          return "h-6 w-6";
+        default:
+          return "h-4 w-4";
       }
-      if (effect === "fill" && (variant === "blue-gradient" || variant === "blue" || variant === "gradient")) {
-        return "text-inherit";
-      }
-      return accentColor;
     };
 
-    // Helper to render the icon block (like Card)
-    const renderIconBlock = () => {
-      if (!IconComponent) return null;
-      const isGradientIcon = icon?.gradient;
-      const gradient = !!isGradientIcon;
-
-      // Responsive icon sizing based on button size
-      const getIconSize = () => {
-        switch (size) {
-          case "sm":
-            return "h-3 w-3";
-          case "lg":
-            return "h-5 w-5";
-          case "xl":
-            return "h-6 w-6";
-          default:
-            return "h-4 w-4";
-        }
-      };
-
-      const getIconBoxSize = () => {
-        switch (size) {
-          case "sm":
-            return "w-6 h-6";
-          case "lg":
-            return "w-10 h-10";
-          case "xl":
-            return "w-12 h-12";
-          default:
-            return "w-8 h-8";
-        }
-      };
-
-      return (
-        <div className={cn("relative flex items-center justify-center", children && "mr-2.5")}>
-          <div
-            className={cn(
-              "rounded-lg flex items-center justify-center transition-colors duration-200 border",
-              getIconBoxSize(),
-              getIconBoxStyle(gradient)
-            )}
-          >
-            <IconComponent
-              className={cn(
-                "transition-colors duration-400",
-                getIconSize(),
-                getIconColor(gradient)
-              )}
-              weight={icon?.weight || iconWeight}
-            />
-          </div>
-        </div>
-      );
-    };
+    const iconBoxClass = icon?.gradient
+      ? "bg-gradient-to-r from-[var(--morphy-primary-start)] to-[var(--morphy-primary-end)] border-transparent"
+      : "bg-transparent border-transparent";
+    const iconColorClass = icon?.gradient
+      ? "text-white dark:text-black"
+      : effect === "fill" && variant !== "none"
+      ? "text-inherit"
+      : "text-[var(--morphy-primary-start)]";
 
     return (
-      <Comp
+      <StockButton
+        ref={ref}
+        asChild={asChild}
+        variant={stockVariant}
+        size={stockSize}
+        disabled={isDisabled}
+        data-loading={loading || undefined}
+        aria-busy={loading || undefined}
         className={cn(
-          buttonVariants({ size }),
+          "relative overflow-hidden transition-[border-color,box-shadow,background-color] duration-200",
           variantStyles,
-          "shadow-none",
-          showRipple ? "relative overflow-hidden" : "",
-          // Link buttons should behave like text, not pills with borders/heights.
-          variant === "link" ? "h-auto px-0 py-0 rounded-none" : "",
-          // Add border with transition for smooth hover effect (not for link/none).
-          variant !== "link" && variant !== "none"
-            ? "border border-transparent transition-[border-color,box-shadow,background-color] duration-200 hover:border-black dark:hover:border-[#c0c0c0]"
-            : "",
+          variant !== "none" && variant !== "link" ? "border border-transparent" : "border-transparent",
+          isXl ? "h-16 px-12 text-lg" : "",
           fullWidth ? "w-full" : "",
           loading ? "cursor-wait" : "",
           className
         )}
-        style={{ outline: "none" }}
-        ref={ref}
-        type={restProps.type || "button"}
-        disabled={isDisabled}
-        aria-busy={loading || undefined}
-        data-loading={loading || undefined}
-        {...restProps}
+        {...props}
       >
-        {/* Material 3 Expressive Ripple */}
-        {showRipple && (
+        {showRipple ? (
           <MaterialRipple
             variant={variant}
             effect={effect}
-            disabled={props.disabled}
+            disabled={isDisabled}
             className="z-0"
           />
-        )}
-        <span className="relative z-10 inline-flex items-center justify-center pointer-events-none text-inherit">
-          {IconComponent && renderIconBlock()}
+        ) : null}
+        <span className="relative z-10 inline-flex items-center justify-center text-inherit">
+          {IconComponent ? (
+            <span className={cn("mr-2.5 flex items-center justify-center rounded-lg border", getIconBoxSize(), iconBoxClass)}>
+              <IconComponent
+                className={cn(getIconSize(), iconColorClass)}
+                weight={icon?.weight || iconWeight}
+              />
+            </span>
+          ) : null}
           {children}
         </span>
-      </Comp>
+      </StockButton>
     );
   }
 );
 
 Button.displayName = "Button";
+
+const buttonVariants = stockButtonVariants;
 
 export { Button, buttonVariants };

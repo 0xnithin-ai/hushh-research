@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { OnboardingLocalService } from "@/lib/services/onboarding-local-service";
 import { isOnboardingFlowActiveCookieEnabled } from "@/lib/services/onboarding-route-cookie";

@@ -8,7 +8,7 @@ import { AuthService } from "@/lib/services/auth-service";
 import { ApiService } from "@/lib/services/api-service";
 import { auth } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/firebase/auth-context";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { useStepProgress } from "@/lib/progress/step-progress-context";
 import { isAndroid } from "@/lib/capacitor/platform";
 import { BrandMark, Icon } from "@/lib/morphy-ux/ui";

@@ -49,7 +49,7 @@ import { FCM_MESSAGE_EVENT } from "@/lib/notifications";
 import { ApiService } from "@/lib/services/api-service";
 import { CacheService, CACHE_KEYS } from "@/lib/services/cache-service";
 import { useConsentActions } from "@/lib/consent";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable } from "@/components/app-ui/data-table";
 import {
   appColumns,
   AppSummary,

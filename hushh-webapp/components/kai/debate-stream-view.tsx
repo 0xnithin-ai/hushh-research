@@ -11,7 +11,7 @@ import { DecisionCard, type DecisionResult } from "./views/decision-card";
 import { RoundTabsCard } from "./views/round-tabs-card";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/lib/morphy-ux/card";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ApiService } from "@/lib/services/api-service";

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/lib/morphy-ux/morphy";
 import { Shield, CheckCircle, XCircle, Clock, Lock } from "lucide-react";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { Icon } from "@/lib/morphy-ux/ui";
 
 // ============================================================================

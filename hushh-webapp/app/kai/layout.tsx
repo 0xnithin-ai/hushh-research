@@ -25,7 +25,7 @@ export default function KaiLayout({
   return (
     <VaultLockGuard>
       <KaiOnboardingGuard>
-        <div className="flex flex-col min-h-screen">
+        <div className="flex min-h-screen flex-col [--morphy-glass-accent-a:rgba(148,163,184,0.08)] [--morphy-glass-accent-b:rgba(226,232,240,0.08)] dark:[--morphy-glass-accent-a:rgba(63,63,70,0.16)] dark:[--morphy-glass-accent-b:rgba(82,82,91,0.14)]">
           <main className="flex-1 pb-32">{children}</main>
           <VaultMethodPrompt enabled={shouldEnableMethodPrompt} />
           <KaiNavTour />
@@ -34,4 +34,3 @@ export default function KaiLayout({
     </VaultLockGuard>
   );
 }
-

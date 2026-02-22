@@ -445,11 +445,11 @@ export function KaiMarketPreviewView() {
   }, [hasPayload, payload?.hero?.holdings_count]);
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-7 pb-[calc(148px+var(--app-bottom-inset))]">
+    <div className="mx-auto w-full max-w-[390px] px-4 py-7 pb-[calc(148px+var(--app-bottom-inset))]">
       <header className="space-y-2 text-center">
-        <h1 className="text-2xl font-black tracking-tight leading-tight">Kai Market Home</h1>
+        <h1 className="text-2xl font-black tracking-tight leading-tight">Explore the market with Kai</h1>
         <p className="mx-auto max-w-[22rem] text-sm text-muted-foreground">
-          Market snapshot for your tracked symbols.
+          Structured insights, even before connecting your portfolio.
         </p>
       </header>
 
@@ -498,7 +498,7 @@ export function KaiMarketPreviewView() {
         ) : (
           <Card variant="muted" effect="fill" className="rounded-xl p-0">
             <CardContent className="p-4 text-sm text-muted-foreground">
-              No spotlight rows are available from the current market cache.
+              No spotlight insights are available right now.
             </CardContent>
           </Card>
         )}
@@ -510,14 +510,16 @@ export function KaiMarketPreviewView() {
       </section>
 
       <section className="mt-10">
-        <SectionLabel>Scenario Insight</SectionLabel>
+        <SectionLabel>Scenario Simulation</SectionLabel>
         {scenarioSignal ? (
           <Card variant="muted" effect="fill" className="rounded-xl p-0">
             <CardContent className="space-y-2 p-4">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-bold">{scenarioSignal.title}</p>
                 <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {(scenarioSignal.confidence * 100).toFixed(0)}% conf.
+                  {Number.isFinite(scenarioSignal.confidence)
+                    ? `${(scenarioSignal.confidence * 100).toFixed(0)}% conf.`
+                    : "Signal"}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">{scenarioSignal.summary}</p>
@@ -526,7 +528,7 @@ export function KaiMarketPreviewView() {
         ) : (
           <Card variant="muted" effect="fill" className="rounded-xl p-0">
             <CardContent className="p-4 text-sm text-muted-foreground">
-              Scenario insight will appear when a signal is available in market cache.
+              Scenario insight is unavailable at the moment.
             </CardContent>
           </Card>
         )}
@@ -538,7 +540,7 @@ export function KaiMarketPreviewView() {
       </section>
 
       <section className="mt-10">
-        <SectionLabel>News Tape</SectionLabel>
+        <SectionLabel>News</SectionLabel>
         <NewsTape rows={payload?.news_tape || []} />
       </section>
 

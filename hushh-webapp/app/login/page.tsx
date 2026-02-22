@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { AuthStep } from "@/components/onboarding/AuthStep";
-import { HushhLoader } from "@/components/ui/hushh-loader";
+import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { ROUTES } from "@/lib/navigation/routes";
 
 function LoginContent() {
