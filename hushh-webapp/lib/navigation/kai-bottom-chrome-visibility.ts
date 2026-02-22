@@ -1,8 +1,9 @@
 import { useEffect, useSyncExternalStore } from "react";
 
-const HIDE_DELTA_PX = 24;
-const REVEAL_DELTA_PX = 8;
+const HIDE_DELTA_PX = 28;
+const REVEAL_DELTA_PX = 16;
 const MIN_SCROLL_Y_FOR_HIDE = 72;
+const JITTER_DELTA_PX = 2;
 const APP_SCROLL_ROOT_SELECTOR = '[data-app-scroll-root="true"]';
 
 type Listener = () => void;
@@ -10,8 +11,8 @@ type Listener = () => void;
 interface VisibilityState {
   hidden: boolean;
   lastY: number;
-  downDistance: number;
-  upDistance: number;
+  shownValleyY: number;
+  hiddenPeakY: number;
   initialized: boolean;
 }
 
@@ -24,8 +25,8 @@ const handleScroll = () => onScroll(readActiveScrollY());
 const state: VisibilityState = {
   hidden: false,
   lastY: 0,
-  downDistance: 0,
-  upDistance: 0,
+  shownValleyY: 0,
+  hiddenPeakY: 0,
   initialized: false,
 };
 
@@ -75,38 +76,47 @@ export function onScroll(y: number): void {
   if (!state.initialized) {
     state.initialized = true;
     state.lastY = nextY;
+    state.shownValleyY = nextY;
+    state.hiddenPeakY = nextY;
     return;
   }
 
   const delta = nextY - state.lastY;
   state.lastY = nextY;
 
-  if (Math.abs(delta) < 1) {
+  if (Math.abs(delta) < JITTER_DELTA_PX) {
     return;
   }
 
-  if (delta > 0) {
-    state.downDistance += delta;
-    state.upDistance = 0;
+  if (!state.hidden) {
+    if (delta < 0) {
+      state.shownValleyY = Math.min(state.shownValleyY, nextY);
+      return;
+    }
 
-    if (
-      !state.hidden &&
-      nextY >= MIN_SCROLL_Y_FOR_HIDE &&
-      state.downDistance >= HIDE_DELTA_PX
-    ) {
+    if (nextY < MIN_SCROLL_Y_FOR_HIDE) {
+      state.shownValleyY = nextY;
+      return;
+    }
+
+    const downDistance = nextY - state.shownValleyY;
+    if (downDistance >= HIDE_DELTA_PX) {
       state.hidden = true;
-      state.downDistance = 0;
+      state.hiddenPeakY = nextY;
       emit();
     }
     return;
   }
 
-  state.upDistance += Math.abs(delta);
-  state.downDistance = 0;
+  if (delta > 0) {
+    state.hiddenPeakY = Math.max(state.hiddenPeakY, nextY);
+    return;
+  }
 
-  if (state.hidden && (state.upDistance >= REVEAL_DELTA_PX || nextY <= 8)) {
+  const upDistance = state.hiddenPeakY - nextY;
+  if (upDistance >= REVEAL_DELTA_PX || nextY <= 8) {
     state.hidden = false;
-    state.upDistance = 0;
+    state.shownValleyY = nextY;
     emit();
   }
 }
@@ -134,10 +144,10 @@ function detachScrollListener() {
 
 export function resetKaiBottomChromeVisibility(): void {
   state.hidden = false;
-  state.downDistance = 0;
-  state.upDistance = 0;
   state.initialized = false;
   state.lastY = readActiveScrollY();
+  state.shownValleyY = state.lastY;
+  state.hiddenPeakY = state.lastY;
   emit();
 }
 

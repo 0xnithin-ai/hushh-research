@@ -7,8 +7,8 @@
  * On root-level pages (/kai, /consents, /profile), triggers exit dialog.
  * On sub-pages (Level 2+), navigates to parent route.
  *
- * On native: StatusBarBlur (safe-area strip) and TopAppBar (breadcrumb bar) share
- * the same transparent blur style so the Capacitor status bar area and breadcrumb
+ * On native: StatusBarBlur (safe-area strip) and TopAppBar share
+ * the same transparent blur style so the Capacitor status bar area and top
  * bar match (one continuous frosted look).
  *
  * Place this at the layout level for seamless integration.
@@ -19,16 +19,7 @@ import { ArrowLeft, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "@/lib/navigation/navigation-context";
 import { Capacitor } from "@capacitor/core";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/lib/morphy-ux/button";
 import {
   DropdownMenu,
@@ -60,7 +51,7 @@ import { CacheSyncService } from "@/lib/cache/cache-sync-service";
 import { getKaiChromeState } from "@/lib/navigation/kai-chrome-state";
 import { ROUTES } from "@/lib/navigation/routes";
 
-/** Shared style so Capacitor status bar area and breadcrumb bar match (masked blur on all platforms) */
+/** Shared style so Capacitor status bar area and top bar match (masked blur on all platforms) */
 const BAR_GLASS_CLASS = "top-bar-glass";
 
 /**
@@ -102,6 +93,13 @@ interface TopAppBarProps {
   className?: string;
 }
 
+function getTopBarTitle(pathname: string): string | null {
+  if (pathname.startsWith(ROUTES.KAI_HOME)) return "Kai";
+  if (pathname.startsWith(ROUTES.CONSENTS)) return "Consents";
+  if (pathname.startsWith(ROUTES.PROFILE)) return "Profile";
+  return null;
+}
+
 export function TopAppBar({ className }: TopAppBarProps) {
   const { handleBack } = useNavigation();
   const [isNative, setIsNative] = useState(false);
@@ -109,6 +107,7 @@ export function TopAppBar({ className }: TopAppBarProps) {
   const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
   const showOnboardingActions = chromeState.useOnboardingChrome;
   const hideChrome = pathname === ROUTES.HOME || pathname.startsWith(ROUTES.LOGIN);
+  const centerTitle = useMemo(() => getTopBarTitle(pathname), [pathname]);
 
   useEffect(() => {
     // Check platform on mount to avoid hydration mismatch
@@ -130,44 +129,21 @@ export function TopAppBar({ className }: TopAppBarProps) {
         className,
       )}
     >
+      {centerTitle ? (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 pb-1 text-center">
+          <span className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
+            {centerTitle}
+          </span>
+        </div>
+      ) : null}
       <div className="flex items-center gap-2">
         <button
           onClick={handleBack}
-          className="p-2 -ml-2 rounded-full hover:bg-muted/50 active:bg-muted/80 transition-colors"
+          className="grid h-10 w-10 place-items-center rounded-full border border-border/60 bg-background/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-muted/50 active:bg-muted/80"
           aria-label="Go back"
         >
-          <ArrowLeft className="h-6 w-6" />
+          <ArrowLeft className="h-5 w-5" />
         </button>
-
-        <Breadcrumb>
-          <BreadcrumbList className="text-lg">
-            {pathname
-              .split("/")
-              .filter(Boolean)
-              .map((segment, index, arr) => {
-                const height = arr.length;
-                const isLast = index === height - 1;
-                const href = `/${arr.slice(0, index + 1).join("/")}`;
-                const label =
-                  segment.charAt(0).toUpperCase() + segment.slice(1);
-
-                return (
-                  <div key={href} className="flex items-center gap-2">
-                    <BreadcrumbItem>
-                      {isLast ? (
-                        <BreadcrumbPage>{label}</BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink asChild>
-                          <Link href={href}>{label}</Link>
-                        </BreadcrumbLink>
-                      )}
-                    </BreadcrumbItem>
-                    {!isLast && <BreadcrumbSeparator />}
-                  </div>
-                );
-              })}
-          </BreadcrumbList>
-        </Breadcrumb>
       </div>
 
       {showOnboardingActions && <OnboardingRouteActions />}

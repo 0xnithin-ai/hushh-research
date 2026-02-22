@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -46,6 +47,10 @@ interface DataTableProps<TData, TValue> {
   filterOptions?: { label: string; value: string }[];
   filterPlaceholder?: string;
   onRowClick?: (row: TData) => void;
+  initialPageSize?: number;
+  pageSizeOptions?: number[];
+  rowClassName?: (row: TData) => string;
+  enableSearch?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -57,12 +62,23 @@ export function DataTable<TData, TValue>({
   filterOptions,
   filterPlaceholder = "Filter...",
   onRowClick,
+  initialPageSize = 10,
+  pageSizeOptions = [10, 25, 50],
+  rowClassName,
+  enableSearch = true,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
   const [globalFilter, setGlobalFilter] = React.useState("");
+  const normalizedPageSizeOptions = React.useMemo(
+    () =>
+      Array.from(new Set([initialPageSize, ...pageSizeOptions]))
+        .filter((size) => Number.isFinite(size) && size > 0)
+        .sort((a, b) => a - b),
+    [initialPageSize, pageSizeOptions]
+  );
 
   const table = useReactTable({
     data,
@@ -81,58 +97,70 @@ export function DataTable<TData, TValue>({
     },
     initialState: {
       pagination: {
-        pageSize: 10,
+        pageSize: initialPageSize,
       },
     },
   });
 
+  const filteredCount = table.getFilteredRowModel().rows.length;
+  const pageIndex = table.getState().pagination.pageIndex;
+  const pageSize = table.getState().pagination.pageSize;
+  const rangeStart = filteredCount === 0 ? 0 : pageIndex * pageSize + 1;
+  const rangeEnd = filteredCount === 0 ? 0 : Math.min((pageIndex + 1) * pageSize, filteredCount);
+  const pageCount = table.getPageCount();
+  const currentPage = pageCount === 0 ? 0 : pageIndex + 1;
+
   return (
     <div className="space-y-4">
       {/* Search and Filter Controls */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Global Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={searchPlaceholder}
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9 cursor-text"
-          />
-        </div>
+      {(enableSearch || (filterKey && filterOptions)) && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Global Search */}
+          {enableSearch ? (
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pl-9 cursor-text"
+              />
+            </div>
+          ) : null}
 
-        {/* Column Filter Dropdown */}
-        {filterKey && filterOptions && (
-          <Select
-            value={
-              (table.getColumn(filterKey)?.getFilterValue() as string) ?? "all"
-            }
-            onValueChange={(value) =>
-              table
-                .getColumn(filterKey)
-                ?.setFilterValue(value === "all" ? undefined : value)
-            }
-          >
-            <SelectTrigger className="w-full sm:w-[200px] cursor-pointer">
-              <SelectValue placeholder={filterPlaceholder} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="cursor-pointer">
-                All
-              </SelectItem>
-              {filterOptions.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  className="cursor-pointer"
-                >
-                  {option.label}
+          {/* Column Filter Dropdown */}
+          {filterKey && filterOptions && (
+            <Select
+              value={
+                (table.getColumn(filterKey)?.getFilterValue() as string) ?? "all"
+              }
+              onValueChange={(value) =>
+                table
+                  .getColumn(filterKey)
+                  ?.setFilterValue(value === "all" ? undefined : value)
+              }
+            >
+              <SelectTrigger className="w-full sm:w-[200px] cursor-pointer">
+                <SelectValue placeholder={filterPlaceholder} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="cursor-pointer">
+                  All
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+                {filterOptions.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    className="cursor-pointer"
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-hidden rounded border">
@@ -169,8 +197,11 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onRowClick?.(row.original)}
+                  className={cn(
+                    onRowClick ? "cursor-pointer hover:bg-muted/50" : "hover:bg-muted/40",
+                    rowClassName?.(row.original)
+                  )}
+                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -199,17 +230,7 @@ export function DataTable<TData, TValue>({
       {/* Pagination Controls */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Showing{" "}
-          {table.getState().pagination.pageIndex *
-            table.getState().pagination.pageSize +
-            1}
-          -
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) *
-              table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          of {table.getFilteredRowModel().rows.length}
+          Showing {rangeStart}-{rangeEnd} of {filteredCount}
         </div>
 
         <div className="flex items-center gap-2">
@@ -222,7 +243,7 @@ export function DataTable<TData, TValue>({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[10, 25, 50].map((size) => (
+              {normalizedPageSizeOptions.map((size) => (
                 <SelectItem
                   key={size}
                   value={size.toString()}
@@ -245,8 +266,7 @@ export function DataTable<TData, TValue>({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
+            Page {currentPage} of {pageCount}
           </span>
           <Button
             variant="outline"

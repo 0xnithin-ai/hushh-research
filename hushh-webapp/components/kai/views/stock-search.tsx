@@ -23,6 +23,7 @@ import {
   searchTickerUniverse,
   type TickerUniverseRow,
 } from "@/lib/kai/ticker-universe-cache";
+import { ROUTES } from "@/lib/navigation/routes";
 
 // Top popular stocks for instant suggestion (offline fallback)
 const TOP_STOCKS = [
@@ -231,7 +232,7 @@ export function StockSearch({
 
     // Fallback: navigate to analysis route.
     // Note: analysis start is driven by Zustand in KaiFlow; query param is only a fallback.
-    router.push(`/kai/dashboard/analysis?ticker=${ticker}`);
+    router.push(`${ROUTES.KAI_ANALYSIS}?ticker=${ticker}`);
   };
 
   const items: StockSearchItem[] = React.useMemo(() => {

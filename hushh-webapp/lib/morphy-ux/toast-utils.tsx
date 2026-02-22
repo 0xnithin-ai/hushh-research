@@ -13,6 +13,12 @@ import {
 import { useIconWeight } from "./icon-theme-context";
 import { cn } from "@/lib/utils";
 
+type MorphyToastTone = FeedbackTone | "danger";
+
+function toSonnerTone(tone: MorphyToastTone): FeedbackTone {
+  return tone === "danger" ? "error" : tone;
+}
+
 // ============================================================================
 // GLOBAL TOAST PERSISTENCE SYSTEM
 // ============================================================================
@@ -32,7 +38,7 @@ interface PersistentToastOptions {
 
 interface PersistentToast {
   id: string;
-  type: FeedbackTone;
+  type: MorphyToastTone;
   message: string;
   duration?: number;
   options?: PersistentToastOptions;
@@ -94,11 +100,11 @@ class GlobalToastManager {
   }
 
   private showToast(
-    type: FeedbackTone,
+    type: MorphyToastTone,
     message: string,
     options?: PersistentToastOptions
   ) {
-    switch (type) {
+    switch (toSonnerTone(type)) {
       case "success":
         toast.success(message, options);
         break;
@@ -116,7 +122,7 @@ class GlobalToastManager {
 
   // Public methods for persistent toasts
   persistToast(
-    type: FeedbackTone,
+    type: MorphyToastTone,
     message: string,
     options?: PersistentToastOptions
   ) {
@@ -157,12 +163,13 @@ interface ToastOptions {
 }
 
 const getToastToneClassName = (
-  tone: FeedbackTone,
+  tone: MorphyToastTone,
   variant?: ColorVariant
 ) =>
   cn(
     "morphy-sonner-toast",
     `morphy-sonner-tone-${tone}`,
+    tone === "danger" ? "morphy-sonner-tone-error" : undefined,
     variant ? getVariantStylesNoHover(variant, "fill") : undefined
   );
 
@@ -207,6 +214,22 @@ export const useMorphyToast = () => {
         />
       ),
       className: cn(getToastToneClassName("error", variant), className),
+    });
+  };
+
+  const danger = (message: string, options: ToastOptions = {}) => {
+    const { variant, duration = 5000, description, className } = options;
+
+    return toast.error(message, {
+      duration,
+      description,
+      icon: (
+        <XCircleIcon
+          className="h-4 w-4 text-current"
+          weight={iconWeight}
+        />
+      ),
+      className: cn(getToastToneClassName("danger", variant), className),
     });
   };
 
@@ -276,6 +299,10 @@ export const useMorphyToast = () => {
     globalToastManager.persistToast("error", message, options);
   };
 
+  const persistentDanger = (message: string, options: ToastOptions = {}) => {
+    globalToastManager.persistToast("danger", message, options);
+  };
+
   const persistentWarning = (message: string, options: ToastOptions = {}) => {
     globalToastManager.persistToast("warning", message, options);
   };
@@ -287,6 +314,7 @@ export const useMorphyToast = () => {
   return {
     success,
     error,
+    danger,
     warning,
     info,
     custom,
@@ -295,6 +323,7 @@ export const useMorphyToast = () => {
     // Persistent versions
     persistentSuccess,
     persistentError,
+    persistentDanger,
     persistentWarning,
     persistentInfo,
   };
@@ -322,6 +351,16 @@ export const morphyToast = {
       duration,
       description,
       className: cn(getToastToneClassName("error", variant), className),
+    });
+  },
+
+  danger: (message: string, options?: ToastOptions) => {
+    const { variant, duration = 5000, description, className } = options || {};
+
+    return toast.error(message, {
+      duration,
+      description,
+      className: cn(getToastToneClassName("danger", variant), className),
     });
   },
 
@@ -368,4 +407,7 @@ export const morphyToast = {
       ),
     });
   },
+
+  dismiss: toast.dismiss,
+  promise: toast.promise,
 };

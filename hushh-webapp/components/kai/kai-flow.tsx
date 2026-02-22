@@ -1427,8 +1427,8 @@ export function KaiFlow({
         useKaiSession.getState().setAnalysisParams(params);
         
         // Navigate to analysis view (DebateStreamView will read from Zustand store)
-        console.log("[KaiFlow] Navigating to /kai/dashboard/analysis");
-        router.push(`${ROUTES.KAI_DASHBOARD}/analysis`);
+        console.log("[KaiFlow] Navigating to /kai/analysis");
+        router.push(ROUTES.KAI_ANALYSIS);
       })
       .catch((error) => {
         console.error("[KaiFlow] Error getting context:", error);

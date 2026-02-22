@@ -12,7 +12,7 @@
  * CacheProvider enables data sharing across page navigations to reduce API calls.
  */
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useMemo, useRef } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/firebase";
 import { VaultProvider } from "@/lib/vault/vault-context";
@@ -33,10 +33,7 @@ import { KaiCommandBarGlobal } from "@/components/kai/kai-command-bar-global";
 import { ROUTES, isKaiOnboardingRoute } from "@/lib/navigation/routes";
 import { useScrollReset } from "@/lib/navigation/use-scroll-reset";
 import { Capacitor } from "@capacitor/core";
-import {
-  onScroll as onKaiBottomChromeScroll,
-  resetKaiBottomChromeVisibility,
-} from "@/lib/navigation/kai-bottom-chrome-visibility";
+import { resetKaiBottomChromeVisibility } from "@/lib/navigation/kai-bottom-chrome-visibility";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -47,7 +44,15 @@ export function Providers({ children }: ProvidersProps) {
   const hideGlobalChrome =
     pathname === ROUTES.HOME || pathname.startsWith(ROUTES.LOGIN);
   const isKaiOnboarding = isKaiOnboardingRoute(pathname);
+  const isKaiTabRoute =
+    pathname === ROUTES.KAI_HOME ||
+    pathname.startsWith(`${ROUTES.KAI_DASHBOARD}`) ||
+    pathname.startsWith(`${ROUTES.KAI_ANALYSIS}`);
   const pageRef = useRef<HTMLDivElement | null>(null);
+  const pageAnimationKey = useMemo(
+    () => (pathname.startsWith("/kai") ? "/kai-stable-shell" : pathname),
+    [pathname]
+  );
 
   // One-time GSAP init (non-blocking).
   useEffect(() => {
@@ -66,8 +71,8 @@ export function Providers({ children }: ProvidersProps) {
   }, []);
 
   // App-wide page enter fade.
-  usePageEnterAnimation(pageRef, { enabled: true, key: pathname });
-  useScrollReset(pathname, { enabled: true, behavior: "auto" });
+  usePageEnterAnimation(pageRef, { enabled: true, key: pageAnimationKey });
+  useScrollReset(pathname, { enabled: !isKaiTabRoute, behavior: "auto" });
 
   useEffect(() => {
     resetKaiBottomChromeVisibility();
@@ -95,9 +100,6 @@ export function Providers({ children }: ProvidersProps) {
                     {/* Main scroll container: extends under fixed bar so content can scroll behind it; padding clears bar height */}
                     <div
                       data-app-scroll-root="true"
-                      onScroll={(event) => {
-                        onKaiBottomChromeScroll(event.currentTarget.scrollTop);
-                      }}
                       className={
                         hideGlobalChrome
                           ? // Landing is a full-screen onboarding flow: no page scroll, no extra top inset.
@@ -110,7 +112,6 @@ export function Providers({ children }: ProvidersProps) {
                     >
                       <div
                         ref={pageRef}
-                        key={pathname}
                         className={isKaiOnboarding ? "min-h-0 h-full" : "min-h-0"}
                       >
                         {children}

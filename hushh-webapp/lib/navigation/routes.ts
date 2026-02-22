@@ -15,6 +15,8 @@ export const ROUTES = {
   KAI_ONBOARDING: "/kai/onboarding",
   KAI_IMPORT: "/kai/import",
   KAI_DASHBOARD: "/kai/dashboard",
+  KAI_ANALYSIS: "/kai/analysis",
+  KAI_OPTIMIZE: "/kai/optimize",
 } as const;
 
 export function isKaiOnboardingRoute(pathname: string): boolean {

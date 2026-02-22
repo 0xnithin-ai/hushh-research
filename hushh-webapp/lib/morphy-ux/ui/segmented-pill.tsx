@@ -9,7 +9,7 @@ import { Icon } from "@/lib/morphy-ux/ui/icon";
 export type SegmentedPillOption = {
   value: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   badge?: number;
   disabled?: boolean;
   dataTourId?: string;
@@ -120,21 +120,25 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
                 isDisabled && "opacity-45"
               )}
             >
-              <span className="relative flex shrink-0 items-center justify-center">
-                <Icon
-                  icon={option.icon}
-                  size={styles.icon}
-                  className={cn(
-                    "transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
-                    isActive && "scale-105"
-                  )}
-                />
-                {typeof option.badge === "number" && option.badge > 0 ? (
-                  <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full border border-background bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
-                    {option.badge > 9 ? "9+" : option.badge}
-                  </span>
-                ) : null}
-              </span>
+              {option.icon || (typeof option.badge === "number" && option.badge > 0) ? (
+                <span className="relative flex shrink-0 items-center justify-center">
+                  {option.icon ? (
+                    <Icon
+                      icon={option.icon}
+                      size={styles.icon}
+                      className={cn(
+                        "transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
+                        isActive && "scale-105"
+                      )}
+                    />
+                  ) : null}
+                  {typeof option.badge === "number" && option.badge > 0 ? (
+                    <span className="absolute -right-1 -top-1 inline-flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full border border-background bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+                      {option.badge > 9 ? "9+" : option.badge}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
               <span className={cn("whitespace-nowrap", styles.label)}>{option.label}</span>
             </button>
           );

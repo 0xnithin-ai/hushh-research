@@ -3,11 +3,9 @@
 /**
  * Kai Dashboard Layout
  *
- * VaultLockGuard and ConsentSSEProvider are provided by parent app/kai/layout.tsx.
- * Pass-through to preserve flex scroll behavior.
+ * Top route tabs are now mounted at app/kai/layout.tsx so they persist across
+ * Market / Dashboard / Analysis route switches without remount flicker.
  */
-
-import { DashboardRouteTabs } from "@/components/kai/layout/dashboard-route-tabs";
 
 export default function KaiDashboardLayout({
   children,
@@ -16,7 +14,6 @@ export default function KaiDashboardLayout({
 }) {
   return (
     <div className="w-full">
-      <DashboardRouteTabs />
       <div className="w-full pb-24">{children}</div>
     </div>
   );

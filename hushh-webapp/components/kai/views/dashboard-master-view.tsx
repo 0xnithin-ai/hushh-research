@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import {
   Pencil,
   Plus,
@@ -8,9 +10,11 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { DataTable } from "@/components/app-ui/data-table";
 import { AssetAllocationDonut } from "@/components/kai/charts/asset-allocation-donut";
 import { GainLossDistributionChart } from "@/components/kai/charts/gain-loss-distribution-chart";
 import { HoldingsConcentrationChart } from "@/components/kai/charts/holdings-concentration-chart";
@@ -25,6 +29,7 @@ import { Button as MorphyButton } from "@/lib/morphy-ux/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/lib/morphy-ux/card";
 import { Icon } from "@/lib/morphy-ux/ui";
 import { KAI_EXPERIENCE_CONTRACT } from "@/lib/kai/experience-contract";
+import { ROUTES } from "@/lib/navigation/routes";
 import { WorldModelService } from "@/lib/services/world-model-service";
 import { cn } from "@/lib/utils";
 import { useVault } from "@/lib/vault/vault-context";
@@ -38,7 +43,21 @@ interface DashboardMasterViewProps {
   onReupload?: () => void;
 }
 
-type ManagedHolding = PortfolioHolding & { pending_delete?: boolean };
+type ManagedHolding = PortfolioHolding & {
+  pending_delete?: boolean;
+  client_id: string;
+  source_key?: string;
+};
+
+interface ComparableHolding {
+  symbol: string;
+  name: string;
+  quantity: number;
+  price: number;
+  market_value: number;
+  cost_basis: number;
+  acquisition_date: string;
+}
 
 const ALLOCATION_COLOR_PALETTE = [
   "#2563eb",
@@ -100,6 +119,55 @@ function deriveRiskBucket(holdings: ManagedHolding[]): string {
   return "conservative";
 }
 
+function toComparableHolding(holding: Partial<PortfolioHolding>): ComparableHolding {
+  return {
+    symbol: String(holding.symbol || "").trim().toUpperCase(),
+    name: String(holding.name || "").trim(),
+    quantity: Number.isFinite(Number(holding.quantity)) ? Number(holding.quantity) : 0,
+    price: Number.isFinite(Number(holding.price)) ? Number(holding.price) : 0,
+    market_value: Number.isFinite(Number(holding.market_value)) ? Number(holding.market_value) : 0,
+    cost_basis: Number.isFinite(Number(holding.cost_basis)) ? Number(holding.cost_basis) : 0,
+    acquisition_date: String(holding.acquisition_date || "").trim(),
+  };
+}
+
+function comparableHoldingsEqual(a: ComparableHolding, b: ComparableHolding): boolean {
+  return (
+    a.symbol === b.symbol &&
+    a.name === b.name &&
+    Math.abs(a.quantity - b.quantity) < 0.0001 &&
+    Math.abs(a.price - b.price) < 0.0001 &&
+    Math.abs(a.market_value - b.market_value) < 0.01 &&
+    Math.abs(a.cost_basis - b.cost_basis) < 0.01 &&
+    a.acquisition_date === b.acquisition_date
+  );
+}
+
+function createLocalHoldingId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `local-${crypto.randomUUID()}`;
+  }
+  return `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function buildManagedHoldingsFromSource(sourceHoldings: PortfolioHolding[]): {
+  managed: ManagedHolding[];
+  baselineBySource: Map<string, ComparableHolding>;
+} {
+  const baselineBySource = new Map<string, ComparableHolding>();
+  const managed = sourceHoldings.map((holding, index) => {
+    const sourceKey = `source-${index}`;
+    baselineBySource.set(sourceKey, toComparableHolding(holding));
+    return {
+      ...holding,
+      pending_delete: false,
+      client_id: sourceKey,
+      source_key: sourceKey,
+    };
+  });
+  return { managed, baselineBySource };
+}
+
 export function DashboardMasterView({
   userId,
   vaultOwnerToken,
@@ -107,28 +175,22 @@ export function DashboardMasterView({
   onAnalyzeStock,
   onReupload,
 }: DashboardMasterViewProps) {
+  const router = useRouter();
   const { vaultKey } = useVault();
   const { setPortfolioData: setCachePortfolioData } = useCache();
+  const baselineBySourceRef = useRef<Map<string, ComparableHolding>>(new Map());
 
   const [holdingsDraft, setHoldingsDraft] = useState<ManagedHolding[]>([]);
-  const [hasHoldingsChanges, setHasHoldingsChanges] = useState(false);
   const [isSavingHoldings, setIsSavingHoldings] = useState(false);
   const [editingHolding, setEditingHolding] = useState<ManagedHolding | null>(null);
-  const [editingIndex, setEditingIndex] = useState(-1);
+  const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newHoldingSymbol, setNewHoldingSymbol] = useState("");
-  const [newHoldingQuantity, setNewHoldingQuantity] = useState("");
-  const [newHoldingPrice, setNewHoldingPrice] = useState("");
 
   useEffect(() => {
     const sourceHoldings = (portfolioData.holdings || portfolioData.detailed_holdings || []) as PortfolioHolding[];
-    setHoldingsDraft(
-      sourceHoldings.map((holding) => ({
-        ...holding,
-        pending_delete: false,
-      }))
-    );
-    setHasHoldingsChanges(false);
+    const { managed, baselineBySource } = buildManagedHoldingsFromSource(sourceHoldings);
+    baselineBySourceRef.current = baselineBySource;
+    setHoldingsDraft(managed);
   }, [portfolioData]);
 
   const activeHoldings = useMemo(
@@ -136,7 +198,12 @@ export function DashboardMasterView({
       holdingsDraft
         .filter((holding) => !holding.pending_delete)
         .map((holding) => {
-          const { pending_delete: _pendingDelete, ...rest } = holding;
+          const {
+            pending_delete: _pendingDelete,
+            client_id: _clientId,
+            source_key: _sourceKey,
+            ...rest
+          } = holding;
           return rest;
         }),
     [holdingsDraft]
@@ -174,14 +241,42 @@ export function DashboardMasterView({
     [model.holdings]
   );
 
-  const visibleHoldingRows = useMemo(
-    () =>
-      holdingsDraft
-        .map((holding, index) => ({ holding, index }))
-        .filter((row) => !row.holding.pending_delete)
-        .slice(0, 8),
-    [holdingsDraft]
-  );
+  const holdingsChangeSummary = useMemo(() => {
+    const baselineBySource = baselineBySourceRef.current;
+    let added = 0;
+    let edited = 0;
+    let deleted = 0;
+
+    for (const holding of holdingsDraft) {
+      const baseline = holding.source_key ? baselineBySource.get(holding.source_key) : undefined;
+
+      if (!baseline) {
+        if (!holding.pending_delete) {
+          added += 1;
+        }
+        continue;
+      }
+
+      if (holding.pending_delete) {
+        deleted += 1;
+        continue;
+      }
+
+      const currentComparable = toComparableHolding(holding);
+      if (!comparableHoldingsEqual(currentComparable, baseline)) {
+        edited += 1;
+      }
+    }
+
+    return {
+      added,
+      edited,
+      deleted,
+      total: added + edited + deleted,
+    };
+  }, [holdingsDraft]);
+
+  const hasHoldingsChanges = holdingsChangeSummary.total > 0;
 
   const investorSnapshot = useMemo(() => {
     const totalValue = model.hero.totalValue || 0;
@@ -248,7 +343,21 @@ export function DashboardMasterView({
   const closeHoldingModal = useCallback(() => {
     setIsModalOpen(false);
     setEditingHolding(null);
-    setEditingIndex(-1);
+    setEditingHoldingId(null);
+  }, []);
+
+  const openAddHoldingModal = useCallback(() => {
+    setEditingHolding({
+      symbol: "",
+      name: "",
+      quantity: 0,
+      price: 0,
+      market_value: 0,
+      pending_delete: false,
+      client_id: createLocalHoldingId(),
+    });
+    setEditingHoldingId(null);
+    setIsModalOpen(true);
   }, []);
 
   const persistHoldingsChanges = useCallback(async () => {
@@ -344,7 +453,9 @@ export function DashboardMasterView({
 
       setCachePortfolioData(userId, updatedPortfolioData as CachedPortfolioData);
       CacheSyncService.onPortfolioUpserted(userId, updatedPortfolioData as CachedPortfolioData);
-      setHasHoldingsChanges(false);
+      const { managed, baselineBySource } = buildManagedHoldingsFromSource(holdingsForSave);
+      baselineBySourceRef.current = baselineBySource;
+      setHoldingsDraft(managed);
       toast.success("Holdings updated");
     } catch (error) {
       console.error("[DashboardMasterView] Failed to save holdings:", error);
@@ -355,11 +466,15 @@ export function DashboardMasterView({
   }, [activeHoldings, portfolioData, setCachePortfolioData, userId, vaultKey, vaultOwnerToken]);
 
   const handleEditHolding = useCallback(
-    (index: number) => {
-      const row = holdingsDraft[index];
+    (holdingId: string) => {
+      const row = holdingsDraft.find((holding) => holding.client_id === holdingId);
       if (!row) return;
+      if (row.pending_delete) {
+        toast.info("Restore this holding before editing.");
+        return;
+      }
       setEditingHolding({ ...row, pending_delete: false });
-      setEditingIndex(index);
+      setEditingHoldingId(holdingId);
       setIsModalOpen(true);
     },
     [holdingsDraft]
@@ -369,65 +484,159 @@ export function DashboardMasterView({
     (updatedHolding: PortfolioHolding) => {
       setHoldingsDraft((prev) => {
         const next = [...prev];
-        if (editingIndex >= 0 && editingIndex < next.length) {
-          next[editingIndex] = { ...updatedHolding, pending_delete: false };
+        const targetIndex = editingHoldingId
+          ? next.findIndex((holding) => holding.client_id === editingHoldingId)
+          : -1;
+
+        if (targetIndex >= 0) {
+          const existing = next[targetIndex];
+          if (!existing) return next;
+          next[targetIndex] = {
+            ...existing,
+            ...updatedHolding,
+            pending_delete: false,
+            client_id: existing.client_id,
+            source_key: existing.source_key,
+          };
         } else {
-          next.push({ ...updatedHolding, pending_delete: false });
+          next.push({
+            ...updatedHolding,
+            pending_delete: false,
+            client_id: createLocalHoldingId(),
+          });
         }
         return next;
       });
-      setHasHoldingsChanges(true);
       closeHoldingModal();
     },
-    [closeHoldingModal, editingIndex]
+    [closeHoldingModal, editingHoldingId]
   );
 
-  const handleDeleteHolding = useCallback((index: number) => {
-    setHoldingsDraft((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
-    setHasHoldingsChanges(true);
+  const handleToggleDeleteHolding = useCallback((holdingId: string) => {
+    setHoldingsDraft((prev) =>
+      prev.map((holding) =>
+        holding.client_id === holdingId
+          ? { ...holding, pending_delete: !holding.pending_delete }
+          : holding
+      )
+    );
   }, []);
 
-  const clearNewHoldingForm = useCallback(() => {
-    setNewHoldingSymbol("");
-    setNewHoldingQuantity("");
-    setNewHoldingPrice("");
-  }, []);
-
-  const handleAddHoldingFromEntry = useCallback(() => {
-    const symbol = newHoldingSymbol.trim().toUpperCase();
-    const quantity = Number(newHoldingQuantity);
-    const price = Number(newHoldingPrice);
-
-    if (!symbol || !/^[A-Z][A-Z0-9.-]{0,5}$/.test(symbol)) {
-      toast.error("Enter a valid stock ticker.");
-      return;
-    }
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      toast.error("Enter a valid share quantity.");
-      return;
-    }
-    if (!Number.isFinite(price) || price <= 0) {
-      toast.error("Enter a valid average price.");
-      return;
-    }
-
-    const marketValue = quantity * price;
-    const newHolding: ManagedHolding = {
-      symbol,
-      name: symbol,
-      quantity,
-      price,
-      market_value: marketValue,
-      cost_basis: marketValue,
-      unrealized_gain_loss: 0,
-      unrealized_gain_loss_pct: 0,
-      pending_delete: false,
-    };
-
-    setHoldingsDraft((prev) => [...prev, newHolding]);
-    setHasHoldingsChanges(true);
-    clearNewHoldingForm();
-  }, [clearNewHoldingForm, newHoldingPrice, newHoldingQuantity, newHoldingSymbol]);
+  const holdingsTableColumns = useMemo<ColumnDef<ManagedHolding>[]>(
+    () => [
+      {
+        accessorKey: "symbol",
+        header: "Holding",
+        cell: ({ row }) => {
+          const holding = row.original;
+          const deleted = Boolean(holding.pending_delete);
+          return (
+            <div className={cn("min-w-0", deleted && "opacity-60")}>
+              <p className={cn("font-semibold", deleted && "line-through")}>
+                {holding.symbol || "—"}
+              </p>
+              <p className={cn("truncate text-xs text-muted-foreground", deleted && "line-through")}>
+                {holding.name || "Unnamed security"}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        id: "position",
+        header: "Shares @ Price",
+        cell: ({ row }) => {
+          const holding = row.original;
+          return (
+            <span className={cn("text-sm", holding.pending_delete && "line-through text-muted-foreground")}>
+              {Number(holding.quantity || 0).toLocaleString()} @ {formatCurrency(Number(holding.price || 0))}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "market_value",
+        header: "Market Value",
+        cell: ({ row }) => {
+          const holding = row.original;
+          return (
+            <span className={cn("font-semibold", holding.pending_delete && "line-through text-muted-foreground")}>
+              {formatCurrency(Number(holding.market_value || 0))}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "unrealized_gain_loss",
+        header: "Gain / Loss",
+        cell: ({ row }) => {
+          const holding = row.original;
+          const gain = Number(holding.unrealized_gain_loss || 0);
+          const gainText = `${gain >= 0 ? "+" : ""}${formatCurrency(gain)}`;
+          return (
+            <span
+              className={cn(
+                "font-medium",
+                holding.pending_delete
+                  ? "line-through text-muted-foreground"
+                  : gain >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
+              )}
+            >
+              {gainText}
+            </span>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const holding = row.original;
+          const isDeleted = Boolean(holding.pending_delete);
+          return (
+            <div className="flex flex-wrap items-center justify-end gap-1">
+              <MorphyButton
+                variant="none"
+                effect="fade"
+                size="icon-sm"
+                disabled={isDeleted}
+                aria-label={`Edit ${holding.symbol || "holding"}`}
+                onClick={() => handleEditHolding(holding.client_id)}
+              >
+                <Icon icon={Pencil} size="sm" />
+              </MorphyButton>
+              <MorphyButton
+                variant="none"
+                effect="fade"
+                size="sm"
+                aria-label={isDeleted ? `Undo remove ${holding.symbol}` : `Remove ${holding.symbol}`}
+                onClick={() => handleToggleDeleteHolding(holding.client_id)}
+                className={cn(
+                  "min-w-[78px]",
+                  isDeleted ? "text-muted-foreground" : "text-rose-600 hover:text-rose-700"
+                )}
+              >
+                <Icon icon={isDeleted ? Undo2 : Trash2} size="sm" className="mr-1" />
+                {isDeleted ? "Restore" : "Remove"}
+              </MorphyButton>
+              <MorphyButton
+                variant="none"
+                effect="fade"
+                size="sm"
+                disabled={isDeleted}
+                onClick={() => onAnalyzeStock?.(holding.symbol)}
+              >
+                Analyze
+              </MorphyButton>
+            </div>
+          );
+        },
+      },
+    ],
+    [handleEditHolding, handleToggleDeleteHolding, onAnalyzeStock]
+  );
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-8 px-5 pb-[calc(160px+var(--app-bottom-inset))] pt-4 sm:px-8">
@@ -645,18 +854,7 @@ export function DashboardMasterView({
               variant="none"
               effect="fade"
               size="sm"
-              onClick={() => {
-                setEditingHolding({
-                  symbol: "",
-                  name: "",
-                  quantity: 0,
-                  price: 0,
-                  market_value: 0,
-                  pending_delete: false,
-                });
-                setEditingIndex(-1);
-                setIsModalOpen(true);
-              }}
+              onClick={openAddHoldingModal}
             >
               <Icon icon={Plus} size="sm" className="mr-1" />
               Add Holding
@@ -665,153 +863,140 @@ export function DashboardMasterView({
         </CardHeader>
 
         <CardContent className="space-y-4 px-6 pb-6 pt-0 sm:px-7 sm:pb-7">
-          {visibleHoldingRows.map(({ holding, index }) => (
-            <div key={`${holding.symbol}-${index}`} className="rounded-xl border border-border/50 bg-background/80 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-xs font-black">
-                    {holding.symbol.slice(0, 4)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold leading-tight">{holding.name}</p>
-                    <p className="text-xs font-mono text-muted-foreground">{holding.symbol}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <MorphyButton
-                    variant="none"
-                    effect="fade"
-                    size="icon-sm"
-                    aria-label={`Edit ${holding.symbol}`}
-                    onClick={() => handleEditHolding(index)}
-                  >
-                    <Icon icon={Pencil} size="sm" />
-                  </MorphyButton>
-                  <MorphyButton
-                    variant="none"
-                    effect="fade"
-                    size="icon-sm"
-                    aria-label={`Delete ${holding.symbol}`}
-                    onClick={() => handleDeleteHolding(index)}
-                    className="text-rose-500 hover:text-rose-600"
-                  >
-                    <Icon icon={Trash2} size="sm" />
-                  </MorphyButton>
-                </div>
-              </div>
+          <div className="rounded-xl border border-border/60 bg-background/70 px-3 py-2.5 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-foreground">Change Summary</span>
+              <span className="rounded-full bg-background px-2 py-0.5">Added: {holdingsChangeSummary.added}</span>
+              <span className="rounded-full bg-background px-2 py-0.5">Edited: {holdingsChangeSummary.edited}</span>
+              <span className="rounded-full bg-background px-2 py-0.5">Deleted: {holdingsChangeSummary.deleted}</span>
+            </div>
+          </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <p className="uppercase tracking-wide text-muted-foreground">Shares @ Price</p>
-                  <p className="mt-1 text-sm font-medium">
-                    {holding.quantity.toLocaleString()} @ {formatCurrency(holding.price)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="uppercase tracking-wide text-muted-foreground">Market Value</p>
-                  <p className="mt-1 text-sm font-bold">{formatCurrency(holding.market_value)}</p>
-                </div>
-                <div>
-                  <p className="uppercase tracking-wide text-muted-foreground">Gain/Loss</p>
-                  <p
+          <div className="sm:hidden space-y-3">
+            {holdingsDraft.length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground">
+                No holdings were found in this statement yet.
+              </div>
+            ) : (
+              holdingsDraft.map((holding) => {
+                const isDeleted = Boolean(holding.pending_delete);
+                const gainValue = Number(holding.unrealized_gain_loss || 0);
+                return (
+                  <div
+                    key={holding.client_id}
                     className={cn(
-                      "mt-1 text-sm font-medium",
-                      (holding.unrealized_gain_loss || 0) >= 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-rose-600 dark:text-rose-400"
+                      "rounded-xl border border-border/50 bg-background/80 p-3",
+                      isDeleted && "bg-muted/45 text-muted-foreground"
                     )}
                   >
-                    {(holding.unrealized_gain_loss || 0) >= 0 ? "+" : ""}
-                    {formatCurrency(holding.unrealized_gain_loss || 0)}
-                  </p>
-                </div>
-                <div className="flex items-end justify-end">
-                  <MorphyButton
-                    variant="none"
-                    effect="fade"
-                    size="sm"
-                    onClick={() => onAnalyzeStock?.(holding.symbol)}
-                  >
-                    Connect Kai
-                  </MorphyButton>
-                </div>
-              </div>
-            </div>
-          ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1">
+                        <MorphyButton
+                          variant="none"
+                          effect="fade"
+                          size="icon-sm"
+                          disabled={isDeleted}
+                          aria-label={`Edit ${holding.symbol || "holding"}`}
+                          onClick={() => handleEditHolding(holding.client_id)}
+                        >
+                          <Icon icon={Pencil} size="sm" />
+                        </MorphyButton>
+                        <MorphyButton
+                          variant="none"
+                          effect="fade"
+                          size="icon-sm"
+                          aria-label={isDeleted ? `Restore ${holding.symbol}` : `Delete ${holding.symbol}`}
+                          onClick={() => handleToggleDeleteHolding(holding.client_id)}
+                          className={cn(
+                            isDeleted
+                              ? "text-muted-foreground"
+                              : "text-rose-600 hover:text-rose-700"
+                          )}
+                        >
+                          <Icon icon={isDeleted ? Undo2 : Trash2} size="sm" />
+                        </MorphyButton>
+                      </div>
+                      <MorphyButton
+                        variant="none"
+                        effect="fade"
+                        size="sm"
+                        disabled={isDeleted}
+                        onClick={() => onAnalyzeStock?.(holding.symbol)}
+                      >
+                        Analyze
+                      </MorphyButton>
+                    </div>
 
-          {visibleHoldingRows.length === 0 ? (
-            <div className="rounded-xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground">
-              No holdings were found in this statement yet.
-            </div>
-          ) : null}
+                    <div className="mt-2 min-w-0">
+                      <p className={cn("text-sm font-semibold", isDeleted && "line-through")}>
+                        {holding.symbol || "—"}
+                      </p>
+                      <p className={cn("truncate text-xs text-muted-foreground", isDeleted && "line-through")}>
+                        {holding.name || "Unnamed security"}
+                      </p>
+                      {isDeleted ? (
+                        <span className="mt-1 inline-flex rounded-full bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                          Marked for removal
+                        </span>
+                      ) : null}
+                    </div>
 
-          <div className="rounded-xl border border-border/60 bg-background/70 p-4">
-            <p className="mb-4 text-sm font-semibold">New Holding Entry</p>
-            <div className="space-y-3">
-              <div>
-                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Stock Ticker
-                </p>
-                <input
-                  type="text"
-                  value={newHoldingSymbol}
-                  onChange={(event) => setNewHoldingSymbol(event.target.value.toUpperCase())}
-                  placeholder="e.g. AAPL"
-                  className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Shares
-                  </p>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    value={newHoldingQuantity}
-                    onChange={(event) => setNewHoldingQuantity(event.target.value)}
-                    placeholder="0"
-                    className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Average Price
-                  </p>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={newHoldingPrice}
-                    onChange={(event) => setNewHoldingPrice(event.target.value)}
-                    placeholder="0.00"
-                    className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <MorphyButton variant="none" effect="fade" fullWidth onClick={clearNewHoldingForm}>
-                  Undo
-                </MorphyButton>
-                <MorphyButton
-                  variant="none"
-                  effect="fill"
-                  fullWidth
-                  onClick={handleAddHoldingFromEntry}
-                  className="bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-700)] dark:bg-white dark:text-black dark:hover:bg-white/90"
-                >
-                  Add
-                </MorphyButton>
-              </div>
-            </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Shares @ Price</p>
+                        <p className={cn("font-medium", isDeleted && "line-through")}>
+                          {Number(holding.quantity || 0).toLocaleString()} @ {formatCurrency(Number(holding.price || 0))}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-muted-foreground">Market Value</p>
+                        <p className={cn("font-semibold", isDeleted && "line-through")}>
+                          {formatCurrency(Number(holding.market_value || 0))}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Gain / Loss</p>
+                        <p
+                          className={cn(
+                            "font-medium",
+                            isDeleted
+                              ? "line-through text-muted-foreground"
+                              : gainValue >= 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                          )}
+                        >
+                          {gainValue >= 0 ? "+" : ""}
+                          {formatCurrency(gainValue)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="hidden sm:block">
+            <DataTable
+              columns={holdingsTableColumns}
+              data={holdingsDraft}
+              searchPlaceholder="Search holdings by symbol or name..."
+              initialPageSize={5}
+              pageSizeOptions={[5, 10, 20]}
+              rowClassName={(holding) =>
+                holding.pending_delete
+                  ? "bg-muted/45 text-muted-foreground"
+                  : "bg-transparent"
+              }
+            />
           </div>
 
           {hasHoldingsChanges ? (
             <div className="pt-2">
               <MorphyButton
-                variant="none"
-                effect="fill"
+                variant="blue-gradient"
+                effect="fade"
                 fullWidth
                 onClick={() => void persistHoldingsChanges()}
                 disabled={isSavingHoldings}
@@ -838,7 +1023,17 @@ export function DashboardMasterView({
 
       <Card variant="none" effect="glass" className="min-w-0 overflow-hidden rounded-[24px]">
         <CardHeader className="pb-2 px-5 pt-5 sm:px-6 sm:pt-6">
-          <CardTitle className="text-sm">Recommendations</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-sm">Recommendations</CardTitle>
+            <MorphyButton
+              variant="none"
+              effect="fade"
+              size="sm"
+              onClick={() => router.push(ROUTES.KAI_OPTIMIZE)}
+            >
+              Optimize
+            </MorphyButton>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 px-5 pb-5 pt-0 sm:px-6 sm:pb-6">
           <p className="text-xs text-muted-foreground">

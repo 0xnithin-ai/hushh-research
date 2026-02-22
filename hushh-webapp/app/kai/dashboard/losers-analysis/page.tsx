@@ -5,15 +5,14 @@ import { useRouter } from "next/navigation";
 
 /**
  * Backwards-compatibility redirect for the old Losers Analysis route.
- * New canonical page: /kai/dashboard/portfolio-health
+ * New canonical page: /kai/optimize
  */
 export default function LegacyLosersAnalysisRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/kai/dashboard/portfolio-health");
+    router.replace("/kai/optimize");
   }, [router]);
 
   return null;
 }
-

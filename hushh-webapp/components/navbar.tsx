@@ -148,11 +148,20 @@ export const Navbar = () => {
       className={cn(
         "fixed inset-x-0 z-[120] flex justify-center px-4 transform-gpu transition-all duration-300 ease-out",
         hideBottomChrome
-          ? "pointer-events-none translate-y-[calc(100%+18px)] opacity-0"
-          : "pointer-events-none translate-y-0 opacity-100"
+          ? "pointer-events-none opacity-0"
+          : "pointer-events-none opacity-100"
       )}
-      style={{ bottom: "max(var(--app-safe-area-bottom-effective), 0.75rem)" }}
+      style={{
+        bottom: "max(var(--app-safe-area-bottom-effective), 0.75rem)",
+        transform: hideBottomChrome
+          ? "translate3d(0, calc(100% + 18px), 0)"
+          : "translate3d(0, 0, 0)",
+      }}
     >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 left-1/2 h-[88px] w-screen -translate-x-1/2 bottom-bar-glass"
+      />
       <SegmentedPill
         ref={pillRef}
         size="compact"

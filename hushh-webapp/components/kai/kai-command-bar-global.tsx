@@ -166,7 +166,7 @@ export function KaiCommandBarGlobal() {
     toast.info(
       "Optimizing suggestions using curated rulesets across your portfolio context."
     );
-    router.push(`${ROUTES.KAI_DASHBOARD}/portfolio-health`);
+    router.push(ROUTES.KAI_OPTIMIZE);
   };
 
   return (
@@ -200,7 +200,7 @@ export function KaiCommandBarGlobal() {
             userId,
             riskProfile: "balanced",
           });
-          router.push(`${ROUTES.KAI_DASHBOARD}/analysis`);
+          router.push(ROUTES.KAI_ANALYSIS);
           return;
         }
 
@@ -215,7 +215,7 @@ export function KaiCommandBarGlobal() {
         }
 
         if (command === "history") {
-          router.push(`${ROUTES.KAI_DASHBOARD}/analysis`);
+          router.push(ROUTES.KAI_ANALYSIS);
           return;
         }
 

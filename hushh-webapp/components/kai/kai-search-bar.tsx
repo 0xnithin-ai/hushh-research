@@ -29,11 +29,20 @@ export function KaiSearchBar({
         className={cn(
           "fixed inset-x-0 z-[130] flex justify-center px-4 transition-all duration-300 ease-out",
           hideBottomChrome
-            ? "pointer-events-none translate-y-[calc(100%+24px)] opacity-0"
-            : "pointer-events-none translate-y-0 opacity-100"
+            ? "pointer-events-none opacity-0"
+            : "pointer-events-none opacity-100"
         )}
-        style={{ bottom: "calc(var(--app-bottom-inset) + var(--kai-command-bottom-gap, 18px))" }}
+        style={{
+          bottom: "calc(var(--app-bottom-inset) + var(--kai-command-bottom-gap, 18px))",
+          transform: hideBottomChrome
+            ? "translate3d(0, calc(100% + 24px), 0)"
+            : "translate3d(0, 0, 0)",
+        }}
       >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-1/2 h-[72px] w-screen -translate-x-1/2 bottom-bar-glass"
+        />
         <div className="pointer-events-auto w-full max-w-[420px]">
           <Button
             variant="none"
