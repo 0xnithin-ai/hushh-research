@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "next-themes";
 import { useVault } from "@/lib/vault/vault-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { KaiPreferencesSheet } from "@/components/kai/onboarding/KaiPreferencesSheet";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useStepProgress } from "@/lib/progress/step-progress-context";
@@ -122,6 +123,7 @@ export default function ProfilePage() {
   const [passphraseDialogOpen, setPassphraseDialogOpen] = useState(false);
   const [newPassphrase, setNewPassphrase] = useState("");
   const [confirmPassphrase, setConfirmPassphrase] = useState("");
+  const [showKaiPreferencesSheet, setShowKaiPreferencesSheet] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -377,6 +379,16 @@ export default function ProfilePage() {
     return "quick unlock";
   };
 
+  const canEditKaiPreferences = Boolean(
+    user?.uid &&
+      hasVault === true &&
+      isVaultUnlocked &&
+      typeof vaultKey === "string" &&
+      vaultKey.length > 0 &&
+      typeof vaultOwnerToken === "string" &&
+      vaultOwnerToken.length > 0
+  );
+
   async function switchVaultMethod(targetMethod: VaultMethod, passphrase?: string) {
     if (!user?.uid) return;
 
@@ -450,11 +462,24 @@ export default function ProfilePage() {
               </div>
               <span>Your Data Profile</span>
             </div>
-            {!loadingDomains && (
-              <Badge variant="secondary" className="text-xs">
-                {totalAttributes} data points
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {hasVault === true && (
+                <Button
+                  variant="none"
+                  effect="fade"
+                  size="sm"
+                  disabled={!canEditKaiPreferences}
+                  onClick={() => setShowKaiPreferencesSheet(true)}
+                >
+                  Edit Kai Preferences
+                </Button>
+              )}
+              {!loadingDomains && (
+                <Badge variant="secondary" className="text-xs">
+                  {totalAttributes} data points
+                </Badge>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
@@ -856,6 +881,16 @@ export default function ProfilePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {user && canEditKaiPreferences && (
+        <KaiPreferencesSheet
+          open={showKaiPreferencesSheet}
+          onOpenChange={setShowKaiPreferencesSheet}
+          userId={user.uid}
+          vaultKey={vaultKey as string}
+          vaultOwnerToken={vaultOwnerToken as string}
+        />
+      )}
 
       {/* Sign Out Button */}
       <Button

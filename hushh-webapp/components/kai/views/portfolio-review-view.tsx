@@ -663,6 +663,7 @@ export function PortfolioReviewView({
         intent_source: "kai_import_llm",
         holdings_count: activeHoldings.length,
         holdings: holdingsSummary,
+        portfolio_risk_bucket: riskBucket,
         risk_bucket: riskBucket,
         has_income_data: !!incomeSummary.total_income,
         has_realized_gains: !!realizedGainLoss.net_realized,
@@ -840,7 +841,7 @@ export function PortfolioReviewView({
                   >
                     {riskBucket}
                   </Badge>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-2">Risk</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-2">Portfolio Risk</p>
                 </div>
                 <div className="min-w-0 text-center sm:text-right sm:pr-4">
                   <p className="text-2xl font-black break-all">

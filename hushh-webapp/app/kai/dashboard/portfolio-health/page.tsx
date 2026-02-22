@@ -581,7 +581,7 @@ export default function PortfolioHealthPage() {
             <Badge variant="secondary">Top 3 concentration {contextStats.top3WeightPct.toFixed(1)}%</Badge>
             <Badge variant="secondary">{contextStats.sectorCount || 0} sectors</Badge>
             {kaiProfile?.preferences.risk_profile && (
-              <Badge variant="outline">Risk: {kaiProfile.preferences.risk_profile}</Badge>
+              <Badge variant="outline">Preference Risk: {kaiProfile.preferences.risk_profile}</Badge>
             )}
             {kaiProfile?.preferences.investment_horizon && (
               <Badge variant="outline">Horizon: {kaiProfile.preferences.investment_horizon}</Badge>

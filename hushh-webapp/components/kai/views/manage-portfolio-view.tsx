@@ -371,6 +371,7 @@ export function ManagePortfolioView() {
           has_portfolio: true,
           holdings_count: holdingsForSave.length,
           total_value: updatedPortfolioData.account_summary?.ending_value || 0,
+          portfolio_risk_bucket: deriveRiskBucket(holdingsForSave),
           risk_bucket: deriveRiskBucket(holdingsForSave),
           domain_contract_version: 1,
           intent_map: [

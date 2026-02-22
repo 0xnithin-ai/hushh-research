@@ -77,7 +77,7 @@ export function DashboardMasterView({
         <CardContent className="space-y-4 p-5">
           <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
             <span className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5">
-              Risk: {model.hero.riskLabel}
+              Portfolio Concentration: {model.hero.portfolioConcentrationLabel}
             </span>
             <span className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5">
               Holdings: {model.hero.holdingsCount}

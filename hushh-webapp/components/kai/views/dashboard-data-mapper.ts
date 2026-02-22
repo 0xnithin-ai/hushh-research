@@ -35,7 +35,7 @@ export interface DashboardHeroData {
   netChange: number;
   changePct: number;
   holdingsCount: number;
-  riskLabel: string;
+  portfolioConcentrationLabel: string;
   statementPeriod?: string;
 }
 
@@ -118,7 +118,7 @@ function formatStatementPeriod(data: PortfolioData): string | undefined {
   }
 }
 
-function deriveRiskLabel(holdings: Holding[]): string {
+function derivePortfolioConcentrationLabel(holdings: Holding[]): string {
   if (!holdings.length) return "Unknown";
   const concentration = holdings
     .map((holding) => toNumber(holding.market_value) ?? 0)
@@ -126,9 +126,9 @@ function deriveRiskLabel(holdings: Holding[]): string {
   const total = concentration.reduce((sum, value) => sum + value, 0);
   if (total <= 0) return "Unknown";
   const largestWeight = concentration[0] ? (concentration[0] / total) * 100 : 0;
-  if (largestWeight >= 40) return "Aggressive";
-  if (largestWeight >= 25) return "Moderate";
-  return "Conservative";
+  if (largestWeight >= 40) return "High Concentration";
+  if (largestWeight >= 25) return "Medium Concentration";
+  return "Diversified";
 }
 
 function computeAllocationFromAssetTypes(
@@ -358,7 +358,7 @@ export function mapPortfolioToDashboardViewModel(portfolioData: PortfolioData): 
       netChange,
       changePct,
       holdingsCount,
-      riskLabel: deriveRiskLabel(holdings),
+      portfolioConcentrationLabel: derivePortfolioConcentrationLabel(holdings),
       statementPeriod: formatStatementPeriod(portfolioData),
     },
     holdings,

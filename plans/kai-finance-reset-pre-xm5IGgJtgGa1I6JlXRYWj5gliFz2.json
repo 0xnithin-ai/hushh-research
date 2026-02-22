@@ -1,5 +1,5 @@
 {
-  "extracted_at_utc": "2026-02-22T04:46:36Z",
+  "extracted_at_utc": "2026-02-22T05:03:58Z",
   "sources": [
     "vault_keys",
     "vault_key_wrappers",
@@ -52,17 +52,17 @@
     "financial": {
       "account_info": {
         "account_number": "974-51910",
-        "account_type": "brokerage",
-        "brokerage": "",
-        "holder_name": "",
+        "account_type": "TFR ON DEATH IND (J.P. Morgan Self-Directed Investing)",
+        "brokerage": "J.P. Morgan",
+        "holder_name": "RONALD PARKER TOD, 453 OLD SLEEPY HOLLOW RD, PLEASANTVILLE NY 10570-3809",
         "statement_period_end": "March 31, 2021",
         "statement_period_start": "February 27, 2021",
         "tax_lot_method": "FIFO"
       },
       "account_summary": {
         "beginning_value": 1639938.44,
-        "change_in_value": 0.0,
-        "ending_value": 3135681.66,
+        "change_in_value": 16126.09,
+        "ending_value": 1656064.53,
         "net_deposits_period": 0.0,
         "net_deposits_ytd": 0.0,
         "total_fees": 0.0,
@@ -75,55 +75,55 @@
           "primary": "financial",
           "secondary": "analysis",
           "source": "domain_registry_prepopulate",
-          "updated_at": "2026-02-22T04:46:07Z"
+          "updated_at": "2026-02-22T04:48:22Z"
         },
-        "updated_at": "2026-02-22T04:46:07Z"
+        "updated_at": "2026-02-22T04:48:22Z"
       },
       "analysis_history": {
         "domain_intent": {
           "primary": "financial",
           "secondary": "analysis_history",
           "source": "domain_registry_prepopulate",
-          "updated_at": "2026-02-22T04:46:07Z"
+          "updated_at": "2026-02-22T04:48:22Z"
         },
-        "updated_at": "2026-02-22T04:46:07Z"
+        "updated_at": "2026-02-22T04:48:22Z"
       },
       "asset_allocation": {
-        "bonds_pct": 0,
+        "bonds_pct": 0.0,
         "bonds_value": 0.0,
-        "cash_pct": 6.0,
-        "cash_value": 0.0,
-        "equities_pct": 0,
-        "equities_value": 0.0,
+        "cash_pct": 54.4,
+        "cash_value": 900226.92,
+        "equities_pct": 45.6,
+        "equities_value": 755837.61,
         "etf_pct": 0.0,
         "etf_value": 0.0,
         "mutual_funds_pct": 0.0,
         "mutual_funds_value": 0.0
       },
-      "cash_balance": 0.0,
+      "cash_balance": 900226.92,
       "documents": {
         "domain_intent": {
           "primary": "financial",
           "secondary": "documents",
           "source": "kai_import_llm",
-          "updated_at": "2026-02-22T04:46:07Z"
+          "updated_at": "2026-02-22T04:48:22Z"
         },
         "schema_version": 1,
         "statements": [
           {
             "account_info": {
               "account_number": "974-51910",
-              "account_type": "brokerage",
-              "brokerage": "",
-              "holder_name": "",
+              "account_type": "TFR ON DEATH IND (J.P. Morgan Self-Directed Investing)",
+              "brokerage": "J.P. Morgan",
+              "holder_name": "RONALD PARKER TOD, 453 OLD SLEEPY HOLLOW RD, PLEASANTVILLE NY 10570-3809",
               "statement_period_end": "March 31, 2021",
               "statement_period_start": "February 27, 2021",
               "tax_lot_method": "FIFO"
             },
             "account_summary": {
               "beginning_value": 1639938.44,
-              "change_in_value": 0.0,
-              "ending_value": 3135681.66,
+              "change_in_value": 16126.09,
+              "ending_value": 1656064.53,
               "net_deposits_period": 0.0,
               "net_deposits_ytd": 0.0,
               "total_fees": 0.0,
@@ -131,28 +131,28 @@
               "total_income_ytd": 0.0
             },
             "asset_allocation": {
-              "bonds_pct": 0,
+              "bonds_pct": 0.0,
               "bonds_value": 0.0,
-              "cash_pct": 6.0,
-              "cash_value": 0.0,
-              "equities_pct": 0,
-              "equities_value": 0.0,
+              "cash_pct": 54.4,
+              "cash_value": 900226.92,
+              "equities_pct": 45.6,
+              "equities_value": 755837.61,
               "etf_pct": 0.0,
               "etf_value": 0.0,
               "mutual_funds_pct": 0.0,
               "mutual_funds_value": 0.0
             },
-            "cash_balance": 0.0,
+            "cash_balance": 900226.92,
             "domain_intent": {
               "primary": "financial",
               "secondary": "documents",
               "source": "kai_import_llm",
-              "updated_at": "2026-02-22T04:46:07Z"
+              "updated_at": "2026-02-22T04:48:22Z"
             },
             "holdings": [
               {
                 "acquisition_date": null,
-                "asset_type": "cash",
+                "asset_type": "Cash & Sweep Funds",
                 "cost_basis": 0.0,
                 "cusip": null,
                 "est_annual_income": null,
@@ -160,17 +160,17 @@
                 "is_margin": false,
                 "is_short": false,
                 "market_value": 900226.92,
-                "name": "CHASE DEPOSIT SWEEP JPMORGAN CHASE BANK NA",
+                "name": "CHASE DEPOSIT SWEEP JPMORGAN CHASE BANK NA EST. 30 DAY AVG YIELD 0.01%",
                 "price_per_unit": 1.0,
                 "quantity": 900226.92,
                 "sector": null,
                 "symbol": "QACDS",
                 "unrealized_gain_loss": 0.0,
-                "unrealized_gain_loss_pct": 0
+                "unrealized_gain_loss_pct": 0.0
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "03 Feb 2021",
+                "asset_type": "Equities",
                 "cost_basis": 101830.9,
                 "cusip": null,
                 "est_annual_income": null,
@@ -184,11 +184,11 @@
                 "sector": "Consumer Cyclical",
                 "symbol": "AMZN",
                 "unrealized_gain_loss": -9008.5,
-                "unrealized_gain_loss_pct": -8.84652890232729
+                "unrealized_gain_loss_pct": -8.85
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "29 Mar 2021",
+                "asset_type": "Equities",
                 "cost_basis": 26500.0,
                 "cusip": null,
                 "est_annual_income": 813.6,
@@ -202,11 +202,11 @@
                 "sector": null,
                 "symbol": "ABEV",
                 "unrealized_gain_loss": 900.0,
-                "unrealized_gain_loss_pct": 3.3962264150943398
+                "unrealized_gain_loss_pct": 3.4
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "01 Feb 2021",
+                "asset_type": "Equities",
                 "cost_basis": 19314.0,
                 "cusip": null,
                 "est_annual_income": 322.2,
@@ -220,11 +220,11 @@
                 "sector": null,
                 "symbol": "BUD",
                 "unrealized_gain_loss": -459.0,
-                "unrealized_gain_loss_pct": -2.3765144454799625
+                "unrealized_gain_loss_pct": -2.38
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "22 Feb 2021",
+                "asset_type": "Equities",
                 "cost_basis": 87885.0,
                 "cusip": null,
                 "est_annual_income": null,
@@ -238,11 +238,11 @@
                 "sector": null,
                 "symbol": "CCL",
                 "unrealized_gain_loss": 5005.0,
-                "unrealized_gain_loss_pct": 5.694942254082039
+                "unrealized_gain_loss_pct": 5.69
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "29 Mar 2021",
+                "asset_type": "Equities",
                 "cost_basis": 52736.0,
                 "cusip": null,
                 "est_annual_income": 1680.0,
@@ -256,11 +256,11 @@
                 "sector": "Consumer Defensive",
                 "symbol": "KO",
                 "unrealized_gain_loss": -26.0,
-                "unrealized_gain_loss_pct": -0.049302184466019416
+                "unrealized_gain_loss_pct": -0.05
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "Multiple",
+                "asset_type": "Equities",
                 "cost_basis": 163.77,
                 "cusip": null,
                 "est_annual_income": 3.8,
@@ -274,11 +274,11 @@
                 "sector": null,
                 "symbol": "CMCSA",
                 "unrealized_gain_loss": 42.09,
-                "unrealized_gain_loss_pct": 25.70067777981315
+                "unrealized_gain_loss_pct": 25.7
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "29 Mar 2021",
+                "asset_type": "Equities",
                 "cost_basis": 75700.0,
                 "cusip": null,
                 "est_annual_income": 2000.0,
@@ -292,11 +292,11 @@
                 "sector": null,
                 "symbol": "CVS",
                 "unrealized_gain_loss": -470.0,
-                "unrealized_gain_loss_pct": -0.6208718626155878
+                "unrealized_gain_loss_pct": -0.62
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "29 Mar 2021",
+                "asset_type": "Equities",
                 "cost_basis": 75680.0,
                 "cusip": null,
                 "est_annual_income": 2520.0,
@@ -310,11 +310,11 @@
                 "sector": null,
                 "symbol": "D",
                 "unrealized_gain_loss": 280.0,
-                "unrealized_gain_loss_pct": 0.36997885835095135
+                "unrealized_gain_loss_pct": 0.37
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "29 Mar 2021",
+                "asset_type": "Equities",
                 "cost_basis": 15800.0,
                 "cusip": null,
                 "est_annual_income": 1220.0,
@@ -322,17 +322,17 @@
                 "is_margin": false,
                 "is_short": false,
                 "market_value": 15360.0,
-                "name": "ENERGY TRANSFER LP COMMON UNITS",
+                "name": "ENERGY TRANSFER LP COMMON UNITS REPRESENTING LIMITED PARTNER INTERESTS",
                 "price_per_unit": 7.68,
                 "quantity": 2000.0,
                 "sector": null,
                 "symbol": "ET",
                 "unrealized_gain_loss": -440.0,
-                "unrealized_gain_loss_pct": -2.7848101265822782
+                "unrealized_gain_loss_pct": -2.78
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "01 Feb 2021",
+                "asset_type": "Equities",
                 "cost_basis": 14513.4,
                 "cusip": null,
                 "est_annual_income": 540.0,
@@ -346,11 +346,11 @@
                 "sector": null,
                 "symbol": "FITB",
                 "unrealized_gain_loss": 4211.6,
-                "unrealized_gain_loss_pct": 29.018699960036937
+                "unrealized_gain_loss_pct": 29.02
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "02 Feb 2021",
+                "asset_type": "Equities",
                 "cost_basis": 11780.0,
                 "cusip": null,
                 "est_annual_income": null,
@@ -364,11 +364,11 @@
                 "sector": null,
                 "symbol": "FAII",
                 "unrealized_gain_loss": -1810.0,
-                "unrealized_gain_loss_pct": -15.365025466893039
+                "unrealized_gain_loss_pct": -15.37
               },
               {
-                "acquisition_date": null,
-                "asset_type": "etf",
+                "acquisition_date": "10 Feb 2021",
+                "asset_type": "Equities",
                 "cost_basis": 8433.0,
                 "cusip": null,
                 "est_annual_income": 162.3,
@@ -376,17 +376,17 @@
                 "is_margin": false,
                 "is_short": false,
                 "market_value": 4815.0,
-                "name": "GLOBAL X CANNABIS ETF",
+                "name": "GLOBAL X FDS GLOBAL X CANNABIS ETF",
                 "price_per_unit": 16.05,
                 "quantity": 300.0,
                 "sector": null,
                 "symbol": "POTX",
                 "unrealized_gain_loss": -3618.0,
-                "unrealized_gain_loss_pct": -42.902881536819635
+                "unrealized_gain_loss_pct": -42.9
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "22 Feb 2021",
+                "asset_type": "Equities",
                 "cost_basis": 52200.0,
                 "cusip": null,
                 "est_annual_income": 1536.0,
@@ -400,11 +400,11 @@
                 "sector": null,
                 "symbol": "INGR",
                 "unrealized_gain_loss": 1752.0,
-                "unrealized_gain_loss_pct": 3.3563218390804597
+                "unrealized_gain_loss_pct": 3.36
               },
               {
-                "acquisition_date": null,
-                "asset_type": "stock",
+                "acquisition_date": "Multiple",
+                "asset_type": "Equities",
                 "cost_basis": 36429.0,
                 "cusip": null,
                 "est_annual_income": 1981.29,
@@ -418,50 +418,284 @@
                 "sector": null,
                 "symbol": "IBM",
                 "unrealized_gain_loss": 4065.95,
-                "unrealized_gain_loss_pct": 11.161300063136512
+                "unrealized_gain_loss_pct": 11.16
+              },
+              {
+                "acquisition_date": "Multiple",
+                "asset_type": "Equities",
+                "cost_basis": 33212.0,
+                "cusip": null,
+                "est_annual_income": 813.15,
+                "est_yield": 0.0246,
+                "is_margin": false,
+                "is_short": false,
+                "market_value": 33079.4,
+                "name": "JOHNSON & JOHNSON",
+                "price_per_unit": 164.35,
+                "quantity": 201.27414,
+                "sector": "Healthcare",
+                "symbol": "JNJ",
+                "unrealized_gain_loss": -132.6,
+                "unrealized_gain_loss_pct": -0.4
+              },
+              {
+                "acquisition_date": "01 Feb 2021",
+                "asset_type": "Equities",
+                "cost_basis": 23307.0,
+                "cusip": null,
+                "est_annual_income": 780.0,
+                "est_yield": 0.0337,
+                "is_margin": false,
+                "is_short": false,
+                "market_value": 23127.0,
+                "name": "MERCK & CO INC",
+                "price_per_unit": 77.09,
+                "quantity": 300.0,
+                "sector": null,
+                "symbol": "MRK",
+                "unrealized_gain_loss": -180.0,
+                "unrealized_gain_loss_pct": -0.77
+              },
+              {
+                "acquisition_date": "22 Feb 2021",
+                "asset_type": "Equities",
+                "cost_basis": 51510.0,
+                "cusip": null,
+                "est_annual_income": 2340.0,
+                "est_yield": 0.0431,
+                "is_margin": false,
+                "is_short": false,
+                "market_value": 54345.0,
+                "name": "PFIZER INC",
+                "price_per_unit": 36.23,
+                "quantity": 1500.0,
+                "sector": "Healthcare",
+                "symbol": "PFE",
+                "unrealized_gain_loss": 2835.0,
+                "unrealized_gain_loss_pct": 5.5
+              },
+              {
+                "acquisition_date": "01 Feb 2021",
+                "asset_type": "Equities",
+                "cost_basis": 20232.0,
+                "cusip": null,
+                "est_annual_income": 2800.0,
+                "est_yield": 0.1105,
+                "is_margin": false,
+                "is_short": false,
+                "market_value": 25336.0,
+                "name": "PHILLIPS 66 PARTNERS LP COM UNIT REPSTG LTD PARTNERSHIP INT",
+                "price_per_unit": 31.67,
+                "quantity": 800.0,
+                "sector": null,
+                "symbol": "PSXP",
+                "unrealized_gain_loss": 5104.0,
+                "unrealized_gain_loss_pct": 25.23
+              },
+              {
+                "acquisition_date": "29 Mar 2021",
+                "asset_type": "Equities",
+                "cost_basis": 40370.0,
+                "cusip": null,
+                "est_annual_income": 773.0,
+                "est_yield": 0.0191,
+                "is_margin": false,
+                "is_short": false,
+                "market_value": 40560.0,
+                "name": "ROCHE HOLDING LTD SPONSORED ADR REPSTG ORD",
+                "price_per_unit": 40.56,
+                "quantity": 1000.0,
+                "sector": null,
+                "symbol": "RHHBY",
+                "unrealized_gain_loss": 190.0,
+                "unrealized_gain_loss_pct": 0.47
               }
             ],
-            "id": "stmt_1771735567575",
-            "imported_at": "2026-02-22T04:46:07Z",
+            "id": "stmt_1771735702710",
+            "imported_at": "2026-02-22T04:48:22Z",
             "income_summary": {
               "capital_gains_dist": 0.0,
               "dividends_nontaxable": 0.0,
               "dividends_qualified": 0.0,
-              "dividends_taxable": 694.06,
+              "dividends_taxable": 691.0,
               "interest_income": 3.06,
-              "total_income": 697.1199999999999
+              "total_income": 694.06
             },
             "quality_report": {},
             "realized_gain_loss": {
-              "long_term_gain": 0,
-              "long_term_loss": 0,
+              "long_term_gain": 0.0,
+              "long_term_loss": 0.0,
               "net_long_term": 0.0,
-              "net_realized": 0.0,
-              "net_short_term": 0.0,
-              "short_term_gain": 0,
-              "short_term_loss": 0
+              "net_realized": -5986.11,
+              "net_short_term": -5986.11,
+              "short_term_gain": 0.0,
+              "short_term_loss": -5986.11
             },
             "source": {
-              "account_type": "brokerage",
-              "brokerage": "",
+              "account_type": "TFR ON DEATH IND (J.P. Morgan Self-Directed Investing)",
+              "brokerage": "J.P. Morgan",
               "statement_period_end": "March 31, 2021",
               "statement_period_start": "February 27, 2021"
             },
-            "transactions": []
+            "transactions": [
+              {
+                "amount": -202.0,
+                "cost_basis": 0.0,
+                "date": "09 Mar 2021",
+                "description": "JOHNSON & JOHNSON REINVEST @ 158.537891",
+                "fees": 0.0,
+                "price": 158.537891,
+                "quantity": 1.27414,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "REINVEST"
+              },
+              {
+                "amount": -489.0,
+                "cost_basis": 0.0,
+                "date": "10 Mar 2021",
+                "description": "INTERNATIONAL BUSINESS MACHINES CORP REINVEST @ 126.054312",
+                "fees": 0.0,
+                "price": 126.054312,
+                "quantity": 3.87928,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "REINVEST"
+              },
+              {
+                "amount": -26500.0,
+                "cost_basis": 0.0,
+                "date": "29 Mar 2021",
+                "description": "AMBEV S A ADS UNSOLICITED AVG PRICE",
+                "fees": 0.0,
+                "price": 2.65,
+                "quantity": 10000.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "BUY"
+              },
+              {
+                "amount": -52736.0,
+                "cost_basis": 0.0,
+                "date": "29 Mar 2021",
+                "description": "COCA COLA COMPANY (THE) UNSOLICITED",
+                "fees": 0.0,
+                "price": 52.736,
+                "quantity": 1000.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "BUY"
+              },
+              {
+                "amount": -75700.0,
+                "cost_basis": 0.0,
+                "date": "29 Mar 2021",
+                "description": "CVS HEALTH CORPORATION UNSOLICITED",
+                "fees": 0.0,
+                "price": 75.7,
+                "quantity": 1000.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "BUY"
+              },
+              {
+                "amount": -75680.0,
+                "cost_basis": 0.0,
+                "date": "29 Mar 2021",
+                "description": "DOMINION ENERGY INC COMMON STOCK UNSOLICITED",
+                "fees": 0.0,
+                "price": 75.68,
+                "quantity": 1000.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "BUY"
+              },
+              {
+                "amount": -15800.0,
+                "cost_basis": 0.0,
+                "date": "29 Mar 2021",
+                "description": "ENERGY TRANSFER LP COMMON UNITS UNSOLICITED",
+                "fees": 0.0,
+                "price": 7.9,
+                "quantity": 2000.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "BUY"
+              },
+              {
+                "amount": 20423.89,
+                "cost_basis": 0.0,
+                "date": "29 Mar 2021",
+                "description": "ION ACQUISITION CORP 1 LTD CLASS A ORDINARY SHARES UNSOLICITED ST LOSS -5986.11",
+                "fees": 0.0,
+                "price": 10.212,
+                "quantity": -2000.0,
+                "realized_gain_loss": -5986.11,
+                "settle_date": "",
+                "symbol": "",
+                "type": "SELL"
+              },
+              {
+                "amount": -40370.0,
+                "cost_basis": 0.0,
+                "date": "29 Mar 2021",
+                "description": "ROCHE HOLDING LTD SPONSORED ADR UNSOLICITED",
+                "fees": 0.0,
+                "price": 40.37,
+                "quantity": 1000.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "BUY"
+              },
+              {
+                "amount": 202.0,
+                "cost_basis": 0.0,
+                "date": "09 Mar 2021",
+                "description": "JOHNSON & JOHNSON RD 02/23 PD 03/09 CDRT .010",
+                "fees": 0.0,
+                "price": 0.0,
+                "quantity": 0.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "DIVIDEND"
+              },
+              {
+                "amount": 489.0,
+                "cost_basis": 0.0,
+                "date": "10 Mar 2021",
+                "description": "INTERNATIONAL BUSINESS MACHINES CORP RD 02/10 PD 03/10 CDRT .630",
+                "fees": 0.0,
+                "price": 0.0,
+                "quantity": 0.0,
+                "realized_gain_loss": 0.0,
+                "settle_date": "",
+                "symbol": "",
+                "type": "DIVIDEND"
+              }
+            ]
           }
         ],
-        "updated_at": "2026-02-22T04:46:07Z"
+        "updated_at": "2026-02-22T04:48:22Z"
       },
       "domain_intent": {
         "contract_version": 1,
         "primary": "financial",
         "source": "domain_registry_prepopulate",
-        "updated_at": "2026-02-22T04:46:07Z"
+        "updated_at": "2026-02-22T04:48:22Z"
       },
       "holdings": [
         {
           "acquisition_date": null,
-          "asset_type": "cash",
+          "asset_type": "Cash & Sweep Funds",
           "cost_basis": 0.0,
           "cusip": null,
           "est_annual_income": null,
@@ -469,17 +703,17 @@
           "is_margin": false,
           "is_short": false,
           "market_value": 900226.92,
-          "name": "CHASE DEPOSIT SWEEP JPMORGAN CHASE BANK NA",
+          "name": "CHASE DEPOSIT SWEEP JPMORGAN CHASE BANK NA EST. 30 DAY AVG YIELD 0.01%",
           "price_per_unit": 1.0,
           "quantity": 900226.92,
           "sector": null,
           "symbol": "QACDS",
           "unrealized_gain_loss": 0.0,
-          "unrealized_gain_loss_pct": 0
+          "unrealized_gain_loss_pct": 0.0
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "03 Feb 2021",
+          "asset_type": "Equities",
           "cost_basis": 101830.9,
           "cusip": null,
           "est_annual_income": null,
@@ -493,11 +727,11 @@
           "sector": "Consumer Cyclical",
           "symbol": "AMZN",
           "unrealized_gain_loss": -9008.5,
-          "unrealized_gain_loss_pct": -8.84652890232729
+          "unrealized_gain_loss_pct": -8.85
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "29 Mar 2021",
+          "asset_type": "Equities",
           "cost_basis": 26500.0,
           "cusip": null,
           "est_annual_income": 813.6,
@@ -511,11 +745,11 @@
           "sector": null,
           "symbol": "ABEV",
           "unrealized_gain_loss": 900.0,
-          "unrealized_gain_loss_pct": 3.3962264150943398
+          "unrealized_gain_loss_pct": 3.4
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "01 Feb 2021",
+          "asset_type": "Equities",
           "cost_basis": 19314.0,
           "cusip": null,
           "est_annual_income": 322.2,
@@ -529,11 +763,11 @@
           "sector": null,
           "symbol": "BUD",
           "unrealized_gain_loss": -459.0,
-          "unrealized_gain_loss_pct": -2.3765144454799625
+          "unrealized_gain_loss_pct": -2.38
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "22 Feb 2021",
+          "asset_type": "Equities",
           "cost_basis": 87885.0,
           "cusip": null,
           "est_annual_income": null,
@@ -547,11 +781,11 @@
           "sector": null,
           "symbol": "CCL",
           "unrealized_gain_loss": 5005.0,
-          "unrealized_gain_loss_pct": 5.694942254082039
+          "unrealized_gain_loss_pct": 5.69
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "29 Mar 2021",
+          "asset_type": "Equities",
           "cost_basis": 52736.0,
           "cusip": null,
           "est_annual_income": 1680.0,
@@ -565,11 +799,11 @@
           "sector": "Consumer Defensive",
           "symbol": "KO",
           "unrealized_gain_loss": -26.0,
-          "unrealized_gain_loss_pct": -0.049302184466019416
+          "unrealized_gain_loss_pct": -0.05
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "Multiple",
+          "asset_type": "Equities",
           "cost_basis": 163.77,
           "cusip": null,
           "est_annual_income": 3.8,
@@ -583,11 +817,11 @@
           "sector": null,
           "symbol": "CMCSA",
           "unrealized_gain_loss": 42.09,
-          "unrealized_gain_loss_pct": 25.70067777981315
+          "unrealized_gain_loss_pct": 25.7
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "29 Mar 2021",
+          "asset_type": "Equities",
           "cost_basis": 75700.0,
           "cusip": null,
           "est_annual_income": 2000.0,
@@ -601,11 +835,11 @@
           "sector": null,
           "symbol": "CVS",
           "unrealized_gain_loss": -470.0,
-          "unrealized_gain_loss_pct": -0.6208718626155878
+          "unrealized_gain_loss_pct": -0.62
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "29 Mar 2021",
+          "asset_type": "Equities",
           "cost_basis": 75680.0,
           "cusip": null,
           "est_annual_income": 2520.0,
@@ -619,11 +853,11 @@
           "sector": null,
           "symbol": "D",
           "unrealized_gain_loss": 280.0,
-          "unrealized_gain_loss_pct": 0.36997885835095135
+          "unrealized_gain_loss_pct": 0.37
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "29 Mar 2021",
+          "asset_type": "Equities",
           "cost_basis": 15800.0,
           "cusip": null,
           "est_annual_income": 1220.0,
@@ -631,17 +865,17 @@
           "is_margin": false,
           "is_short": false,
           "market_value": 15360.0,
-          "name": "ENERGY TRANSFER LP COMMON UNITS",
+          "name": "ENERGY TRANSFER LP COMMON UNITS REPRESENTING LIMITED PARTNER INTERESTS",
           "price_per_unit": 7.68,
           "quantity": 2000.0,
           "sector": null,
           "symbol": "ET",
           "unrealized_gain_loss": -440.0,
-          "unrealized_gain_loss_pct": -2.7848101265822782
+          "unrealized_gain_loss_pct": -2.78
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "01 Feb 2021",
+          "asset_type": "Equities",
           "cost_basis": 14513.4,
           "cusip": null,
           "est_annual_income": 540.0,
@@ -655,11 +889,11 @@
           "sector": null,
           "symbol": "FITB",
           "unrealized_gain_loss": 4211.6,
-          "unrealized_gain_loss_pct": 29.018699960036937
+          "unrealized_gain_loss_pct": 29.02
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "02 Feb 2021",
+          "asset_type": "Equities",
           "cost_basis": 11780.0,
           "cusip": null,
           "est_annual_income": null,
@@ -673,11 +907,11 @@
           "sector": null,
           "symbol": "FAII",
           "unrealized_gain_loss": -1810.0,
-          "unrealized_gain_loss_pct": -15.365025466893039
+          "unrealized_gain_loss_pct": -15.37
         },
         {
-          "acquisition_date": null,
-          "asset_type": "etf",
+          "acquisition_date": "10 Feb 2021",
+          "asset_type": "Equities",
           "cost_basis": 8433.0,
           "cusip": null,
           "est_annual_income": 162.3,
@@ -685,17 +919,17 @@
           "is_margin": false,
           "is_short": false,
           "market_value": 4815.0,
-          "name": "GLOBAL X CANNABIS ETF",
+          "name": "GLOBAL X FDS GLOBAL X CANNABIS ETF",
           "price_per_unit": 16.05,
           "quantity": 300.0,
           "sector": null,
           "symbol": "POTX",
           "unrealized_gain_loss": -3618.0,
-          "unrealized_gain_loss_pct": -42.902881536819635
+          "unrealized_gain_loss_pct": -42.9
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "22 Feb 2021",
+          "asset_type": "Equities",
           "cost_basis": 52200.0,
           "cusip": null,
           "est_annual_income": 1536.0,
@@ -709,11 +943,11 @@
           "sector": null,
           "symbol": "INGR",
           "unrealized_gain_loss": 1752.0,
-          "unrealized_gain_loss_pct": 3.3563218390804597
+          "unrealized_gain_loss_pct": 3.36
         },
         {
-          "acquisition_date": null,
-          "asset_type": "stock",
+          "acquisition_date": "Multiple",
+          "asset_type": "Equities",
           "cost_basis": 36429.0,
           "cusip": null,
           "est_annual_income": 1981.29,
@@ -727,31 +961,121 @@
           "sector": null,
           "symbol": "IBM",
           "unrealized_gain_loss": 4065.95,
-          "unrealized_gain_loss_pct": 11.161300063136512
+          "unrealized_gain_loss_pct": 11.16
+        },
+        {
+          "acquisition_date": "Multiple",
+          "asset_type": "Equities",
+          "cost_basis": 33212.0,
+          "cusip": null,
+          "est_annual_income": 813.15,
+          "est_yield": 0.0246,
+          "is_margin": false,
+          "is_short": false,
+          "market_value": 33079.4,
+          "name": "JOHNSON & JOHNSON",
+          "price_per_unit": 164.35,
+          "quantity": 201.27414,
+          "sector": "Healthcare",
+          "symbol": "JNJ",
+          "unrealized_gain_loss": -132.6,
+          "unrealized_gain_loss_pct": -0.4
+        },
+        {
+          "acquisition_date": "01 Feb 2021",
+          "asset_type": "Equities",
+          "cost_basis": 23307.0,
+          "cusip": null,
+          "est_annual_income": 780.0,
+          "est_yield": 0.0337,
+          "is_margin": false,
+          "is_short": false,
+          "market_value": 23127.0,
+          "name": "MERCK & CO INC",
+          "price_per_unit": 77.09,
+          "quantity": 300.0,
+          "sector": null,
+          "symbol": "MRK",
+          "unrealized_gain_loss": -180.0,
+          "unrealized_gain_loss_pct": -0.77
+        },
+        {
+          "acquisition_date": "22 Feb 2021",
+          "asset_type": "Equities",
+          "cost_basis": 51510.0,
+          "cusip": null,
+          "est_annual_income": 2340.0,
+          "est_yield": 0.0431,
+          "is_margin": false,
+          "is_short": false,
+          "market_value": 54345.0,
+          "name": "PFIZER INC",
+          "price_per_unit": 36.23,
+          "quantity": 1500.0,
+          "sector": "Healthcare",
+          "symbol": "PFE",
+          "unrealized_gain_loss": 2835.0,
+          "unrealized_gain_loss_pct": 5.5
+        },
+        {
+          "acquisition_date": "01 Feb 2021",
+          "asset_type": "Equities",
+          "cost_basis": 20232.0,
+          "cusip": null,
+          "est_annual_income": 2800.0,
+          "est_yield": 0.1105,
+          "is_margin": false,
+          "is_short": false,
+          "market_value": 25336.0,
+          "name": "PHILLIPS 66 PARTNERS LP COM UNIT REPSTG LTD PARTNERSHIP INT",
+          "price_per_unit": 31.67,
+          "quantity": 800.0,
+          "sector": null,
+          "symbol": "PSXP",
+          "unrealized_gain_loss": 5104.0,
+          "unrealized_gain_loss_pct": 25.23
+        },
+        {
+          "acquisition_date": "29 Mar 2021",
+          "asset_type": "Equities",
+          "cost_basis": 40370.0,
+          "cusip": null,
+          "est_annual_income": 773.0,
+          "est_yield": 0.0191,
+          "is_margin": false,
+          "is_short": false,
+          "market_value": 40560.0,
+          "name": "ROCHE HOLDING LTD SPONSORED ADR REPSTG ORD",
+          "price_per_unit": 40.56,
+          "quantity": 1000.0,
+          "sector": null,
+          "symbol": "RHHBY",
+          "unrealized_gain_loss": 190.0,
+          "unrealized_gain_loss_pct": 0.47
         }
       ],
       "income_summary": {
         "capital_gains_dist": 0.0,
         "dividends_nontaxable": 0.0,
         "dividends_qualified": 0.0,
-        "dividends_taxable": 694.06,
+        "dividends_taxable": 691.0,
         "interest_income": 3.06,
-        "total_income": 697.1199999999999
+        "total_income": 694.06
       },
       "portfolio": {
         "account_info": {
           "account_number": "974-51910",
-          "account_type": "brokerage",
-          "brokerage": "",
-          "holder_name": "",
+          "account_type": "TFR ON DEATH IND (J.P. Morgan Self-Directed Investing)",
+          "brokerage": "J.P. Morgan",
+          "holder_name": "RONALD PARKER TOD, 453 OLD SLEEPY HOLLOW RD, PLEASANTVILLE NY 10570-3809",
           "statement_period_end": "March 31, 2021",
           "statement_period_start": "February 27, 2021",
           "tax_lot_method": "FIFO"
         },
         "account_summary": {
           "beginning_value": 1639938.44,
-          "change_in_value": 0.0,
-          "ending_value": 3135681.66,
+          "change_in_value": 16126.09,
+          "ending_value": 1656064.53,
           "net_deposits_period": 0.0,
           "net_deposits_ytd": 0.0,
           "total_fees": 0.0,
@@ -759,28 +1083,28 @@
           "total_income_ytd": 0.0
         },
         "asset_allocation": {
-          "bonds_pct": 0,
+          "bonds_pct": 0.0,
           "bonds_value": 0.0,
-          "cash_pct": 6.0,
-          "cash_value": 0.0,
-          "equities_pct": 0,
-          "equities_value": 0.0,
+          "cash_pct": 54.4,
+          "cash_value": 900226.92,
+          "equities_pct": 45.6,
+          "equities_value": 755837.61,
           "etf_pct": 0.0,
           "etf_value": 0.0,
           "mutual_funds_pct": 0.0,
           "mutual_funds_value": 0.0
         },
-        "cash_balance": 0.0,
+        "cash_balance": 900226.92,
         "domain_intent": {
           "primary": "financial",
           "secondary": "portfolio",
           "source": "kai_import_llm",
-          "updated_at": "2026-02-22T04:46:07Z"
+          "updated_at": "2026-02-22T04:48:22Z"
         },
         "holdings": [
           {
             "acquisition_date": null,
-            "asset_type": "cash",
+            "asset_type": "Cash & Sweep Funds",
             "cost_basis": 0.0,
             "cusip": null,
             "est_annual_income": null,
@@ -788,17 +1112,17 @@
             "is_margin": false,
             "is_short": false,
             "market_value": 900226.92,
-            "name": "CHASE DEPOSIT SWEEP JPMORGAN CHASE BANK NA",
+            "name": "CHASE DEPOSIT SWEEP JPMORGAN CHASE BANK NA EST. 30 DAY AVG YIELD 0.01%",
             "price_per_unit": 1.0,
             "quantity": 900226.92,
             "sector": null,
             "symbol": "QACDS",
             "unrealized_gain_loss": 0.0,
-            "unrealized_gain_loss_pct": 0
+            "unrealized_gain_loss_pct": 0.0
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "03 Feb 2021",
+            "asset_type": "Equities",
             "cost_basis": 101830.9,
             "cusip": null,
             "est_annual_income": null,
@@ -812,11 +1136,11 @@
             "sector": "Consumer Cyclical",
             "symbol": "AMZN",
             "unrealized_gain_loss": -9008.5,
-            "unrealized_gain_loss_pct": -8.84652890232729
+            "unrealized_gain_loss_pct": -8.85
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "29 Mar 2021",
+            "asset_type": "Equities",
             "cost_basis": 26500.0,
             "cusip": null,
             "est_annual_income": 813.6,
@@ -830,11 +1154,11 @@
             "sector": null,
             "symbol": "ABEV",
             "unrealized_gain_loss": 900.0,
-            "unrealized_gain_loss_pct": 3.3962264150943398
+            "unrealized_gain_loss_pct": 3.4
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "01 Feb 2021",
+            "asset_type": "Equities",
             "cost_basis": 19314.0,
             "cusip": null,
             "est_annual_income": 322.2,
@@ -848,11 +1172,11 @@
             "sector": null,
             "symbol": "BUD",
             "unrealized_gain_loss": -459.0,
-            "unrealized_gain_loss_pct": -2.3765144454799625
+            "unrealized_gain_loss_pct": -2.38
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "22 Feb 2021",
+            "asset_type": "Equities",
             "cost_basis": 87885.0,
             "cusip": null,
             "est_annual_income": null,
@@ -866,11 +1190,11 @@
             "sector": null,
             "symbol": "CCL",
             "unrealized_gain_loss": 5005.0,
-            "unrealized_gain_loss_pct": 5.694942254082039
+            "unrealized_gain_loss_pct": 5.69
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "29 Mar 2021",
+            "asset_type": "Equities",
             "cost_basis": 52736.0,
             "cusip": null,
             "est_annual_income": 1680.0,
@@ -884,11 +1208,11 @@
             "sector": "Consumer Defensive",
             "symbol": "KO",
             "unrealized_gain_loss": -26.0,
-            "unrealized_gain_loss_pct": -0.049302184466019416
+            "unrealized_gain_loss_pct": -0.05
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "Multiple",
+            "asset_type": "Equities",
             "cost_basis": 163.77,
             "cusip": null,
             "est_annual_income": 3.8,
@@ -902,11 +1226,11 @@
             "sector": null,
             "symbol": "CMCSA",
             "unrealized_gain_loss": 42.09,
-            "unrealized_gain_loss_pct": 25.70067777981315
+            "unrealized_gain_loss_pct": 25.7
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "29 Mar 2021",
+            "asset_type": "Equities",
             "cost_basis": 75700.0,
             "cusip": null,
             "est_annual_income": 2000.0,
@@ -920,11 +1244,11 @@
             "sector": null,
             "symbol": "CVS",
             "unrealized_gain_loss": -470.0,
-            "unrealized_gain_loss_pct": -0.6208718626155878
+            "unrealized_gain_loss_pct": -0.62
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "29 Mar 2021",
+            "asset_type": "Equities",
             "cost_basis": 75680.0,
             "cusip": null,
             "est_annual_income": 2520.0,
@@ -938,11 +1262,11 @@
             "sector": null,
             "symbol": "D",
             "unrealized_gain_loss": 280.0,
-            "unrealized_gain_loss_pct": 0.36997885835095135
+            "unrealized_gain_loss_pct": 0.37
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "29 Mar 2021",
+            "asset_type": "Equities",
             "cost_basis": 15800.0,
             "cusip": null,
             "est_annual_income": 1220.0,
@@ -950,17 +1274,17 @@
             "is_margin": false,
             "is_short": false,
             "market_value": 15360.0,
-            "name": "ENERGY TRANSFER LP COMMON UNITS",
+            "name": "ENERGY TRANSFER LP COMMON UNITS REPRESENTING LIMITED PARTNER INTERESTS",
             "price_per_unit": 7.68,
             "quantity": 2000.0,
             "sector": null,
             "symbol": "ET",
             "unrealized_gain_loss": -440.0,
-            "unrealized_gain_loss_pct": -2.7848101265822782
+            "unrealized_gain_loss_pct": -2.78
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "01 Feb 2021",
+            "asset_type": "Equities",
             "cost_basis": 14513.4,
             "cusip": null,
             "est_annual_income": 540.0,
@@ -974,11 +1298,11 @@
             "sector": null,
             "symbol": "FITB",
             "unrealized_gain_loss": 4211.6,
-            "unrealized_gain_loss_pct": 29.018699960036937
+            "unrealized_gain_loss_pct": 29.02
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "02 Feb 2021",
+            "asset_type": "Equities",
             "cost_basis": 11780.0,
             "cusip": null,
             "est_annual_income": null,
@@ -992,11 +1316,11 @@
             "sector": null,
             "symbol": "FAII",
             "unrealized_gain_loss": -1810.0,
-            "unrealized_gain_loss_pct": -15.365025466893039
+            "unrealized_gain_loss_pct": -15.37
           },
           {
-            "acquisition_date": null,
-            "asset_type": "etf",
+            "acquisition_date": "10 Feb 2021",
+            "asset_type": "Equities",
             "cost_basis": 8433.0,
             "cusip": null,
             "est_annual_income": 162.3,
@@ -1004,17 +1328,17 @@
             "is_margin": false,
             "is_short": false,
             "market_value": 4815.0,
-            "name": "GLOBAL X CANNABIS ETF",
+            "name": "GLOBAL X FDS GLOBAL X CANNABIS ETF",
             "price_per_unit": 16.05,
             "quantity": 300.0,
             "sector": null,
             "symbol": "POTX",
             "unrealized_gain_loss": -3618.0,
-            "unrealized_gain_loss_pct": -42.902881536819635
+            "unrealized_gain_loss_pct": -42.9
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "22 Feb 2021",
+            "asset_type": "Equities",
             "cost_basis": 52200.0,
             "cusip": null,
             "est_annual_income": 1536.0,
@@ -1028,11 +1352,11 @@
             "sector": null,
             "symbol": "INGR",
             "unrealized_gain_loss": 1752.0,
-            "unrealized_gain_loss_pct": 3.3563218390804597
+            "unrealized_gain_loss_pct": 3.36
           },
           {
-            "acquisition_date": null,
-            "asset_type": "stock",
+            "acquisition_date": "Multiple",
+            "asset_type": "Equities",
             "cost_basis": 36429.0,
             "cusip": null,
             "est_annual_income": 1981.29,
@@ -1046,40 +1370,274 @@
             "sector": null,
             "symbol": "IBM",
             "unrealized_gain_loss": 4065.95,
-            "unrealized_gain_loss_pct": 11.161300063136512
+            "unrealized_gain_loss_pct": 11.16
+          },
+          {
+            "acquisition_date": "Multiple",
+            "asset_type": "Equities",
+            "cost_basis": 33212.0,
+            "cusip": null,
+            "est_annual_income": 813.15,
+            "est_yield": 0.0246,
+            "is_margin": false,
+            "is_short": false,
+            "market_value": 33079.4,
+            "name": "JOHNSON & JOHNSON",
+            "price_per_unit": 164.35,
+            "quantity": 201.27414,
+            "sector": "Healthcare",
+            "symbol": "JNJ",
+            "unrealized_gain_loss": -132.6,
+            "unrealized_gain_loss_pct": -0.4
+          },
+          {
+            "acquisition_date": "01 Feb 2021",
+            "asset_type": "Equities",
+            "cost_basis": 23307.0,
+            "cusip": null,
+            "est_annual_income": 780.0,
+            "est_yield": 0.0337,
+            "is_margin": false,
+            "is_short": false,
+            "market_value": 23127.0,
+            "name": "MERCK & CO INC",
+            "price_per_unit": 77.09,
+            "quantity": 300.0,
+            "sector": null,
+            "symbol": "MRK",
+            "unrealized_gain_loss": -180.0,
+            "unrealized_gain_loss_pct": -0.77
+          },
+          {
+            "acquisition_date": "22 Feb 2021",
+            "asset_type": "Equities",
+            "cost_basis": 51510.0,
+            "cusip": null,
+            "est_annual_income": 2340.0,
+            "est_yield": 0.0431,
+            "is_margin": false,
+            "is_short": false,
+            "market_value": 54345.0,
+            "name": "PFIZER INC",
+            "price_per_unit": 36.23,
+            "quantity": 1500.0,
+            "sector": "Healthcare",
+            "symbol": "PFE",
+            "unrealized_gain_loss": 2835.0,
+            "unrealized_gain_loss_pct": 5.5
+          },
+          {
+            "acquisition_date": "01 Feb 2021",
+            "asset_type": "Equities",
+            "cost_basis": 20232.0,
+            "cusip": null,
+            "est_annual_income": 2800.0,
+            "est_yield": 0.1105,
+            "is_margin": false,
+            "is_short": false,
+            "market_value": 25336.0,
+            "name": "PHILLIPS 66 PARTNERS LP COM UNIT REPSTG LTD PARTNERSHIP INT",
+            "price_per_unit": 31.67,
+            "quantity": 800.0,
+            "sector": null,
+            "symbol": "PSXP",
+            "unrealized_gain_loss": 5104.0,
+            "unrealized_gain_loss_pct": 25.23
+          },
+          {
+            "acquisition_date": "29 Mar 2021",
+            "asset_type": "Equities",
+            "cost_basis": 40370.0,
+            "cusip": null,
+            "est_annual_income": 773.0,
+            "est_yield": 0.0191,
+            "is_margin": false,
+            "is_short": false,
+            "market_value": 40560.0,
+            "name": "ROCHE HOLDING LTD SPONSORED ADR REPSTG ORD",
+            "price_per_unit": 40.56,
+            "quantity": 1000.0,
+            "sector": null,
+            "symbol": "RHHBY",
+            "unrealized_gain_loss": 190.0,
+            "unrealized_gain_loss_pct": 0.47
           }
         ],
         "income_summary": {
           "capital_gains_dist": 0.0,
           "dividends_nontaxable": 0.0,
           "dividends_qualified": 0.0,
-          "dividends_taxable": 694.06,
+          "dividends_taxable": 691.0,
           "interest_income": 3.06,
-          "total_income": 697.1199999999999
+          "total_income": 694.06
         },
         "realized_gain_loss": {
-          "long_term_gain": 0,
-          "long_term_loss": 0,
+          "long_term_gain": 0.0,
+          "long_term_loss": 0.0,
           "net_long_term": 0.0,
-          "net_realized": 0.0,
-          "net_short_term": 0.0,
-          "short_term_gain": 0,
-          "short_term_loss": 0
+          "net_realized": -5986.11,
+          "net_short_term": -5986.11,
+          "short_term_gain": 0.0,
+          "short_term_loss": -5986.11
         },
-        "total_value": 3135681.66,
-        "transactions": [],
-        "updated_at": "2026-02-22T04:46:07Z"
+        "total_value": 1656064.53,
+        "transactions": [
+          {
+            "amount": -202.0,
+            "cost_basis": 0.0,
+            "date": "09 Mar 2021",
+            "description": "JOHNSON & JOHNSON REINVEST @ 158.537891",
+            "fees": 0.0,
+            "price": 158.537891,
+            "quantity": 1.27414,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "REINVEST"
+          },
+          {
+            "amount": -489.0,
+            "cost_basis": 0.0,
+            "date": "10 Mar 2021",
+            "description": "INTERNATIONAL BUSINESS MACHINES CORP REINVEST @ 126.054312",
+            "fees": 0.0,
+            "price": 126.054312,
+            "quantity": 3.87928,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "REINVEST"
+          },
+          {
+            "amount": -26500.0,
+            "cost_basis": 0.0,
+            "date": "29 Mar 2021",
+            "description": "AMBEV S A ADS UNSOLICITED AVG PRICE",
+            "fees": 0.0,
+            "price": 2.65,
+            "quantity": 10000.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "BUY"
+          },
+          {
+            "amount": -52736.0,
+            "cost_basis": 0.0,
+            "date": "29 Mar 2021",
+            "description": "COCA COLA COMPANY (THE) UNSOLICITED",
+            "fees": 0.0,
+            "price": 52.736,
+            "quantity": 1000.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "BUY"
+          },
+          {
+            "amount": -75700.0,
+            "cost_basis": 0.0,
+            "date": "29 Mar 2021",
+            "description": "CVS HEALTH CORPORATION UNSOLICITED",
+            "fees": 0.0,
+            "price": 75.7,
+            "quantity": 1000.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "BUY"
+          },
+          {
+            "amount": -75680.0,
+            "cost_basis": 0.0,
+            "date": "29 Mar 2021",
+            "description": "DOMINION ENERGY INC COMMON STOCK UNSOLICITED",
+            "fees": 0.0,
+            "price": 75.68,
+            "quantity": 1000.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "BUY"
+          },
+          {
+            "amount": -15800.0,
+            "cost_basis": 0.0,
+            "date": "29 Mar 2021",
+            "description": "ENERGY TRANSFER LP COMMON UNITS UNSOLICITED",
+            "fees": 0.0,
+            "price": 7.9,
+            "quantity": 2000.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "BUY"
+          },
+          {
+            "amount": 20423.89,
+            "cost_basis": 0.0,
+            "date": "29 Mar 2021",
+            "description": "ION ACQUISITION CORP 1 LTD CLASS A ORDINARY SHARES UNSOLICITED ST LOSS -5986.11",
+            "fees": 0.0,
+            "price": 10.212,
+            "quantity": -2000.0,
+            "realized_gain_loss": -5986.11,
+            "settle_date": "",
+            "symbol": "",
+            "type": "SELL"
+          },
+          {
+            "amount": -40370.0,
+            "cost_basis": 0.0,
+            "date": "29 Mar 2021",
+            "description": "ROCHE HOLDING LTD SPONSORED ADR UNSOLICITED",
+            "fees": 0.0,
+            "price": 40.37,
+            "quantity": 1000.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "BUY"
+          },
+          {
+            "amount": 202.0,
+            "cost_basis": 0.0,
+            "date": "09 Mar 2021",
+            "description": "JOHNSON & JOHNSON RD 02/23 PD 03/09 CDRT .010",
+            "fees": 0.0,
+            "price": 0.0,
+            "quantity": 0.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "DIVIDEND"
+          },
+          {
+            "amount": 489.0,
+            "cost_basis": 0.0,
+            "date": "10 Mar 2021",
+            "description": "INTERNATIONAL BUSINESS MACHINES CORP RD 02/10 PD 03/10 CDRT .630",
+            "fees": 0.0,
+            "price": 0.0,
+            "quantity": 0.0,
+            "realized_gain_loss": 0.0,
+            "settle_date": "",
+            "symbol": "",
+            "type": "DIVIDEND"
+          }
+        ],
+        "updated_at": "2026-02-22T04:48:22Z"
       },
       "profile": {
         "domain_intent": {
           "primary": "financial",
           "secondary": "profile",
           "source": "onboarding_sync",
-          "updated_at": "2026-02-22T04:46:07Z"
+          "updated_at": "2026-02-22T04:48:22Z"
         },
         "onboarding": {
           "completed": true,
-          "completed_at": "2026-02-22T04:46:07Z",
+          "completed_at": "2026-02-22T04:48:22Z",
           "nav_tour_completed_at": null,
           "nav_tour_skipped_at": null,
           "skipped_preferences": false,
@@ -1087,41 +1645,185 @@
         },
         "preferences": {
           "drawdown_response": "reduce",
-          "drawdown_response_selected_at": "2026-02-22T04:46:07Z",
+          "drawdown_response_selected_at": "2026-02-22T04:48:22Z",
           "investment_horizon": "short_term",
-          "investment_horizon_anchor_at": "2026-02-22T04:46:07Z",
-          "investment_horizon_selected_at": "2026-02-22T04:46:07Z",
+          "investment_horizon_anchor_at": "2026-02-22T04:48:22Z",
+          "investment_horizon_selected_at": "2026-02-22T04:48:22Z",
           "risk_profile": "conservative",
-          "risk_profile_selected_at": "2026-02-22T04:46:07Z",
+          "risk_profile_selected_at": "2026-02-22T04:48:22Z",
           "risk_score": 0,
           "volatility_preference": "small",
-          "volatility_preference_selected_at": "2026-02-22T04:46:07Z"
+          "volatility_preference_selected_at": "2026-02-22T04:48:22Z"
         },
         "schema_version": 2,
-        "updated_at": "2026-02-22T04:46:07Z"
+        "updated_at": "2026-02-22T04:48:22Z"
       },
       "realized_gain_loss": {
-        "long_term_gain": 0,
-        "long_term_loss": 0,
+        "long_term_gain": 0.0,
+        "long_term_loss": 0.0,
         "net_long_term": 0.0,
-        "net_realized": 0.0,
-        "net_short_term": 0.0,
-        "short_term_gain": 0,
-        "short_term_loss": 0
+        "net_realized": -5986.11,
+        "net_short_term": -5986.11,
+        "short_term_gain": 0.0,
+        "short_term_loss": -5986.11
       },
       "runtime": {
         "domain_intent": {
           "primary": "financial",
           "secondary": "runtime",
           "source": "domain_registry_prepopulate",
-          "updated_at": "2026-02-22T04:46:07Z"
+          "updated_at": "2026-02-22T04:48:22Z"
         },
-        "updated_at": "2026-02-22T04:46:07Z"
+        "updated_at": "2026-02-22T04:48:22Z"
       },
       "schema_version": 3,
-      "total_value": 3135681.66,
-      "transactions": [],
-      "updated_at": "2026-02-22T04:46:07Z"
+      "total_value": 1656064.53,
+      "transactions": [
+        {
+          "amount": -202.0,
+          "cost_basis": 0.0,
+          "date": "09 Mar 2021",
+          "description": "JOHNSON & JOHNSON REINVEST @ 158.537891",
+          "fees": 0.0,
+          "price": 158.537891,
+          "quantity": 1.27414,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "REINVEST"
+        },
+        {
+          "amount": -489.0,
+          "cost_basis": 0.0,
+          "date": "10 Mar 2021",
+          "description": "INTERNATIONAL BUSINESS MACHINES CORP REINVEST @ 126.054312",
+          "fees": 0.0,
+          "price": 126.054312,
+          "quantity": 3.87928,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "REINVEST"
+        },
+        {
+          "amount": -26500.0,
+          "cost_basis": 0.0,
+          "date": "29 Mar 2021",
+          "description": "AMBEV S A ADS UNSOLICITED AVG PRICE",
+          "fees": 0.0,
+          "price": 2.65,
+          "quantity": 10000.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "BUY"
+        },
+        {
+          "amount": -52736.0,
+          "cost_basis": 0.0,
+          "date": "29 Mar 2021",
+          "description": "COCA COLA COMPANY (THE) UNSOLICITED",
+          "fees": 0.0,
+          "price": 52.736,
+          "quantity": 1000.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "BUY"
+        },
+        {
+          "amount": -75700.0,
+          "cost_basis": 0.0,
+          "date": "29 Mar 2021",
+          "description": "CVS HEALTH CORPORATION UNSOLICITED",
+          "fees": 0.0,
+          "price": 75.7,
+          "quantity": 1000.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "BUY"
+        },
+        {
+          "amount": -75680.0,
+          "cost_basis": 0.0,
+          "date": "29 Mar 2021",
+          "description": "DOMINION ENERGY INC COMMON STOCK UNSOLICITED",
+          "fees": 0.0,
+          "price": 75.68,
+          "quantity": 1000.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "BUY"
+        },
+        {
+          "amount": -15800.0,
+          "cost_basis": 0.0,
+          "date": "29 Mar 2021",
+          "description": "ENERGY TRANSFER LP COMMON UNITS UNSOLICITED",
+          "fees": 0.0,
+          "price": 7.9,
+          "quantity": 2000.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "BUY"
+        },
+        {
+          "amount": 20423.89,
+          "cost_basis": 0.0,
+          "date": "29 Mar 2021",
+          "description": "ION ACQUISITION CORP 1 LTD CLASS A ORDINARY SHARES UNSOLICITED ST LOSS -5986.11",
+          "fees": 0.0,
+          "price": 10.212,
+          "quantity": -2000.0,
+          "realized_gain_loss": -5986.11,
+          "settle_date": "",
+          "symbol": "",
+          "type": "SELL"
+        },
+        {
+          "amount": -40370.0,
+          "cost_basis": 0.0,
+          "date": "29 Mar 2021",
+          "description": "ROCHE HOLDING LTD SPONSORED ADR UNSOLICITED",
+          "fees": 0.0,
+          "price": 40.37,
+          "quantity": 1000.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "BUY"
+        },
+        {
+          "amount": 202.0,
+          "cost_basis": 0.0,
+          "date": "09 Mar 2021",
+          "description": "JOHNSON & JOHNSON RD 02/23 PD 03/09 CDRT .010",
+          "fees": 0.0,
+          "price": 0.0,
+          "quantity": 0.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "DIVIDEND"
+        },
+        {
+          "amount": 489.0,
+          "cost_basis": 0.0,
+          "date": "10 Mar 2021",
+          "description": "INTERNATIONAL BUSINESS MACHINES CORP RD 02/10 PD 03/10 CDRT .630",
+          "fees": 0.0,
+          "price": 0.0,
+          "quantity": 0.0,
+          "realized_gain_loss": 0.0,
+          "settle_date": "",
+          "symbol": "",
+          "type": "DIVIDEND"
+        }
+      ],
+      "updated_at": "2026-02-22T04:48:22Z"
     }
   },
   "world_model_index_pre": {
@@ -1130,20 +1832,20 @@
       "financial"
     ],
     "computed_tags": [],
-    "created_at": "2026-02-22 04:42:37.330866+00:00",
+    "created_at": "2026-02-22 04:47:28.019231+00:00",
     "domain_summaries": {
       "financial": {
-        "analysis_last_updated": "2026-02-22T04:46:07Z",
+        "analysis_last_updated": "2026-02-22T04:48:22Z",
         "analysis_tickers_analyzed": [],
         "analysis_total_analyses": 0,
-        "attribute_count": 15,
+        "attribute_count": 20,
         "documents_count": 1,
         "domain_contract_version": 1,
         "has_drawdown_response": true,
         "has_investment_horizon": true,
         "has_portfolio": true,
         "has_volatility_preference": true,
-        "holdings_count": 15,
+        "holdings_count": 20,
         "intent_map": [
           "portfolio",
           "profile",
@@ -1153,25 +1855,25 @@
           "analysis.decisions"
         ],
         "intent_source": "kai_import_llm",
-        "item_count": 15,
-        "last_brokerage": "",
+        "item_count": 20,
+        "last_brokerage": "J.P. Morgan",
         "last_statement_end": "March 31, 2021",
-        "last_updated": "2026-02-22T04:46:07Z",
-        "losers_count": 7,
-        "portfolio_total_value": 3135681.66,
+        "last_updated": "2026-02-22T04:48:22Z",
+        "losers_count": 9,
+        "portfolio_total_value": 1656064.53,
         "profile_completed": true,
         "profile_skipped_preferences": false,
-        "risk_bucket": "balanced",
+        "risk_bucket": "conservative",
         "risk_profile": "conservative",
         "risk_score": 0,
-        "total_gain_loss_pct": 0.0734,
-        "winners_count": 7
+        "total_gain_loss_pct": 1.1024,
+        "winners_count": 10
       }
     },
     "last_active_at": null,
     "model_version": 2,
-    "total_attributes": 15,
-    "updated_at": "2026-02-22 04:46:14.248056+00:00",
+    "total_attributes": 20,
+    "updated_at": "2026-02-22 04:48:29.808791+00:00",
     "user_id": "xm5IGgJtgGa1I6JlXRYWj5gliFz2"
   }
 }
