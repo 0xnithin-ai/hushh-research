@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ArrowRight, Trash2, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { Icon } from "@/lib/morphy-ux/ui";
 
 // Extended type to include version number computed at runtime
@@ -27,6 +27,41 @@ interface ColumnsProps {
   onDelete: (entry: AnalysisHistoryEntry) => void;
   onDeleteTicker: (ticker: string) => void;
   onViewVersions?: (ticker: string) => void;
+}
+
+function formatHistoryTimestamp(value: unknown): string {
+  if (value instanceof Date && isValid(value)) {
+    return format(value, "MMM d, h:mm a");
+  }
+
+  if (typeof value === "number") {
+    const fromEpoch = new Date(value);
+    if (isValid(fromEpoch)) {
+      return format(fromEpoch, "MMM d, h:mm a");
+    }
+    return "n/a";
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return "n/a";
+    }
+
+    const parsedIso = parseISO(trimmed);
+    if (isValid(parsedIso)) {
+      return format(parsedIso, "MMM d, h:mm a");
+    }
+
+    const parsedDate = new Date(trimmed);
+    if (isValid(parsedDate)) {
+      return format(parsedDate, "MMM d, h:mm a");
+    }
+
+    return "n/a";
+  }
+
+  return "n/a";
 }
 
 export const getColumns = ({
@@ -151,7 +186,7 @@ export const getColumns = ({
     cell: ({ row }) => {
       return (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(row.original.timestamp), "MMM d, h:mm a")}
+          {formatHistoryTimestamp(row.original.timestamp)}
         </span>
       );
     },
