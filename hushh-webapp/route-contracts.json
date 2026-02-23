@@ -218,12 +218,13 @@
       "id": "tickersPublic",
       "webRouteFiles": [
         "hushh-webapp/app/api/tickers/all/route.ts",
-        "hushh-webapp/app/api/tickers/search/route.ts"
+        "hushh-webapp/app/api/tickers/search/route.ts",
+        "hushh-webapp/app/api/tickers/sync-holdings/[userId]/route.ts"
       ],
       "backend": {
         "file": "consent-protocol/api/routes/tickers.py",
         "routerPrefix": "/api/tickers",
-        "paths": ["/all", "/search"]
+        "paths": ["/all", "/search", "/sync-holdings/{user_id}"]
       }
     },
     {

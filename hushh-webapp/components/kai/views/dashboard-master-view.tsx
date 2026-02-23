@@ -350,7 +350,7 @@ export function DashboardMasterView({
   const [editingHolding, setEditingHolding] = useState<ManagedHolding | null>(null);
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mobileHoldingsTab, setMobileHoldingsTab] = useState<
+  const [mobileHoldingsTab, _setMobileHoldingsTab] = useState<
     "all" | "analyze" | "non-analyze" | "cash"
   >("all");
 
@@ -476,7 +476,7 @@ export function DashboardMasterView({
     }),
     [holdingsDraft]
   );
-  const mobileHoldingsData = useMemo(() => {
+  const _mobileHoldingsData = useMemo(() => {
     if (mobileHoldingsTab === "analyze") return desktopHoldingTables.analyzeEligible;
     if (mobileHoldingsTab === "non-analyze") return desktopHoldingTables.nonAnalyzable;
     if (mobileHoldingsTab === "cash") return desktopHoldingTables.cashSweep;
