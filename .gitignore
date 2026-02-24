@@ -36,6 +36,9 @@ data/*.json
 # Blog drafts (personal content)
 blogs/
 
+# Local planning artifacts
+docs/project-plans/
+
 # Python
 __pycache__/
 *.pyc

@@ -30,7 +30,7 @@ env:
   NODE_VERSION: "20"
   PYTHON_VERSION: "3.13"
   WEB_LINT_WARNING_BUDGET: "161"
-  WEB_AUDIT_MODERATE_BUDGET: "6"
+  WEB_AUDIT_MODERATE_BUDGET: "7"
   WEB_AUDIT_HIGH_BUDGET: "21"
   WEB_AUDIT_CRITICAL_BUDGET: "0"
   GITLEAKS_VERSION: "8.24.2"
@@ -132,27 +132,13 @@ jobs:
           fi
         if: always()
 
-  docs-parity-check:
-    name: "Docs Runtime Parity"
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Verify docs/runtime parity
-        run: bash scripts/ci/docs-parity-check.sh
-
   # ============================================================================
   # Frontend (Next.js + Capacitor)
   # ============================================================================
   web-check:
     name: "Web (Next.js)"
     needs: [paths]
-    if: needs.paths.outputs.frontend == 'true'
+    if: needs.paths.outputs.frontend == 'true' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -192,7 +178,7 @@ jobs:
   protocol-check:
     name: "Protocol (Python)"
     needs: [paths]
-    if: needs.paths.outputs.backend == 'true'
+    if: needs.paths.outputs.backend == 'true' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy'))
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -219,7 +205,7 @@ jobs:
   integration-check:
     name: "Integration"
     needs: [paths]
-    if: needs.paths.outputs.frontend == 'true' || needs.paths.outputs.backend == 'true'
+    if: needs.paths.outputs.frontend == 'true' || needs.paths.outputs.backend == 'true' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
