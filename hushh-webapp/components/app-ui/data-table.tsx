@@ -35,6 +35,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -239,25 +245,29 @@ export function DataTable<TData, TValue>({
 
         <div className="flex items-center gap-2">
           {/* Page Size Selector */}
-          <Select
-            value={table.getState().pagination.pageSize.toString()}
-            onValueChange={(value) => table.setPageSize(Number(value))}
-          >
-            <SelectTrigger className="w-[80px] cursor-pointer">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[80px] justify-between px-3"
+                data-no-route-swipe
+              >
+                {table.getState().pagination.pageSize}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               {normalizedPageSizeOptions.map((size) => (
-                <SelectItem
+                <DropdownMenuItem
                   key={size}
-                  value={size.toString()}
+                  onSelect={() => table.setPageSize(size)}
                   className="cursor-pointer"
                 >
                   {size}
-                </SelectItem>
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Page Navigation */}
           <Button

@@ -60,6 +60,12 @@ function HomeContent() {
         return;
       }
 
+      const shouldForceIntro = await OnboardingLocalService.consumeForceIntroOnce();
+      if (shouldForceIntro) {
+        setStep("intro");
+        return;
+      }
+
       const hasSeen = await OnboardingLocalService.hasSeenMarketing();
       if (cancelled) return;
       setStep(hasSeen ? "preview" : "intro");

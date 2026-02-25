@@ -74,7 +74,9 @@ export function TopBarBackground() {
       className={cn(
         "fixed top-0 left-0 right-0 z-40",
         BAR_GLASS_CLASS,
-        isNative ? "h-[calc(env(safe-area-inset-top)+72px)]" : "h-[64px]"
+        isNative
+          ? "h-[calc(env(safe-area-inset-top,0px)+var(--app-top-safe-offset)+72px)]"
+          : "h-[64px]"
       )}
       aria-hidden
     />
@@ -123,7 +125,9 @@ export function TopAppBar({ className }: TopAppBarProps) {
     <div
       className={cn(
         "fixed left-0 right-0 z-50",
-        isNative ? "top-[env(safe-area-inset-top)] h-[72px]" : "top-0 h-[64px]",
+        isNative
+          ? "top-[calc(env(safe-area-inset-top,0px)+var(--app-top-safe-offset))] h-[72px]"
+          : "top-0 h-[64px]",
         // Flex container for back button
         "flex items-center justify-between pb-2 px-4",
         className,
@@ -285,7 +289,9 @@ export function TopAppBarSpacer() {
     <div
       className={cn(
         "w-full shrink-0 transition-[height]",
-        isNative ? "h-[calc(72px+env(safe-area-inset-top))]" : "h-[64px]",
+        isNative
+          ? "h-[calc(72px+env(safe-area-inset-top,0px)+var(--app-top-safe-offset))]"
+          : "h-[64px]",
       )}
     />
   );

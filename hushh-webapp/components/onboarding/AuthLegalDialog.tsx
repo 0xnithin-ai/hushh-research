@@ -24,7 +24,7 @@ export function AuthLegalDialog({ docType, onOpenChange }: AuthLegalDialogProps)
   const content = docType ? KAI_LEGAL_DOCUMENTS[docType] : null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange} modal={false}>
       <DialogContent className="max-w-[min(36rem,calc(100%-1.5rem))] gap-3 p-0">
         {content ? (
           <>

@@ -35,6 +35,11 @@ import { Capacitor } from "@capacitor/core";
 import { AuthService } from "@/lib/services/auth-service";
 import { CacheSyncService } from "@/lib/cache/cache-sync-service";
 import { ROUTES } from "@/lib/navigation/routes";
+import { OnboardingLocalService } from "@/lib/services/onboarding-local-service";
+import {
+  setOnboardingFlowActiveCookie,
+  setOnboardingRequiredCookie,
+} from "@/lib/services/onboarding-route-cookie";
 
 // Pre-compute platform check to avoid dynamic imports in callbacks
 const IS_NATIVE = typeof window !== "undefined" && Capacitor.isNativePlatform();
@@ -219,9 +224,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign out
   const signOut = async (): Promise<void> => {
+    const currentUid = user?.uid ?? null;
     try {
       // Delete FCM token before signing out (requires auth)
-      const currentUid = user?.uid;
       if (currentUid) {
         try {
           const idToken = await user?.getIdToken();
@@ -234,12 +239,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const { AuthService } = await import("@/lib/services/auth-service");
       await AuthService.signOut(); // Handles Native + Firebase
-      CacheSyncService.onAuthSignedOut(currentUid ?? null);
+    } catch (e) {
+      console.error("Sign out error", e);
+    } finally {
+      CacheSyncService.onAuthSignedOut(currentUid);
 
       setUser(null);
       setPhoneNumber(null);
       setConfirmationResult(null);
       setUserId(null);
+
+      // Reset landing/onboarding entry markers so sign-out returns to Intro on "/".
+      await OnboardingLocalService.clearMarketingSeen();
+      await OnboardingLocalService.markForceIntroOnce();
+      setOnboardingRequiredCookie(false);
+      setOnboardingFlowActiveCookie(false);
 
       // DEFENSIVE CLEANUP: Remove any legacy vault_key from storage
       // Vault key should be managed by VaultContext (memory-only)
@@ -248,8 +262,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       sessionStorage.clear();
 
       router.push(ROUTES.HOME);
-    } catch (e) {
-      console.error("Sign out error", e);
     }
   };
 

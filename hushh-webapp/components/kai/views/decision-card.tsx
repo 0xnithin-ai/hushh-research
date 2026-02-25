@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/lib/morphy-ux/card";
+import {
+  Card as MorphyCard,
+  CardContent as MorphyCardContent,
+  CardHeader as MorphyCardHeader,
+  CardTitle as MorphyCardTitle,
+} from "@/lib/morphy-ux/card";
 import {
   Zap,
   ExternalLink,
@@ -753,17 +758,12 @@ export function DecisionCard({ result }: { result: DecisionResult }) {
     .slice(0, 12);
 
   return (
-    <Card
-      variant="none"
-      effect="glass"
-      showRipple={false}
-      className="animate-in fade-in zoom-in duration-500 overflow-hidden rounded-2xl border border-border/60 bg-background/75 shadow-sm"
-    >
-      <CardHeader className="pb-2">
+    <MorphyCard showRipple={false}>
+      <MorphyCardHeader>
           <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon icon={Zap} size="md" className="text-primary" />
-            <CardTitle className="text-sm font-black uppercase tracking-widest">Final Recommendation</CardTitle>
+            <MorphyCardTitle>Final Recommendation</MorphyCardTitle>
           </div>
           <Badge
             variant="outline"
@@ -772,9 +772,10 @@ export function DecisionCard({ result }: { result: DecisionResult }) {
             COMPLETE
           </Badge>
         </div>
-      </CardHeader>
+      </MorphyCardHeader>
       
-      <CardContent className="space-y-6">
+      <MorphyCardContent>
+        <div className="space-y-6">
         
         {/* HERO SECTION: Decision + Badges */}
         <div className="flex flex-col items-center gap-4">
@@ -1127,7 +1128,8 @@ export function DecisionCard({ result }: { result: DecisionResult }) {
             financial advisor.
           </p>
         </div>
-      </CardContent>
-    </Card>
+        </div>
+      </MorphyCardContent>
+    </MorphyCard>
   );
 }

@@ -101,7 +101,10 @@ export const Navbar = () => {
     return (
       <nav
         className="fixed left-0 right-0 z-50 flex justify-center px-4 pointer-events-none"
-        style={{ bottom: "max(var(--app-safe-area-bottom-effective), 0.5rem)" }}
+        style={{
+          bottom:
+            "calc(max(var(--app-safe-area-bottom-effective), 0.5rem) + var(--app-bottom-chrome-lift, 0px))",
+        }}
       >
         <div ref={pillRef} className="pointer-events-auto">
           <ThemeToggle className="bg-white/85 dark:bg-black/85" />
@@ -152,7 +155,8 @@ export const Navbar = () => {
           : "pointer-events-none opacity-100"
       )}
       style={{
-        bottom: "max(var(--app-safe-area-bottom-effective), 0.75rem)",
+        bottom:
+          "calc(max(var(--app-safe-area-bottom-effective), 0.75rem) + var(--app-bottom-chrome-lift, 0px))",
         transform: hideBottomChrome
           ? "translate3d(0, calc(100% + 18px), 0)"
           : "translate3d(0, 0, 0)",

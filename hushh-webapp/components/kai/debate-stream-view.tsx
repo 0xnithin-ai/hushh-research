@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Button } from "@/lib/morphy-ux/button";
+import { Button as MorphyButton } from "@/lib/morphy-ux/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, AlertCircle, RefreshCw, X, WifiOff, ShieldAlert, Clock, CheckCircle2 } from "lucide-react";
 import { Icon } from "@/lib/morphy-ux/ui";
@@ -10,7 +10,10 @@ import { KaiHistoryService, type AnalysisHistoryEntry } from "@/lib/services/kai
 import { type DecisionResult } from "./views/decision-card";
 import { RoundTabsCard } from "./views/round-tabs-card";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/lib/morphy-ux/card";
+import {
+  Card as MorphyCard,
+  CardContent as MorphyCardContent,
+} from "@/lib/morphy-ux/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ApiService } from "@/lib/services/api-service";
@@ -1322,8 +1325,9 @@ export function DebateStreamView({
     const display = getErrorDisplay(errorType, retryCountdown ?? undefined);
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 space-y-4">
-        <Card variant="none" effect="glass" showRipple={false} className="max-w-md w-full">
-          <CardContent className="p-8 flex flex-col items-center space-y-4">
+        <div className="max-w-md w-full">
+          <MorphyCard showRipple={false}>
+            <MorphyCardContent className="p-8 flex flex-col items-center space-y-4">
             <div className="p-4 rounded-full bg-muted/30">{display.icon}</div>
             <h3 className="text-lg font-semibold text-center">{display.title}</h3>
             <p className="text-sm text-muted-foreground text-center">{error}</p>
@@ -1334,20 +1338,17 @@ export function DebateStreamView({
               </div>
             )}
             <div className="flex gap-2 pt-2">
-              <Button
+              <MorphyButton
                 variant="none"
                 effect="fade"
                 size="sm"
                 showRipple={false}
-                className="border border-border/50 hover:border-border"
                 onClick={onClose}
               >
                 Close
-              </Button>
+              </MorphyButton>
               {errorType !== "auth_expired" && (
-                <Button
-                  variant="blue-gradient"
-                  effect="fill"
+                <MorphyButton
                   size="sm"
                   onClick={() => {
                     retryCountRef.current = 0;
@@ -1357,16 +1358,17 @@ export function DebateStreamView({
                   }}
                 >
                   <Icon icon={RefreshCw} size="sm" className="mr-2" /> Retry
-                </Button>
+                </MorphyButton>
               )}
               {errorType === "auth_expired" && (
-                <Button variant="blue-gradient" effect="fill" size="sm" onClick={onClose}>
+                <MorphyButton size="sm" onClick={onClose}>
                   <Icon icon={ShieldAlert} size="sm" className="mr-2" /> Re-authenticate
-                </Button>
+                </MorphyButton>
               )}
             </div>
-          </CardContent>
-        </Card>
+            </MorphyCardContent>
+          </MorphyCard>
+        </div>
       </div>
     );
   }
@@ -1420,17 +1422,16 @@ export function DebateStreamView({
                 </Badge>
               ) : null}
             </div>
-            <Button
+            <MorphyButton
               variant="none"
               effect="fade"
               size="sm"
               showRipple={false}
               onClick={handleClose}
-              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <Icon icon={X} size="xs" />
               Cancel
-            </Button>
+            </MorphyButton>
           </div>
           {!decision && loading ? (
             <div className="mt-3">
@@ -1444,25 +1445,25 @@ export function DebateStreamView({
       <ScrollArea className={cn("flex-1 p-4", !showHeader && "pt-0")}>
         <div className="mx-auto w-full max-w-3xl space-y-6 px-1 pb-10 sm:px-4">
           {decision ? (
-            <Card variant="none" className="border border-emerald-500/30 bg-emerald-500/5 p-4">
-              <CardContent className="p-0">
+            <MorphyCard>
+              <MorphyCardContent className="p-0">
                 <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                   Debate complete.
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Use Summary or Detailed View tabs to review the recommendation outputs.
                 </p>
-              </CardContent>
-            </Card>
+              </MorphyCardContent>
+            </MorphyCard>
           ) : (
-            <Card variant="none" className="border-dashed p-4">
-              <CardContent className="p-0">
+            <MorphyCard>
+              <MorphyCardContent className="p-0">
                 <p className="text-sm font-medium">Final recommendation is building...</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Debate rounds stream here. Switch tabs anytime; this run continues in the background.
                 </p>
-              </CardContent>
-            </Card>
+              </MorphyCardContent>
+            </MorphyCard>
           )}
 
           {!decision ? (

@@ -352,7 +352,9 @@ export function DashboardRouteTabs() {
   return createPortal(
     <div
       className="pointer-events-none fixed inset-x-0 z-[90]"
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 58px)" }}
+      style={{
+        top: "calc(env(safe-area-inset-top, 0px) + var(--app-top-safe-offset, 0px) + 58px)",
+      }}
     >
       <div
         aria-hidden

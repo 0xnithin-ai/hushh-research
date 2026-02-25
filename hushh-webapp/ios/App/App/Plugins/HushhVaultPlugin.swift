@@ -42,8 +42,15 @@ public class HushhVaultPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
     
     private let TAG = "HushhVault"
+    private let defaultClientVersion = "2.0.0"
     private var clientVersionHeaderValue: String {
-        return Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0.0"
+        if let configuredVersion = Bundle.main.object(forInfoDictionaryKey: "HushhClientVersion") as? String {
+            let trimmedVersion = configuredVersion.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedVersion.isEmpty {
+                return trimmedVersion
+            }
+        }
+        return defaultClientVersion
     }
 
     private func resolvedBackendUrl(_ call: CAPPluginCall) -> String {

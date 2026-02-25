@@ -124,7 +124,7 @@ export function PortfolioImportView({
   }, [onPreloadSchema, isPreloadingSchema, isUploading]);
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4 px-4 pt-4 pb-[calc(var(--app-bottom-inset)+1rem)]">
+    <div className="w-full max-w-md mx-auto space-y-4 px-4 pt-4 pb-[calc(var(--app-bottom-inset)+var(--kai-command-bottom-gap,18px)+5rem)]">
       {/* Header */}
       <div className="text-center space-y-2 px-2">
         <h1 className="text-[34px] font-bold tracking-tight leading-[1.08]">
@@ -258,21 +258,6 @@ export function PortfolioImportView({
         </p>
       </div>
 
-      <MorphyButton
-        variant="morphy"
-        effect="fill"
-        size="default"
-        className="w-full font-black shadow-xl border-none"
-        onClick={handleContinue}
-        disabled={isUploading || isPreloadingSchema || !selectedFile}
-        icon={{
-          icon: Upload,
-          gradient: false,
-        }}
-      >
-        {isUploading ? "Parsing..." : "Continue"}
-      </MorphyButton>
-
       {onPreloadSchema ? (
         <div className="space-y-1.5">
           <MorphyButton
@@ -294,6 +279,21 @@ export function PortfolioImportView({
           </p>
         </div>
       ) : null}
+
+      <MorphyButton
+        variant="morphy"
+        effect="fill"
+        size="default"
+        className="w-full font-black shadow-xl border-none"
+        onClick={handleContinue}
+        disabled={isUploading || isPreloadingSchema || !selectedFile}
+        icon={{
+          icon: Upload,
+          gradient: false,
+        }}
+      >
+        {isUploading ? "Parsing..." : "Continue"}
+      </MorphyButton>
 
       {/* Skip Option */}
       <div className="text-center pt-1">

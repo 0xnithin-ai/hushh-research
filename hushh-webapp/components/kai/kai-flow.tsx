@@ -532,9 +532,22 @@ function isReviewPortfolioData(value: unknown): value is ReviewPortfolioData {
 async function fetchDemoModePortfolioTemplate(
   _vaultOwnerToken?: string
 ): Promise<ReviewPortfolioData> {
-  const response = await ApiService.apiFetch("/demo-mode/portfolio-template.json", {
+  const cacheBust = "v=2026-02-25";
+  const assetPath = `/demo-mode/portfolio-template.json?${cacheBust}`;
+  const assetUrl =
+    typeof window !== "undefined"
+      ? new URL(assetPath, window.location.origin).toString()
+      : assetPath;
+
+  // Demo template is a bundled static asset. Do not use ApiService here;
+  // ApiService routes native calls to backend URLs, which breaks local asset reads.
+  const response = await fetch(assetUrl, {
     method: "GET",
     cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      "Cache-Control": "no-cache",
+    },
   });
 
   if (!response.ok) {
@@ -1756,13 +1769,7 @@ export function KaiFlow({
       toast.success("Demo mode data loaded. Review and save to vault.");
     } catch (preloadError) {
       console.error("[KaiFlow] Failed to preload schema data:", preloadError);
-      const fallbackTemplate = createPreloadedPortfolioTemplate();
-      setFlowData((previous) => ({
-        ...previous,
-        parsedPortfolio: fallbackTemplate,
-      }));
-      setState("reviewing");
-      toast.info("Loaded default demo template. Review and save to vault.");
+      toast.error("Could not load demo data. Please retry.");
     } finally {
       setPendingSchemaPreload(false);
       setIsPreloadingSchema(false);

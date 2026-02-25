@@ -17,6 +17,11 @@ import { clearSessionStorage } from "@/lib/utils/session-storage";
 import { useStepProgress } from "@/lib/progress/step-progress-context";
 import { CacheSyncService } from "@/lib/cache/cache-sync-service";
 import { ROUTES } from "@/lib/navigation/routes";
+import { OnboardingLocalService } from "@/lib/services/onboarding-local-service";
+import {
+  setOnboardingFlowActiveCookie,
+  setOnboardingRequiredCookie,
+} from "@/lib/services/onboarding-route-cookie";
 
 export default function LogoutPage() {
   const router = useRouter();
@@ -58,6 +63,12 @@ export default function LogoutPage() {
         // Clear session storage (platform-aware)
         await clearSessionStorage();
 
+        // Reset landing/onboarding entry markers so sign-out returns to Intro on "/".
+        await OnboardingLocalService.clearMarketingSeen();
+        await OnboardingLocalService.markForceIntroOnce();
+        setOnboardingRequiredCookie(false);
+        setOnboardingFlowActiveCookie(false);
+
         // Sign out from Firebase
         const currentUid = auth.currentUser?.uid ?? null;
         await signOut(auth);
@@ -71,6 +82,14 @@ export default function LogoutPage() {
       } catch (error) {
         console.error("Logout failed:", error);
         completeStep(); // Complete step on error
+        try {
+          await OnboardingLocalService.clearMarketingSeen();
+          await OnboardingLocalService.markForceIntroOnce();
+        } catch (onboardingError) {
+          console.warn("[LogoutPage] Failed to reset onboarding flags:", onboardingError);
+        }
+        setOnboardingRequiredCookie(false);
+        setOnboardingFlowActiveCookie(false);
         // Still clear storage and redirect even if Firebase logout fails
         localStorage.clear();
         sessionStorage.clear();

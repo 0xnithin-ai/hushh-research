@@ -1635,22 +1635,24 @@ export function DashboardMasterView({
       </Card>
 
       <Card variant="none" effect="glass" className="rounded-[24px]">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5 text-xs text-muted-foreground sm:p-6">
+        <CardContent className="flex flex-col gap-3 p-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <p>Imported statement data is synced across dashboard and holdings views.</p>
-          <div className="flex items-center gap-2">
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
             <MorphyButton
               variant="none"
               effect="fade"
               size="sm"
+              fullWidth
               disabled={isDeletingImportedData}
               onClick={onReupload}
             >
-              Import New Statement
+              Import Portfolio
             </MorphyButton>
             <MorphyButton
               variant="none"
               effect="fade"
               size="sm"
+              fullWidth
               className="text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
               disabled={isDeletingImportedData}
               onClick={() => setDeleteImportedDialogOpen(true)}

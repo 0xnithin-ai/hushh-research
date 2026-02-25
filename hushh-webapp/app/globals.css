@@ -96,11 +96,13 @@ html body[data-scroll-locked] {
   --bottom-nav-offset: 88px;
   /* Runtime-measured bottom fixed UI (Navbar / floating theme pill). Overridden by navbar at runtime. */
   --app-bottom-fixed-ui: var(--bottom-nav-offset);
+  --app-bottom-chrome-lift: 0px;
   --app-bottom-inset: calc(
-    var(--app-bottom-fixed-ui) + var(--app-safe-area-bottom-effective)
+    var(--app-bottom-fixed-ui) + var(--app-safe-area-bottom-effective) + var(--app-bottom-chrome-lift)
   );
   --kai-command-bottom-gap: 12px;
   --app-screen-footer-pad: calc(8px + var(--app-bottom-inset));
+  --app-top-safe-offset: 0px;
 
   /* Motion tokens (GSAP + CSS). Change once to retune the whole app. */
   --motion-duration-xs: 120ms;
@@ -238,12 +240,18 @@ html body[data-scroll-locked] {
   --md-ripple-pressed-opacity: 0.12;
 }
 
+.native-ios {
+  --app-top-safe-offset: 6px;
+}
+
 /* Capacitor iOS uses `ios.contentInset = always`; don't double-count bottom safe area in app spacing. */
 html.native-ios {
-  /* Keep navbar visual anchor low, but add a small effective inset for footer clearance math. */
-  --app-safe-area-bottom-effective: 4px;
+  /* Lift persistent bottom chrome above the iOS home indicator zone. */
+  --app-bottom-chrome-lift: 10px;
+  /* Keep a small effective inset because WKWebView already applies content inset on iOS. */
+  --app-safe-area-bottom-effective: 10px;
   /* On iOS onboarding screens, keep CTA comfortably above the bottom theme/nav pill. */
-  --app-screen-footer-pad: calc(40px + var(--app-bottom-inset));
+  --app-screen-footer-pad: calc(56px + var(--app-bottom-inset));
 }
 
 /* Theme-aware gradient text - Apple Blue consistently */

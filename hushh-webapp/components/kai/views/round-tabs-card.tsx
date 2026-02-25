@@ -1,9 +1,14 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/lib/morphy-ux/card";
+import {
+  Card as MorphyCard,
+  CardContent as MorphyCardContent,
+  CardHeader as MorphyCardHeader,
+  CardTitle as MorphyCardTitle,
+} from "@/lib/morphy-ux/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/lib/morphy-ux/button";
+import { Button as MorphyButton } from "@/lib/morphy-ux/button";
 import {
   ChevronDown,
   ChevronUp,
@@ -125,23 +130,8 @@ export function RoundTabsCard({
   }, [agentStates]);
 
   return (
-    <Card
-      variant="none"
-      effect="glass"
-      showRipple={false}
-      className={cn(
-        "w-full transition-all duration-200 border-l-4",
-        isRoundComplete
-          ? "border-l-emerald-500"
-          : hasAnyError
-          ? "border-l-amber-500"
-          : hasAnyActivity
-          ? "border-l-blue-500"
-          : "border-l-border",
-        className
-      )}
-    >
-      <CardHeader className="py-3 px-4">
+    <MorphyCard showRipple={false} className={cn("w-full transition-all duration-200", className)}>
+      <MorphyCardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
@@ -157,7 +147,7 @@ export function RoundTabsCard({
               {isRoundComplete ? <Icon icon={CheckCircle2} size="sm" /> : roundNumber}
             </div>
             <div>
-              <CardTitle className="text-base font-semibold">{title}</CardTitle>
+              <MorphyCardTitle>{title}</MorphyCardTitle>
               {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
             </div>
           </div>
@@ -172,24 +162,23 @@ export function RoundTabsCard({
                 <Icon icon={Clock} size={12} className="mr-1 animate-pulse" /> {completedCount}/3
               </Badge>
             ) : null}
-            <Button
+            <MorphyButton
               variant="none"
               effect="fade"
               size="icon-sm"
               showRipple={false}
               onClick={onToggleCollapse}
-              className="h-8 w-8 p-0 border border-transparent hover:border-border/40"
             >
               {isCollapsed ? <Icon icon={ChevronDown} size="sm" /> : <Icon icon={ChevronUp} size="sm" />}
-            </Button>
+            </MorphyButton>
           </div>
         </div>
-      </CardHeader>
+      </MorphyCardHeader>
 
       {!isCollapsed && (
-        <CardContent className="p-3 pt-1">
+        <MorphyCardContent>
           <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="mb-4 grid h-10 w-full grid-cols-3 gap-1 bg-muted/80 p-1">
+            <TabsList className="mb-4 grid h-10 w-full grid-cols-3 gap-1">
               {AGENT_ORDER.map((agent) => {
                 const config = AGENT_CONFIG[agent];
                 const state = agentStates[agent];
@@ -202,12 +191,12 @@ export function RoundTabsCard({
                     key={agent}
                     value={agent}
                     className={cn(
-                      "relative flex h-8 min-w-0 items-center justify-center gap-1.5 px-2 py-1 text-xs transition-all duration-200 sm:text-sm",
+                      "relative flex h-8 w-full min-w-0 items-center justify-center px-1 text-center text-xs transition-all duration-200 sm:text-sm",
                       isAgentComplete && "data-[state=active]:text-emerald-600"
                     )}
                   >
-                    {/* Completion/Active indicator */}
-                    <span className="inline-flex h-3 w-3 shrink-0 items-center justify-center">
+                    <span className="truncate">{config.label}</span>
+                    <span className="absolute right-1 top-1 inline-flex h-3 w-3 items-center justify-center">
                       {isAgentComplete ? (
                         <Icon icon={CheckCircle2} size="xs" className="text-emerald-500" />
                       ) : isAgentError ? (
@@ -219,7 +208,6 @@ export function RoundTabsCard({
                         </span>
                       ) : null}
                     </span>
-                    <span className="truncate">{config.label}</span>
                   </TabsTrigger>
                 );
               })}
@@ -246,8 +234,8 @@ export function RoundTabsCard({
               );
             })}
           </Tabs>
-        </CardContent>
+        </MorphyCardContent>
       )}
-    </Card>
+    </MorphyCard>
   );
 }

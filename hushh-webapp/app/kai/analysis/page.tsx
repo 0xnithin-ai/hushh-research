@@ -9,7 +9,7 @@ import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { AnalysisHistoryDashboard } from "@/components/kai/views/analysis-history-dashboard";
 import { AnalysisSummaryView } from "@/components/kai/views/analysis-summary-view";
 import { HistoryDetailView } from "@/components/kai/views/history-detail-view";
-import { Button } from "@/lib/morphy-ux/button";
+import { Button as MorphyButton } from "@/lib/morphy-ux/button";
 import { Icon } from "@/lib/morphy-ux/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/firebase/auth-context";
@@ -278,6 +278,14 @@ export default function KaiAnalysisPage() {
     });
   }, []);
 
+  const handleLiveDecisionSaved = useCallback((entry: AnalysisHistoryEntry) => {
+    setLiveEntry(entry);
+    setWorkspaceTab("summary");
+    requestAnimationFrame(() => {
+      workspaceTopRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }, []);
+
   const activeEntry = liveIntentReady ? liveEntry : resolvedEntry;
   const showWorkspace = Boolean(liveIntentReady || resolvedEntry);
   const activeTicker = useMemo(() => {
@@ -328,10 +336,35 @@ export default function KaiAnalysisPage() {
     };
   }, [activeTicker, showWorkspace, userId, vaultOwnerToken]);
 
-  if (!user || !userId || !vaultKey) {
+  if (!user || !userId) {
     return (
       <div className="flex min-h-96 items-center justify-center">
         <HushhLoader variant="inline" label="Preparing analysis hub…" />
+      </div>
+    );
+  }
+
+  if (!vaultKey) {
+    return (
+      <div className="mx-auto w-full max-w-xl px-4 pt-6">
+        <div className="rounded-2xl border border-border/60 bg-background/80 p-5 text-center">
+          <h2 className="text-lg font-semibold">Set up your portfolio first</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Analysis is available after vault setup and portfolio import.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <MorphyButton onClick={() => router.push("/kai/import")}>
+              Import Portfolio
+            </MorphyButton>
+            <MorphyButton
+              variant="none"
+              effect="fade"
+              onClick={() => router.push("/kai/dashboard")}
+            >
+              Go to Dashboard
+            </MorphyButton>
+          </div>
+        </div>
       </div>
     );
   }
@@ -342,10 +375,10 @@ export default function KaiAnalysisPage() {
         <div ref={workspaceTopRef} className="mx-auto w-full max-w-6xl space-y-4 px-4 sm:px-6">
           <div className="space-y-3">
             <div className="flex items-center justify-start">
-              <Button variant="none" effect="fade" size="sm" onClick={handleBackToHistory}>
+              <MorphyButton variant="none" effect="fade" size="sm" onClick={handleBackToHistory}>
                 <Icon icon={ArrowLeft} size="sm" className="mr-1" />
                 Back to history
-              </Button>
+              </MorphyButton>
             </div>
             <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3 shadow-sm backdrop-blur-md">
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -376,10 +409,10 @@ export default function KaiAnalysisPage() {
               </div>
               {liveIntentReady ? (
                 <div className="mt-3 flex justify-end">
-                  <Button variant="none" effect="fade" size="sm" onClick={handleCloseLiveDebate}>
+                  <MorphyButton variant="none" effect="fade" size="sm" onClick={handleCloseLiveDebate}>
                     <Icon icon={X} size="xs" className="mr-1" />
                     Cancel
-                  </Button>
+                  </MorphyButton>
                 </div>
               ) : null}
             </div>
@@ -404,7 +437,7 @@ export default function KaiAnalysisPage() {
                     vaultOwnerToken={vaultOwnerToken || ""}
                     vaultKey={vaultKey}
                     onClose={handleCloseLiveDebate}
-                    onDecisionSaved={setLiveEntry}
+                    onDecisionSaved={handleLiveDecisionSaved}
                     showHeader={false}
                   />
                 ) : activeEntry ? (
