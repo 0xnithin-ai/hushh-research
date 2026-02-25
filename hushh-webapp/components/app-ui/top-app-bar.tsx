@@ -104,12 +104,15 @@ function getTopBarTitle(pathname: string): string | null {
 
 export function TopAppBar({ className }: TopAppBarProps) {
   const { handleBack } = useNavigation();
+  const { isVaultUnlocked } = useVault();
   const [isNative, setIsNative] = useState(false);
   const pathname = usePathname();
   const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
   const showOnboardingActions = chromeState.useOnboardingChrome;
   const hideChrome = pathname === ROUTES.HOME || pathname.startsWith(ROUTES.LOGIN);
   const centerTitle = useMemo(() => getTopBarTitle(pathname), [pathname]);
+  const hideBackButtonForVaultGuard =
+    pathname.startsWith(ROUTES.CONSENTS) && !isVaultUnlocked;
 
   useEffect(() => {
     // Check platform on mount to avoid hydration mismatch
@@ -141,13 +144,17 @@ export function TopAppBar({ className }: TopAppBarProps) {
         </div>
       ) : null}
       <div className="flex items-center gap-2">
-        <button
-          onClick={handleBack}
-          className="grid h-10 w-10 place-items-center rounded-full border border-border/60 bg-background/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-muted/50 active:bg-muted/80"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+        {hideBackButtonForVaultGuard ? (
+          <div className="h-10 w-10" aria-hidden />
+        ) : (
+          <button
+            onClick={handleBack}
+            className="grid h-10 w-10 place-items-center rounded-full border border-border/60 bg-background/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-muted/50 active:bg-muted/80"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {showOnboardingActions && <OnboardingRouteActions />}

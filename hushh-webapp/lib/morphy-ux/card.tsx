@@ -112,7 +112,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <Comp
         ref={ref}
         className={cn(
-          "relative rounded-lg border border-solid text-card-foreground p-6 transition-[border-color,box-shadow,background-color] duration-200",
+          "relative rounded-lg border border-solid text-card-foreground p-4 sm:p-6 transition-[border-color,box-shadow,background-color] duration-200",
           "shadow-[0_1px_3px_0_rgb(0_0_0_/_0.3),_0_1px_2px_-1px_rgb(0_0_0_/_0.2)]",
           preset === "hero" &&
             "p-0 rounded-3xl shadow-[0_18px_60px_rgba(0,0,0,0.10)]",

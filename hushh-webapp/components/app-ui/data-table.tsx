@@ -238,19 +238,19 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs text-muted-foreground sm:text-sm">
           Showing {rangeStart}-{rangeEnd} of {filteredCount}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 sm:justify-end">
           {/* Page Size Selector */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="min-w-[80px] justify-between px-3"
+                className="h-8 min-w-[64px] justify-between px-2 text-xs sm:min-w-[80px] sm:px-3 sm:text-sm"
                 data-no-route-swipe
               >
                 {table.getState().pagination.pageSize}

@@ -221,6 +221,8 @@ export function NavigationProvider({
             } else {
               router.push(ROUTES.HOME);
             }
+          } else {
+            router.push(ROUTES.HOME);
           }
           setShowExitDialog(false);
         }}

@@ -768,12 +768,12 @@ export default function ProfilePage() {
       </Card>
 
       {/* Sign Out Button */}
-      <div className="flex">
+      <div className="w-full">
         <Button
           variant="destructive"
           effect="fade"
           size="default"
-          className="w-auto min-w-[9rem] px-5"
+          className="w-full justify-center"
           onClick={handleSignOut}
         >
           <Icon icon={LogOut} size="md" className="mr-2" />
@@ -907,7 +907,8 @@ export default function ProfilePage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
+              className="opacity-90 transition-opacity hover:opacity-100"
               onClick={(e) => {
                 e.preventDefault(); // Prevent auto-closing
                 handleDeleteAccount();

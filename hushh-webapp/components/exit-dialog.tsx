@@ -1,18 +1,17 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useContext } from "react";
 import { Icon } from "@/lib/morphy-ux/ui";
+import { Button } from "@/lib/morphy-ux/button";
 
 // Import the context directly to check if it exists
 import { VaultContext } from "@/lib/vault/vault-context";
@@ -53,6 +52,14 @@ export function ExitDialog({
       vaultContext.lockVault();
     }
 
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("vault-lock-requested", {
+          detail: { reason: isLockOnly ? "manual_lock" : "exit_app" },
+        })
+      );
+    }
+
     // 2. Clear sensitive session data
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.clear();
@@ -67,6 +74,7 @@ export function ExitDialog({
 
     // 4. Call the exit callback (which calls App.exitApp())
     onConfirm();
+    onOpenChange(false);
   };
 
   const isLockOnly = mode === "lock_only";
@@ -77,26 +85,37 @@ export function ExitDialog({
   const actionLabel = isLockOnly ? "Lock Vault" : "Lock Vault & Exit";
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-background/95 backdrop-blur-none border-border/60 shadow-xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
+      <DialogContent
+        showCloseButton={false}
+        className="bg-background/95 border-border/60 shadow-xl sm:max-w-sm"
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <Icon icon={ShieldCheck} size="md" className="text-primary" />
             {title}
-          </AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleExit}
-            className="bg-red-600 text-white hover:bg-red-700 shadow-md"
+          </DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="none"
+            effect="fade"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            effect="fade"
+            onClick={() => void handleExit()}
+            className="shadow-md"
           >
             <Icon icon={LogOut} size="sm" className="mr-2" />
             {actionLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

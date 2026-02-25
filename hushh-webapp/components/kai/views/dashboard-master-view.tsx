@@ -1162,7 +1162,7 @@ export function DashboardMasterView({
           const holding = row.original;
           const isDeleted = Boolean(holding.pending_delete);
           return (
-            <div className="flex flex-wrap items-center justify-end gap-1">
+            <div className="flex items-center justify-end gap-1">
               <MorphyButton
                 variant="none"
                 effect="fade"
@@ -1170,10 +1170,10 @@ export function DashboardMasterView({
                 disabled={isDeleted}
                 aria-label={`Edit ${holding.symbol || "holding"}`}
                 onClick={() => handleEditHolding(holding.client_id)}
-                className="min-w-[88px] justify-center"
+                title={`Edit ${holding.symbol || "holding"}`}
+                className="h-8 w-8 min-w-8 justify-center p-0"
               >
-                <Icon icon={Pencil} size="sm" className="mr-1" />
-                Edit
+                <Icon icon={Pencil} size="sm" />
               </MorphyButton>
               <MorphyButton
                 variant="none"
@@ -1181,13 +1181,13 @@ export function DashboardMasterView({
                 size="sm"
                 aria-label={isDeleted ? `Undo remove ${holding.symbol}` : `Remove ${holding.symbol}`}
                 onClick={() => handleToggleDeleteHolding(holding.client_id)}
+                title={isDeleted ? `Restore ${holding.symbol || "holding"}` : `Remove ${holding.symbol || "holding"}`}
                 className={cn(
-                  "min-w-[88px] justify-center",
+                  "h-8 w-8 min-w-8 justify-center p-0",
                   isDeleted ? "text-muted-foreground" : "text-rose-600 hover:text-rose-700"
                 )}
               >
-                <Icon icon={isDeleted ? Undo2 : Trash2} size="sm" className="mr-1" />
-                {isDeleted ? "Restore" : "Remove"}
+                <Icon icon={isDeleted ? Undo2 : Trash2} size="sm" />
               </MorphyButton>
             </div>
           );
@@ -1399,17 +1399,33 @@ export function DashboardMasterView({
 
           <Tabs defaultValue="all" className="space-y-3">
             <div className="pb-1">
-              <TabsList className="grid h-10 w-full grid-cols-4 gap-1 rounded-xl bg-background/80 p-1">
-                <TabsTrigger className="h-8 min-w-0 truncate px-2 text-[11px] sm:text-xs" value="all">
+              <TabsList className="grid h-8 w-full grid-cols-4 gap-0.5 rounded-lg bg-background/80 p-0.5">
+                <TabsTrigger
+                  className="h-7 min-w-0 truncate px-1 text-[10px] leading-none sm:text-xs"
+                  value="all"
+                  title={`All holdings (${desktopHoldingTables.all.length})`}
+                >
                   All ({desktopHoldingTables.all.length})
                 </TabsTrigger>
-                <TabsTrigger className="h-8 min-w-0 truncate px-2 text-[11px] sm:text-xs" value="analyze">
-                  Equities ({desktopHoldingTables.analyzeEligible.length})
+                <TabsTrigger
+                  className="h-7 min-w-0 truncate px-1 text-[10px] leading-none sm:text-xs"
+                  value="analyze"
+                  title={`Equities (${desktopHoldingTables.analyzeEligible.length})`}
+                >
+                  Equity ({desktopHoldingTables.analyzeEligible.length})
                 </TabsTrigger>
-                <TabsTrigger className="h-8 min-w-0 truncate px-2 text-[11px] sm:text-xs" value="non-analyze">
-                  Other Assets ({desktopHoldingTables.nonAnalyzable.length})
+                <TabsTrigger
+                  className="h-7 min-w-0 truncate px-1 text-[10px] leading-none sm:text-xs"
+                  value="non-analyze"
+                  title={`Other assets (${desktopHoldingTables.nonAnalyzable.length})`}
+                >
+                  Other ({desktopHoldingTables.nonAnalyzable.length})
                 </TabsTrigger>
-                <TabsTrigger className="h-8 min-w-0 truncate px-2 text-[11px] sm:text-xs" value="cash">
+                <TabsTrigger
+                  className="h-7 min-w-0 truncate px-1 text-[10px] leading-none sm:text-xs"
+                  value="cash"
+                  title={`Cash holdings (${desktopHoldingTables.cashSweep.length})`}
+                >
                   Cash ({desktopHoldingTables.cashSweep.length})
                 </TabsTrigger>
               </TabsList>
