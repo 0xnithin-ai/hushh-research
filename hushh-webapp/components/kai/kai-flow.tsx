@@ -532,7 +532,7 @@ function isReviewPortfolioData(value: unknown): value is ReviewPortfolioData {
 async function fetchDemoModePortfolioTemplate(
   _vaultOwnerToken?: string
 ): Promise<ReviewPortfolioData> {
-  const response = await fetch("/demo-mode/portfolio-template.json", {
+  const response = await ApiService.apiFetch("/demo-mode/portfolio-template.json", {
     method: "GET",
     cache: "no-store",
   });
