@@ -3,7 +3,7 @@ title = "hushh-research gitleaks config"
 [extend]
 useDefault = true
 
-[[allowlists]]
+[allowlist]
 description = "Legacy baseline findings before full-history scan enforcement"
 commits = [
   "0b3e87ed041107e868ee2139e7289b885a342a0f",
