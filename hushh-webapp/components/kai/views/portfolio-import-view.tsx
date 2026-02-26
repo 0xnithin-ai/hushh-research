@@ -250,6 +250,21 @@ export function PortfolioImportView({
               disabled={isUploading}
             />
           </div>
+
+          <MorphyButton
+            variant="morphy"
+            effect="fill"
+            size="default"
+            className="w-full font-black shadow-xl border-none"
+            onClick={handleContinue}
+            disabled={isUploading || isPreloadingSchema || !selectedFile}
+            icon={{
+              icon: Upload,
+              gradient: false,
+            }}
+          >
+            {isUploading ? "Parsing..." : "Continue"}
+          </MorphyButton>
         </CardContent>
       </Card>
 
@@ -285,21 +300,6 @@ export function PortfolioImportView({
           </p>
         </div>
       ) : null}
-
-      <MorphyButton
-        variant="morphy"
-        effect="fill"
-        size="default"
-        className="w-full font-black shadow-xl border-none"
-        onClick={handleContinue}
-        disabled={isUploading || isPreloadingSchema || !selectedFile}
-        icon={{
-          icon: Upload,
-          gradient: false,
-        }}
-      >
-        {isUploading ? "Parsing..." : "Continue"}
-      </MorphyButton>
 
       {/* Skip Option */}
       <div className="text-center pt-1">

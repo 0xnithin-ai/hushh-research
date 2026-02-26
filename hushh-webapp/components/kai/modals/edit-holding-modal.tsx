@@ -17,6 +17,13 @@ import { Calendar, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/lib/morphy-ux/button";
 import {
+  getTickerUniverseSnapshot,
+  preloadTickerUniverse,
+  searchTickerUniverse,
+  searchTickerUniverseRemote,
+  type TickerUniverseRow,
+} from "@/lib/kai/ticker-universe-cache";
+import {
   Drawer,
   DrawerClose,
   DrawerContent,
@@ -49,6 +56,62 @@ interface EditHoldingModalProps {
   onSave: (holding: Holding) => void;
 }
 
+type SuggestionField = "symbol" | "name";
+
+function getTickerMetadataLabel(row: TickerUniverseRow): string {
+  return String(
+    row.sector_primary || row.sector || row.industry_primary || row.industry || row.exchange || ""
+  ).trim();
+}
+
+function scoreTickerMatch(row: TickerUniverseRow, query: string, field: SuggestionField): number {
+  const qLower = query.trim().toLowerCase();
+  const qUpper = query.trim().toUpperCase();
+  const ticker = String(row.ticker || "").toUpperCase();
+  const title = String(row.title || "").toLowerCase();
+
+  if (!qLower) return 0;
+
+  if (field === "symbol") {
+    if (ticker.startsWith(qUpper)) return 0;
+    if (ticker.includes(qUpper)) return 1;
+    if (title.startsWith(qLower)) return 2;
+    if (title.includes(qLower)) return 3;
+    return 4;
+  }
+
+  if (title.startsWith(qLower)) return 0;
+  if (title.includes(qLower)) return 1;
+  if (ticker.startsWith(qUpper)) return 2;
+  if (ticker.includes(qUpper)) return 3;
+  return 4;
+}
+
+function buildSuggestions(
+  localRows: TickerUniverseRow[],
+  remoteRows: TickerUniverseRow[],
+  query: string,
+  field: SuggestionField,
+  limit = 8
+): TickerUniverseRow[] {
+  const byTicker = new Map<string, TickerUniverseRow>();
+  for (const row of [...localRows, ...remoteRows]) {
+    const key = String(row.ticker || "").toUpperCase();
+    if (!key) continue;
+    if (!byTicker.has(key)) {
+      byTicker.set(key, row);
+    }
+  }
+
+  return Array.from(byTicker.values())
+    .sort((a, b) => {
+      const scoreDiff = scoreTickerMatch(a, query, field) - scoreTickerMatch(b, query, field);
+      if (scoreDiff !== 0) return scoreDiff;
+      return String(a.ticker || "").localeCompare(String(b.ticker || ""));
+    })
+    .slice(0, limit);
+}
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -60,6 +123,8 @@ export function EditHoldingModal({
   onSave,
 }: EditHoldingModalProps) {
   const acquisitionDateInputRef = useRef<HTMLInputElement | null>(null);
+  const symbolInputWrapRef = useRef<HTMLDivElement | null>(null);
+  const nameInputWrapRef = useRef<HTMLDivElement | null>(null);
   const [formData, setFormData] = useState<Holding>({
     symbol: "",
     name: "",
@@ -70,6 +135,30 @@ export function EditHoldingModal({
     acquisition_date: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const initialUniverse = getTickerUniverseSnapshot();
+  const [tickerUniverse, setTickerUniverse] = useState<TickerUniverseRow[] | null>(initialUniverse);
+  const [remoteMatches, setRemoteMatches] = useState<TickerUniverseRow[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [activeSuggestionField, setActiveSuggestionField] = useState<SuggestionField | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const rows = await preloadTickerUniverse();
+        if (!cancelled) {
+          setTickerUniverse(rows);
+        }
+      } catch {
+        // Keep cached snapshot only.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Initialize form data when holding changes
   useEffect(() => {
@@ -105,6 +194,69 @@ export function EditHoldingModal({
     }));
   }, [formData.quantity, formData.price, formData.cost_basis]);
 
+  useEffect(() => {
+    const query =
+      activeSuggestionField === "symbol"
+        ? formData.symbol.trim()
+        : activeSuggestionField === "name"
+          ? formData.name.trim()
+          : "";
+
+    if (!activeSuggestionField || !query) {
+      setRemoteMatches([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        setSuggestionsLoading(true);
+        const rows = await searchTickerUniverseRemote(query, 25);
+        if (cancelled) return;
+        setRemoteMatches(rows);
+        if (rows.length > 0) {
+          setTickerUniverse((prev) => {
+            if (!prev || prev.length === 0) return rows;
+            const byTicker = new Map(prev.map((row) => [row.ticker.toUpperCase(), row]));
+            for (const row of rows) {
+              const key = row.ticker.toUpperCase();
+              if (!byTicker.has(key)) {
+                byTicker.set(key, row);
+              }
+            }
+            return Array.from(byTicker.values());
+          });
+        }
+      } catch {
+        if (!cancelled) setRemoteMatches([]);
+      } finally {
+        if (!cancelled) setSuggestionsLoading(false);
+      }
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeSuggestionField, formData.name, formData.symbol]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const targetNode = event.target as Node;
+      const withinSymbol = symbolInputWrapRef.current?.contains(targetNode) ?? false;
+      const withinName = nameInputWrapRef.current?.contains(targetNode) ?? false;
+      if (!withinSymbol && !withinName) {
+        setActiveSuggestionField(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
   // Handle input change
   const handleChange = useCallback((field: keyof Holding, value: string | number) => {
     setFormData(prev => ({
@@ -115,8 +267,45 @@ export function EditHoldingModal({
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[field];
+      if (field === "quantity" || field === "price") {
+        delete newErrors.market_value;
+      }
       return newErrors;
     });
+  }, []);
+
+  const activeQuery =
+    activeSuggestionField === "symbol"
+      ? formData.symbol.trim()
+      : activeSuggestionField === "name"
+        ? formData.name.trim()
+        : "";
+
+  const localSuggestionMatches = (() => {
+    if (!tickerUniverse || !activeQuery || !activeSuggestionField) return [] as TickerUniverseRow[];
+    return searchTickerUniverse(tickerUniverse, activeQuery, 25);
+  })();
+
+  const activeSuggestions = activeSuggestionField
+    ? buildSuggestions(localSuggestionMatches, remoteMatches, activeQuery, activeSuggestionField, 8)
+    : [];
+
+  const applySuggestion = useCallback((row: TickerUniverseRow) => {
+    const symbol = String(row.ticker || "").toUpperCase();
+    const name = String(row.title || "").trim();
+
+    setFormData((prev) => ({
+      ...prev,
+      symbol: symbol || prev.symbol,
+      name: name || prev.name,
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.symbol;
+      delete next.name;
+      return next;
+    });
+    setActiveSuggestionField(null);
   }, []);
 
   // Validate form
@@ -125,20 +314,32 @@ export function EditHoldingModal({
 
     if (!formData.symbol.trim()) {
       newErrors.symbol = "Symbol is required";
-    } else if (!/^[A-Z]{0,5}$/.test(formData.symbol.toUpperCase())) {
-      newErrors.symbol = "Invalid symbol format (0-5 letters)";
+    } else if (!/^[A-Z0-9]{1,5}(?:[.-][A-Z0-9]{1,3})?$/.test(formData.symbol.toUpperCase())) {
+      newErrors.symbol = "Invalid symbol format";
     }
 
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
     }
 
-    if (formData.quantity < 0) {
-      newErrors.quantity = "Quantity must be 0 or greater";
+    const quantity = Number(formData.quantity);
+    const price = Number(formData.price);
+    const marketValue = quantity * price;
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      newErrors.quantity = "Quantity must be greater than 0";
     }
 
-    if (formData.price < 0) {
-      newErrors.price = "Price must be 0 or greater";
+    if (!Number.isFinite(price) || price <= 0) {
+      newErrors.price = "Price must be greater than 0";
+    }
+
+    if (!Number.isFinite(marketValue) || marketValue <= 0) {
+      newErrors.market_value = "Market value must be greater than $0.00";
+    }
+
+    if (formData.cost_basis !== undefined && Number(formData.cost_basis) < 0) {
+      newErrors.cost_basis = "Cost basis cannot be negative";
     }
 
     setErrors(newErrors);
@@ -197,19 +398,56 @@ export function EditHoldingModal({
             <label className="block text-sm font-medium mb-1">
               Symbol <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={formData.symbol}
-              onChange={(e) => handleChange("symbol", e.target.value.toUpperCase())}
-              placeholder="e.g., AAPL"
-              maxLength={5}
-              className={cn(
-                "w-full px-3 py-2 rounded-lg border bg-background outline-none transition-colors",
-                errors.symbol
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-border focus:border-primary"
+            <div ref={symbolInputWrapRef} className="relative">
+              <input
+                type="text"
+                value={formData.symbol}
+                onChange={(e) => handleChange("symbol", e.target.value.toUpperCase())}
+                onFocus={() => setActiveSuggestionField("symbol")}
+                onBlur={() =>
+                  window.setTimeout(() => {
+                    setActiveSuggestionField((prev) => (prev === "symbol" ? null : prev));
+                  }, 120)
+                }
+                placeholder="e.g., AAPL"
+                maxLength={12}
+                autoComplete="off"
+                className={cn(
+                  "w-full px-3 py-2 rounded-lg border bg-background outline-none transition-colors",
+                  errors.symbol
+                    ? "border-red-500 focus:border-red-500"
+                    : "border-border focus:border-primary"
+                )}
+              />
+
+              {activeSuggestionField === "symbol" && activeQuery && (
+                <div className="absolute z-40 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-border bg-background shadow-lg">
+                  {activeSuggestions.map((row) => {
+                    const metadata = getTickerMetadataLabel(row);
+                    return (
+                      <button
+                        key={`symbol-suggestion-${row.ticker}`}
+                        type="button"
+                        className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-muted/50"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => applySuggestion(row)}
+                      >
+                        <span className="min-w-[72px] font-semibold">{String(row.ticker || "").toUpperCase()}</span>
+                        <span className="truncate text-muted-foreground">
+                          {row.title || "Unknown company"}
+                          {metadata ? ` • ${metadata}` : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {activeSuggestions.length === 0 && (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      {suggestionsLoading ? "Loading suggestions..." : "No matches found."}
+                    </p>
+                  )}
+                </div>
               )}
-            />
+            </div>
             {errors.symbol && (
               <p className="text-sm text-red-500 mt-1">{errors.symbol}</p>
             )}
@@ -220,18 +458,55 @@ export function EditHoldingModal({
             <label className="block text-sm font-medium mb-1">
               Company Name <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              placeholder="e.g., Apple Inc."
-              className={cn(
-                "w-full px-3 py-2 rounded-lg border bg-background outline-none transition-colors",
-                errors.name
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-border focus:border-primary"
+            <div ref={nameInputWrapRef} className="relative">
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                onFocus={() => setActiveSuggestionField("name")}
+                onBlur={() =>
+                  window.setTimeout(() => {
+                    setActiveSuggestionField((prev) => (prev === "name" ? null : prev));
+                  }, 120)
+                }
+                placeholder="e.g., Apple Inc."
+                autoComplete="off"
+                className={cn(
+                  "w-full px-3 py-2 rounded-lg border bg-background outline-none transition-colors",
+                  errors.name
+                    ? "border-red-500 focus:border-red-500"
+                    : "border-border focus:border-primary"
+                )}
+              />
+
+              {activeSuggestionField === "name" && activeQuery && (
+                <div className="absolute z-40 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-border bg-background shadow-lg">
+                  {activeSuggestions.map((row) => {
+                    const metadata = getTickerMetadataLabel(row);
+                    return (
+                      <button
+                        key={`name-suggestion-${row.ticker}`}
+                        type="button"
+                        className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-muted/50"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => applySuggestion(row)}
+                      >
+                        <span className="min-w-[72px] font-semibold">{String(row.ticker || "").toUpperCase()}</span>
+                        <span className="truncate text-muted-foreground">
+                          {row.title || "Unknown company"}
+                          {metadata ? ` • ${metadata}` : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {activeSuggestions.length === 0 && (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      {suggestionsLoading ? "Loading suggestions..." : "No matches found."}
+                    </p>
+                  )}
+                </div>
               )}
-            />
+            </div>
             {errors.name && (
               <p className="text-sm text-red-500 mt-1">{errors.name}</p>
             )}
@@ -243,12 +518,12 @@ export function EditHoldingModal({
               <label className="block text-sm font-medium mb-1">
                 Quantity <span className="text-red-500">*</span>
               </label>
-              <input
+	              <input
                 type="number"
                 value={formData.quantity || ""}
                 onChange={(e) => handleChange("quantity", parseFloat(e.target.value) || 0)}
                 placeholder="0"
-                min="0"
+                min="0.0001"
                 step="0.0001"
                 className={cn(
                   "w-full px-4 py-3 h-12 rounded-xl border bg-background outline-none transition-colors",
@@ -266,12 +541,12 @@ export function EditHoldingModal({
               <label className="block text-sm font-medium mb-1">
                 Price <span className="text-red-500">*</span>
               </label>
-              <input
+	              <input
                 type="number"
                 value={formData.price || ""}
                 onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
                 placeholder="0.00"
-                min="0"
+                min="0.01"
                 step="0.01"
                 className={cn(
                   "w-full px-4 py-3 h-12 rounded-xl border bg-background outline-none transition-colors",
@@ -295,8 +570,14 @@ export function EditHoldingModal({
               type="text"
               value={`$${formData.market_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               readOnly
-              className="w-full px-4 py-3 h-12 rounded-xl border border-border bg-muted/50 text-muted-foreground font-medium"
+              className={cn(
+                "w-full px-4 py-3 h-12 rounded-xl border bg-muted/50 text-muted-foreground font-medium",
+                errors.market_value ? "border-red-500" : "border-border"
+              )}
             />
+            {errors.market_value && (
+              <p className="text-sm text-red-500 mt-1">{errors.market_value}</p>
+            )}
           </div>
 
           {/* Cost Basis */}
@@ -313,6 +594,9 @@ export function EditHoldingModal({
               step="0.01"
               className="w-full px-4 py-3 h-12 rounded-xl border border-border bg-background outline-none focus:border-primary transition-colors"
             />
+            {errors.cost_basis && (
+              <p className="text-sm text-red-500 mt-1">{errors.cost_basis}</p>
+            )}
           </div>
 
           {/* Acquisition Date */}

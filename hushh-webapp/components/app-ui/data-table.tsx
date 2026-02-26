@@ -48,6 +48,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchKey?: string;
+  globalSearchKeys?: string[];
   searchPlaceholder?: string;
   filterKey?: string;
   filterOptions?: { label: string; value: string }[];
@@ -65,6 +66,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey: _searchKey,
+  globalSearchKeys,
   searchPlaceholder = "Search...",
   filterKey,
   filterOptions,
@@ -82,6 +84,28 @@ export function DataTable<TData, TValue>({
     []
   );
   const [globalFilter, setGlobalFilter] = React.useState("");
+  const normalizedSearchKeys = React.useMemo(
+    () =>
+      Array.from(
+        new Set((globalSearchKeys ?? []).map((key) => key.trim()).filter((key) => key.length > 0))
+      ),
+    [globalSearchKeys]
+  );
+  const globalSearchFilterFn = React.useCallback(
+    (row: { original: TData }, _columnId: string, filterValue: unknown) => {
+      if (typeof filterValue !== "string") return true;
+      const query = filterValue.trim().toLowerCase();
+      if (!query) return true;
+
+      const source = row.original as Record<string, unknown>;
+      return normalizedSearchKeys.some((key) => {
+        const value = source[key];
+        if (value === null || value === undefined) return false;
+        return String(value).toLowerCase().includes(query);
+      });
+    },
+    [normalizedSearchKeys]
+  );
   const normalizedPageSizeOptions = React.useMemo(
     () =>
       Array.from(new Set([initialPageSize, ...pageSizeOptions]))
@@ -100,6 +124,11 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
+    ...(normalizedSearchKeys.length > 0
+      ? {
+          globalFilterFn: globalSearchFilterFn,
+        }
+      : {}),
     state: {
       sorting,
       columnFilters,

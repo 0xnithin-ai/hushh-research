@@ -748,6 +748,26 @@ export function DashboardMasterView({
       return;
     }
 
+    const invalidHolding = activeHoldings.find((holding) => {
+      const quantity = Number(holding.quantity);
+      const price = Number(holding.price);
+      const marketValue = Number(holding.market_value);
+      return (
+        !Number.isFinite(quantity) ||
+        !Number.isFinite(price) ||
+        !Number.isFinite(marketValue) ||
+        quantity <= 0 ||
+        price <= 0 ||
+        marketValue <= 0
+      );
+    });
+    if (invalidHolding) {
+      toast.error(
+        `Holding ${invalidHolding.symbol || invalidHolding.name || "entry"} has invalid values. Quantity, price, and market value must be greater than 0.`
+      );
+      return;
+    }
+
     setIsSavingHoldings(true);
     try {
       const holdingsForSave = activeHoldings;
@@ -1029,6 +1049,29 @@ export function DashboardMasterView({
 
   const handleSaveHolding = useCallback(
     (updatedHolding: PortfolioHolding) => {
+      const quantity = Number(updatedHolding.quantity);
+      const price = Number(updatedHolding.price);
+      const marketValue = Number(updatedHolding.market_value);
+
+      if (
+        !Number.isFinite(quantity) ||
+        !Number.isFinite(price) ||
+        !Number.isFinite(marketValue) ||
+        quantity <= 0 ||
+        price <= 0 ||
+        marketValue <= 0
+      ) {
+        toast.error("Quantity, price, and market value must all be greater than 0.");
+        return;
+      }
+
+      const normalizedHolding: PortfolioHolding = {
+        ...updatedHolding,
+        quantity,
+        price,
+        market_value: marketValue,
+      };
+
       setHoldingsDraft((prev) => {
         const next = [...prev];
         const targetIndex = editingHoldingId
@@ -1040,14 +1083,14 @@ export function DashboardMasterView({
           if (!existing) return next;
           next[targetIndex] = {
             ...existing,
-            ...updatedHolding,
+            ...normalizedHolding,
             pending_delete: false,
             client_id: existing.client_id,
             source_key: existing.source_key,
           };
         } else {
           next.push({
-            ...updatedHolding,
+            ...normalizedHolding,
             pending_delete: false,
             client_id: createLocalHoldingId(),
           });
@@ -1417,6 +1460,7 @@ export function DashboardMasterView({
               <DataTable
                 columns={holdingsTableColumns}
                 data={desktopHoldingTables.all}
+                globalSearchKeys={["symbol", "name"]}
                 searchPlaceholder="Search holdings by symbol or name..."
                 initialPageSize={5}
                 pageSizeOptions={[5, 10, 20]}
@@ -1434,6 +1478,7 @@ export function DashboardMasterView({
               <DataTable
                 columns={holdingsTableColumns}
                 data={desktopHoldingTables.analyzeEligible}
+                globalSearchKeys={["symbol", "name"]}
                 searchPlaceholder="Search equities..."
                 initialPageSize={5}
                 pageSizeOptions={[5, 10, 20]}
@@ -1451,6 +1496,7 @@ export function DashboardMasterView({
               <DataTable
                 columns={holdingsTableColumns}
                 data={desktopHoldingTables.nonAnalyzable}
+                globalSearchKeys={["symbol", "name"]}
                 searchPlaceholder="Search other assets..."
                 initialPageSize={5}
                 pageSizeOptions={[5, 10, 20]}
@@ -1468,6 +1514,7 @@ export function DashboardMasterView({
               <DataTable
                 columns={holdingsTableColumns}
                 data={desktopHoldingTables.cashSweep}
+                globalSearchKeys={["symbol", "name"]}
                 searchPlaceholder="Search cash holdings..."
                 initialPageSize={5}
                 pageSizeOptions={[5, 10, 20]}

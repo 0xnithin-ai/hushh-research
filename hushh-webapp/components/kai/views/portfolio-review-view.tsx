@@ -979,6 +979,29 @@ export function PortfolioReviewView({
 
   const handleSaveHolding = useCallback(
     (updatedHolding: Holding) => {
+      const quantity = Number(updatedHolding.quantity);
+      const price = Number(updatedHolding.price);
+      const marketValue = Number(updatedHolding.market_value);
+
+      if (
+        !Number.isFinite(quantity) ||
+        !Number.isFinite(price) ||
+        !Number.isFinite(marketValue) ||
+        quantity <= 0 ||
+        price <= 0 ||
+        marketValue <= 0
+      ) {
+        toast.error("Quantity, price, and market value must all be greater than 0.");
+        return;
+      }
+
+      const normalizedHolding: Holding = {
+        ...updatedHolding,
+        quantity,
+        price,
+        market_value: marketValue,
+      };
+
       setHoldings((prev) => {
         const next = [...prev];
         if (editingHoldingIndex >= 0 && editingHoldingIndex < next.length) {
@@ -986,13 +1009,13 @@ export function PortfolioReviewView({
           if (!existing) return next;
           next[editingHoldingIndex] = {
             ...existing,
-            ...updatedHolding,
+            ...normalizedHolding,
             pending_delete: false,
           };
           return next;
         }
         next.push({
-          ...updatedHolding,
+          ...normalizedHolding,
           pending_delete: false,
         });
         return next;
@@ -1188,6 +1211,26 @@ export function PortfolioReviewView({
 
   const handleSave = async () => {
     if (!userId) return;
+
+    const invalidHolding = activeHoldings.find((holding) => {
+      const quantity = Number(holding.quantity);
+      const price = Number(holding.price);
+      const marketValue = Number(holding.market_value);
+      return (
+        !Number.isFinite(quantity) ||
+        !Number.isFinite(price) ||
+        !Number.isFinite(marketValue) ||
+        quantity <= 0 ||
+        price <= 0 ||
+        marketValue <= 0
+      );
+    });
+    if (invalidHolding) {
+      toast.error(
+        `Holding ${invalidHolding.symbol || invalidHolding.name || "entry"} has invalid values. Quantity, price, and market value must be greater than 0.`
+      );
+      return;
+    }
 
     const shouldVerifySave = process.env.NEXT_PUBLIC_WORLD_MODEL_VERIFY_SAVE === "true";
     const enableSaveProfiling = process.env.NEXT_PUBLIC_KAI_SAVE_PROFILING === "true";
@@ -2114,6 +2157,7 @@ export function PortfolioReviewView({
                   <DataTable
                     columns={holdingsTableColumns}
                     data={holdingTables.all}
+                    globalSearchKeys={["symbol", "name"]}
                     searchPlaceholder="Search holdings by symbol or name..."
                     initialPageSize={5}
                     pageSizeOptions={[5, 10, 20]}
@@ -2129,6 +2173,7 @@ export function PortfolioReviewView({
                   <DataTable
                     columns={holdingsTableColumns}
                     data={holdingTables.analyzeEligible}
+                    globalSearchKeys={["symbol", "name"]}
                     searchPlaceholder="Search equities..."
                     initialPageSize={5}
                     pageSizeOptions={[5, 10, 20]}
@@ -2144,6 +2189,7 @@ export function PortfolioReviewView({
                   <DataTable
                     columns={holdingsTableColumns}
                     data={holdingTables.nonAnalyzable}
+                    globalSearchKeys={["symbol", "name"]}
                     searchPlaceholder="Search other assets..."
                     initialPageSize={5}
                     pageSizeOptions={[5, 10, 20]}
@@ -2159,6 +2205,7 @@ export function PortfolioReviewView({
                   <DataTable
                     columns={holdingsTableColumns}
                     data={holdingTables.cashSweep}
+                    globalSearchKeys={["symbol", "name"]}
                     searchPlaceholder="Search cash holdings..."
                     initialPageSize={5}
                     pageSizeOptions={[5, 10, 20]}
