@@ -425,6 +425,29 @@ export interface KaiDashboardProfilePicksResponse {
  * API Service for platform-aware API calls
  */
 export class ApiService {
+  private static readonly dashboardProfilePicksInflight = new Map<
+    string,
+    Promise<KaiDashboardProfilePicksResponse>
+  >();
+
+  private static dashboardProfilePicksKey(data: {
+    userId: string;
+    symbols?: string[];
+    limit?: number;
+  }): string {
+    const symbolsKey = Array.isArray(data.symbols) && data.symbols.length > 0
+      ? [...data.symbols]
+          .map((symbol) => String(symbol || "").trim().toUpperCase())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b))
+          .join(",")
+      : "default";
+    const limit = typeof data.limit === "number" && Number.isFinite(data.limit)
+      ? data.limit
+      : 3;
+    return `${data.userId}:${symbolsKey}:${limit}`;
+  }
+
   // ==================== Auth Helpers ====================
 
   /**
@@ -1641,18 +1664,37 @@ export class ApiService {
     }
     const suffix = query.toString() ? `?${query.toString()}` : "";
     const path = `/api/kai/dashboard/profile-picks/${data.userId}${suffix}`;
-
-    const response = await apiFetch(path, {
-      method: "GET",
-      signal: data.signal,
-      headers: {
-        Authorization: `Bearer ${data.vaultOwnerToken}`,
-      },
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to load profile picks: ${response.status}`);
+    const dedupeKey = this.dashboardProfilePicksKey(data);
+    const existing = this.dashboardProfilePicksInflight.get(dedupeKey);
+    if (existing) {
+      return existing;
     }
-    return (await response.json()) as KaiDashboardProfilePicksResponse;
+
+    if (data.signal?.aborted) {
+      throw new Error("Profile picks request aborted");
+    }
+
+    const request = (async () => {
+      const response = await apiFetch(path, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${data.vaultOwnerToken}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to load profile picks: ${response.status}`);
+      }
+      return (await response.json()) as KaiDashboardProfilePicksResponse;
+    })();
+
+    this.dashboardProfilePicksInflight.set(dedupeKey, request);
+    try {
+      return await request;
+    } finally {
+      if (this.dashboardProfilePicksInflight.get(dedupeKey) === request) {
+        this.dashboardProfilePicksInflight.delete(dedupeKey);
+      }
+    }
   }
 
   /**

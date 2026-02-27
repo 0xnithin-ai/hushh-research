@@ -105,7 +105,20 @@ async function proxyRequest(request: NextRequest, params: { path: string[] }) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.error(`[Kai API] Error calling ${url}: ${response.status}`, data);
+      const expectedAnalyzeRunMiss =
+        path === "analyze/run/active" &&
+        response.status === 404 &&
+        typeof data === "object" &&
+        data !== null &&
+        typeof (data as { detail?: { code?: unknown } }).detail?.code === "string" &&
+        (data as { detail: { code: string } }).detail.code === "ANALYZE_RUN_NOT_FOUND";
+      if (expectedAnalyzeRunMiss) {
+        console.info(
+          `[Kai API] No active analyze run for current session (${response.status}).`
+        );
+      } else {
+        console.error(`[Kai API] Error calling ${url}: ${response.status}`, data);
+      }
       return NextResponse.json(data, { status: response.status });
     }
 

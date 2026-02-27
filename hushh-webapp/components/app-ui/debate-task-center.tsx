@@ -90,14 +90,6 @@ export function DebateTaskCenter({ triggerClassName }: DebateTaskCenterProps = {
     return AppBackgroundTaskService.subscribe(setAppTaskState);
   }, []);
 
-  useEffect(() => {
-    if (!userId || !vaultOwnerToken) return;
-    void DebateRunManagerService.resumeActiveRun({
-      userId,
-      vaultOwnerToken,
-    }).catch(() => undefined);
-  }, [userId, vaultOwnerToken]);
-
   const debateTasks = useMemo(() => {
     if (!userId) return [];
     return debateState.tasks.filter((task) => task.userId === userId && !task.dismissedAt);

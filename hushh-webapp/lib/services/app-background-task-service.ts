@@ -183,7 +183,22 @@ class AppBackgroundTaskManager {
       dismissedAt: nowIso(),
     });
   }
+
+  hasRunningTask(userId: string, kind?: string): boolean {
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) return false;
+    const normalizedKind = typeof kind === "string" && kind.trim().length > 0
+      ? kind.trim()
+      : null;
+    for (const task of this.tasks.values()) {
+      if (task.userId !== normalizedUserId) continue;
+      if (task.status !== "running") continue;
+      if (task.dismissedAt) continue;
+      if (normalizedKind && task.kind !== normalizedKind) continue;
+      return true;
+    }
+    return false;
+  }
 }
 
 export const AppBackgroundTaskService = new AppBackgroundTaskManager();
-

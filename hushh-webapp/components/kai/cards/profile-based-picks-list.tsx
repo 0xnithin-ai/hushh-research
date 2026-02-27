@@ -107,7 +107,15 @@ export function ProfileBasedPicksList({
         }
         return;
       }
-    setLoading(true);
+      if (normalizedSymbols.length === 0) {
+        if (isMounted) {
+          setPicks([]);
+          setLoading(false);
+          setError(null);
+        }
+        return;
+      }
+      setLoading(true);
       setError(null);
       try {
         const response = await ApiService.getDashboardProfilePicks({

@@ -482,7 +482,11 @@ export function KaiFlow({
         })
           .then((result) => {
             if (!result?.synced) {
-              if (result?.reason === "no_pending_state" || result?.reason === "already_synced") {
+              if (
+                result?.reason === "no_pending_state" ||
+                result?.reason === "already_synced" ||
+                result?.reason === "portfolio_save_inflight"
+              ) {
                 AppBackgroundTaskService.dismissTask(taskId);
                 return;
               }

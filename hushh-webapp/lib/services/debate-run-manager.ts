@@ -463,6 +463,21 @@ class DebateRunManager {
     return active[0] || null;
   }
 
+  private markMissingActiveRun(userId: string): void {
+    const staleRunning = Array.from(this.tasks.values()).filter(
+      (task) => task.userId === userId && task.status === "running" && !task.dismissedAt
+    );
+    for (const stale of staleRunning) {
+      this.upsertTask({
+        ...stale,
+        status: "failed",
+        completedAt: stale.completedAt || nowIso(),
+        updatedAt: nowIso(),
+        persistenceError: stale.persistenceError || "Active debate run is no longer available.",
+      });
+    }
+  }
+
   async resumeActiveRun(params: {
     userId: string;
     vaultOwnerToken: string;
@@ -476,27 +491,16 @@ class DebateRunManager {
     });
     if (!response.ok) {
       if (response.status === 404) {
-        const staleRunning = Array.from(this.tasks.values()).filter(
-          (task) =>
-            task.userId === userId &&
-            task.status === "running" &&
-            !task.dismissedAt
-        );
-        for (const stale of staleRunning) {
-          this.upsertTask({
-            ...stale,
-            status: "failed",
-            completedAt: stale.completedAt || nowIso(),
-            updatedAt: nowIso(),
-            persistenceError: stale.persistenceError || "Active debate run is no longer available.",
-          });
-        }
+        this.markMissingActiveRun(userId);
         return null;
       }
       throw new Error(`Failed to check active run: HTTP ${response.status}`);
     }
     const payload = (await response.json()) as { run?: Record<string, unknown> };
-    if (!payload.run) return null;
+    if (!payload.run) {
+      this.markMissingActiveRun(userId);
+      return null;
+    }
     const task = this.upsertTask(this.makeTaskFromServer(payload.run));
     this.runSecrets.set(task.runId, { vaultOwnerToken, vaultKey });
     if (task.status === "running") {

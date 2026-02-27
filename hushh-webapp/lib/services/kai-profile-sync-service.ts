@@ -5,6 +5,7 @@ import {
   computeRiskScore,
   mapRiskProfile,
 } from "@/lib/services/kai-profile-service";
+import { AppBackgroundTaskService } from "@/lib/services/app-background-task-service";
 import { KaiNavTourLocalService } from "@/lib/services/kai-nav-tour-local-service";
 import { PreVaultOnboardingService } from "@/lib/services/pre-vault-onboarding-service";
 
@@ -118,6 +119,13 @@ export class KaiProfileSyncService {
     pendingState?: KaiProfilePendingSyncState;
     baseFullBlob?: Record<string, unknown>;
   }): Promise<{ synced: boolean; reason?: string }> {
+    if (AppBackgroundTaskService.hasRunningTask(params.userId, "portfolio_save")) {
+      return {
+        synced: false,
+        reason: "portfolio_save_inflight",
+      };
+    }
+
     const pendingState = params.pendingState ?? (await this.getPendingSyncState(params.userId));
     if (!pendingState.hasPending) {
       return {

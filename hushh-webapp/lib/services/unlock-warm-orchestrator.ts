@@ -385,7 +385,7 @@ export class UnlockWarmOrchestrator {
       symbols = hydrated.symbols;
     }
 
-    if (shouldWarmDashboardPicks) {
+    if (shouldWarmDashboardPicks && symbols.length > 0) {
       const picksSymbolsKey = toSymbolsKey(symbols);
       const picksCacheKey = CACHE_KEYS.KAI_DASHBOARD_PROFILE_PICKS(
         params.userId,
@@ -409,6 +409,8 @@ export class UnlockWarmOrchestrator {
           console.warn("[UnlockWarmOrchestrator] Dashboard picks warm-up failed:", error);
         }
       }
+    } else if (shouldWarmDashboardPicks) {
+      result.dashboardPicksWarmed = true;
     }
 
     if (shouldWarmMarket && (!result.kaiMarketWarmed || symbols.length > 0)) {

@@ -768,6 +768,7 @@ export function PortfolioReviewView({
   );
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isBackgroundSaveRunning, setIsBackgroundSaveRunning] = useState(false);
   const setBusyOperation = useKaiSession((s) => s.setBusyOperation);
   const [vaultDialogOpen, setVaultDialogOpen] = useState(false);
   const [pendingVaultSave, setPendingVaultSave] = useState(false);
@@ -776,6 +777,8 @@ export function PortfolioReviewView({
   const createdVaultCopyRef = useRef(false);
   const createdVaultModeRef = useRef<string | null>(null);
   const continuationInFlightRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  const isMountedRef = useRef(true);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [editingHoldingIndex, setEditingHoldingIndex] = useState<number>(-1);
   const [holdingsTab, setHoldingsTab] = useState<"all" | "analyze" | "non-analyze" | "cash">(
@@ -820,6 +823,14 @@ export function PortfolioReviewView({
   }, [currentEditableSnapshot]);
 
   useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const isBusySaving = isSaving || isBackgroundSaveRunning;
+
+  useEffect(() => {
     setBusyOperation("portfolio_save", isSaving);
     return () => {
       setBusyOperation("portfolio_save", false);
@@ -834,15 +845,15 @@ export function PortfolioReviewView({
   }, [setBusyOperation]);
 
   useEffect(() => {
-    setBusyOperation("portfolio_review_dirty", hasUnsavedChanges);
+    setBusyOperation("portfolio_review_dirty", hasUnsavedChanges && !isBackgroundSaveRunning);
     return () => {
       setBusyOperation("portfolio_review_dirty", false);
     };
-  }, [hasUnsavedChanges, setBusyOperation]);
+  }, [hasUnsavedChanges, isBackgroundSaveRunning, setBusyOperation]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!hasUnsavedChanges || isSaving) return;
+      if (!hasUnsavedChanges || isBusySaving) return;
       event.preventDefault();
       event.returnValue = "";
     };
@@ -851,7 +862,7 @@ export function PortfolioReviewView({
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [hasUnsavedChanges, isSaving]);
+  }, [hasUnsavedChanges, isBusySaving]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1213,6 +1224,10 @@ export function PortfolioReviewView({
   );
 
   const handleSave = async () => {
+    if (saveInFlightRef.current) {
+      toast.info("Portfolio save already in progress.");
+      return;
+    }
     if (!userId) return;
 
     const invalidHolding = activeHoldings.find((holding) => {
@@ -1276,6 +1291,7 @@ export function PortfolioReviewView({
       return;
     }
 
+    saveInFlightRef.current = true;
     setIsSaving(true);
     let saveTaskId: string | null = null;
 
@@ -1309,7 +1325,7 @@ export function PortfolioReviewView({
       const normalizedActiveHoldings = activeHoldings.map((holding) =>
         normalizeHoldingForStorage(holding)
       );
-      const optimisticSavePayload: PortfolioData = {
+      const savePayload: PortfolioData = {
         account_info: accountInfo,
         account_summary: accountSummary,
         asset_allocation: assetAllocation,
@@ -1328,13 +1344,16 @@ export function PortfolioReviewView({
         description: "Securing and storing your portfolio in Vault.",
         routeHref: ROUTES.KAI_DASHBOARD,
       });
-      baselineSnapshotRef.current = serializeEditableState(accountInfo, holdings);
-      setHasUnsavedChanges(false);
+      setIsBackgroundSaveRunning(true);
       toast.success("Portfolio save started in background.");
-      Promise.resolve(onSaveComplete(optimisticSavePayload)).catch((saveCompleteError) => {
-        console.error("[PortfolioReview] onSaveComplete failed:", saveCompleteError);
-      });
       setIsSaving(false);
+      baselineSnapshotRef.current = serializeEditableState(accountInfo, holdings);
+      if (isMountedRef.current) {
+        setHasUnsavedChanges(false);
+        Promise.resolve(onSaveComplete(savePayload)).catch((saveCompleteError) => {
+          console.error("[PortfolioReview] onSaveComplete failed:", saveCompleteError);
+        });
+      }
 
       const nowIso = new Date().toISOString();
       const blobLoadStartedAt = nowMs();
@@ -1727,15 +1746,6 @@ export function PortfolioReviewView({
         userId,
         cachePortfolioData
       );
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("kai:portfolio-saved", {
-            detail: {
-              userId,
-            },
-          })
-        );
-      }
 
       if (saveTaskId) {
         AppBackgroundTaskService.completeTask(
@@ -1743,6 +1753,15 @@ export function PortfolioReviewView({
           createdVaultCopyRef.current
             ? "Vault created and portfolio saved."
             : "Portfolio saved to Vault."
+        );
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("kai:portfolio-saved", {
+            detail: {
+              userId,
+            },
+          })
         );
       }
       toast.success("Portfolio saved to Vault.");
@@ -1785,18 +1804,22 @@ export function PortfolioReviewView({
       }
       toast.error(extractSaveErrorMessage(error, "Failed to save portfolio"));
     } finally {
-      setIsSaving(false);
+      if (isMountedRef.current) {
+        setIsSaving(false);
+        setIsBackgroundSaveRunning(false);
+      }
+      saveInFlightRef.current = false;
       createdVaultCopyRef.current = false;
       createdVaultModeRef.current = null;
     }
   };
 
   const confirmDiscardChanges = useCallback((): boolean => {
-    if (!hasUnsavedChanges || isSaving) return true;
+    if (!hasUnsavedChanges || isBusySaving) return true;
     return window.confirm(
       "You have unsaved portfolio changes. Leaving now will discard them."
     );
-  }, [hasUnsavedChanges, isSaving]);
+  }, [hasUnsavedChanges, isBusySaving]);
 
   const handleReimportAttempt = useCallback(() => {
     if (!confirmDiscardChanges()) return;
@@ -2269,18 +2292,20 @@ export function PortfolioReviewView({
                     createdVaultCopyRef.current = hasVault === false;
                     void handleSave();
                   }}
-                  disabled={isSaving || activeHoldings.length === 0}
+                  disabled={isBusySaving || activeHoldings.length === 0}
                   className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
                 >
-                  {isSaving ? (
+                  {isBusySaving ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Icon icon={Save} size="sm" className="mr-2" />
                   )}
-                  {isSaving
+                  {isBusySaving
                     ? hasVault === false
-                      ? "Creating Vault and securing portfolio..."
-                      : "Securing portfolio in Vault..."
+                      ? "Creating Vault and saving portfolio..."
+                      : isSaving
+                        ? "Securing portfolio in Vault..."
+                        : "Saving portfolio in background..."
                     : hasVault === false
                     ? "Create Vault"
                     : "Save to Vault"}
@@ -2304,7 +2329,7 @@ export function PortfolioReviewView({
         <Dialog
           open={vaultDialogOpen}
           onOpenChange={(open) => {
-            if (isSaving) return;
+            if (isBusySaving) return;
             setVaultDialogOpen(open);
             if (!open) setPendingVaultSave(false);
           }}
