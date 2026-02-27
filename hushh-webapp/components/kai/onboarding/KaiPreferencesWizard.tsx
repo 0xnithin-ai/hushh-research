@@ -224,7 +224,14 @@ export function KaiPreferencesWizard(props: {
             Help us tailor your investment plan.
           </p>
 
-          <h1 className="!text-[clamp(1.85rem,4.8vw,2.2rem)] !leading-[1.12] font-extrabold tracking-tight whitespace-pre-line">
+          <h1
+            className={cn(
+              "font-extrabold tracking-tight whitespace-pre-line",
+              layout === "page"
+                ? "text-[clamp(1.55rem,6.2vw,2rem)] leading-[1.14]"
+                : "text-[clamp(1.45rem,4.8vw,1.85rem)] leading-[1.16]"
+            )}
+          >
             {activeQuestion.prompt}
           </h1>
         </div>

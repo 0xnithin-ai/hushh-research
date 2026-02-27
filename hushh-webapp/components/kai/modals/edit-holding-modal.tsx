@@ -58,6 +58,13 @@ interface EditHoldingModalProps {
 
 type SuggestionField = "symbol" | "name";
 
+function getLocalDateIso(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getTickerMetadataLabel(row: TickerUniverseRow): string {
   return String(
     row.sector_primary || row.sector || row.industry_primary || row.industry || row.exchange || ""
@@ -122,6 +129,7 @@ export function EditHoldingModal({
   holding,
   onSave,
 }: EditHoldingModalProps) {
+  const maxAcquisitionDate = getLocalDateIso();
   const acquisitionDateInputRef = useRef<HTMLInputElement | null>(null);
   const symbolInputWrapRef = useRef<HTMLDivElement | null>(null);
   const nameInputWrapRef = useRef<HTMLDivElement | null>(null);
@@ -342,9 +350,18 @@ export function EditHoldingModal({
       newErrors.cost_basis = "Cost basis cannot be negative";
     }
 
+    const acquisitionDate = String(formData.acquisition_date || "").trim();
+    if (acquisitionDate) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(acquisitionDate)) {
+        newErrors.acquisition_date = "Enter a valid date";
+      } else if (acquisitionDate > maxAcquisitionDate) {
+        newErrors.acquisition_date = "Acquisition date cannot be in the future";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [formData, maxAcquisitionDate]);
 
   // Handle save
   const handleSave = useCallback(() => {
@@ -632,11 +649,15 @@ export function EditHoldingModal({
                 type="date"
                 value={formData.acquisition_date || ""}
                 onChange={(e) => handleChange("acquisition_date", e.target.value)}
+                max={maxAcquisitionDate}
                 tabIndex={-1}
                 aria-hidden="true"
                 className="absolute h-px w-px opacity-0 pointer-events-none"
               />
             </div>
+            {errors.acquisition_date && (
+              <p className="text-sm text-red-500 mt-1">{errors.acquisition_date}</p>
+            )}
           </div>
 
           {/* Gain/Loss Preview */}
