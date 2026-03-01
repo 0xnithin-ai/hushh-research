@@ -457,6 +457,13 @@ export function DashboardMasterView({
 
   const workingPortfolioData = useMemo<PortfolioData>(
     () => {
+      if (!hasHoldingsChanges) {
+        return {
+          ...portfolioData,
+          holdings: activeHoldings,
+        };
+      }
+
       const cashBalance = Number(
         portfolioData.account_summary?.cash_balance ?? portfolioData.cash_balance ?? 0
       );
