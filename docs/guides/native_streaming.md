@@ -292,7 +292,7 @@ await WorldModelService.storeDomainData({
 isStreaming={stage === "extracting" || stage === "streaming" || stage === "thinking"}
 
 // CORRECT
-isStreaming={stage === "uploading" || stage === "analyzing" || stage === "thinking"}
+isStreaming={stage === "uploading" || stage === "indexing" || stage === "scanning"}
 ```
 
 ## Loading State Management
@@ -301,20 +301,21 @@ isStreaming={stage === "uploading" || stage === "analyzing" || stage === "thinki
 
 **Show spinner during:**
 - `uploading` - File is being uploaded
-- `analyzing` - AI is analyzing document structure
-- `thinking` - AI is reasoning (thinking mode)
+- `indexing` - Document structure indexing
+- `scanning` - Statement submission/scanning kickoff
 
 **Hide spinner during:**
 - `extracting` - Data extraction is happening (show progress instead)
-- `parsing` - Data is being parsed
+- `normalizing` - Holdings are being consolidated
+- `validating` - Holdings quality checks are running
 - `complete` - Process finished
 
 **Example:**
 ```typescript
 const isStreaming = 
   stage === "uploading" || 
-  stage === "analyzing" || 
-  stage === "thinking";
+  stage === "indexing" || 
+  stage === "scanning";
 ```
 
 ## Testing Checklist
@@ -333,12 +334,13 @@ const isStreaming =
 Native plugins should emit events in the same format as backend SSE:
 
 ```json
-{"type": "stage", "stage": "analyzing"}
-{"type": "thinking", "thought": "...", "count": 1}
+{"type": "stage", "stage": "uploading"}
 {"type": "chunk", "text": "...", "count": 1}
 {"type": "complete", "data": {...}}
 {"type": "error", "message": "..."}
 ```
+
+For import streams, thought chunks are intentionally suppressed (`include_thoughts=false` in extractor config). Analyze streams can still emit `kai_thinking` telemetry.
 
 The plugin wraps the parsed JSON in `{ data: parsedObject }` for consistency:
 ```typescript

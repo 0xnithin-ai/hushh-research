@@ -56,12 +56,13 @@ Using a different Node or Python locally can cause â€œpass locally, fail in CIâ€
 |------|--------------------|-----------|
 | Validate files | `package-lock.json` exists and valid JSON; `next.config.ts` exists | Yes |
 | Install | `npm ci` | Yes |
-| TypeScript | `npx tsc --noEmit` | Yes |
-| Lint | `npm run lint` (ESLint) | Yes |
+| TypeScript | `npm run typecheck` | Yes |
+| Lint | `npm run lint -- --max-warnings=${WEB_LINT_WARNING_BUDGET}` | Yes |
+| Design system | `npm run verify:design-system` | Yes |
+| Investor language | `npm run verify:investor-language` | Yes |
 | Build (web) | `npm run build` (Next.js) | Yes |
-| Build (Capacitor) | `npm run cap:build` with `CAPACITOR_BUILD=true` | Yes |
-| Security audit | `npm audit --audit-level=high` | Yes |
-| Tests | `npm test` | Yes |
+| Security audit budget | `npm audit --json` + budget gate (`moderate/high/critical`) | Yes |
+| Tests | `npm run test:ci` (11 retained fundamental suites) | Yes |
 
 **Build env (CI):** `NEXT_PUBLIC_BACKEND_URL` and all six `NEXT_PUBLIC_FIREBASE_*` vars are set to placeholders in the workflow so the build does not depend on real secrets.
 
@@ -128,8 +129,7 @@ Canonical streaming is a production contract, not an implementation detail.
 
 Minimum checks for streaming changes:
 
-- Frontend parser tests: `cd hushh-webapp && npm test -- __tests__/streaming`
-- Frontend stream proxy tests: `cd hushh-webapp && npm test -- __tests__/api/kai`
+- Frontend stream checks: `cd hushh-webapp && npm run test:ci` (includes streaming/parser suites)
 - Backend stream/auth tests: `cd consent-protocol && pytest tests/test_kai_auth_matrix.py`
 
 ---
@@ -161,7 +161,7 @@ If it exits 0, CI should pass. If it fails, fix the reported step before committ
 
 | Area | Commands (from repo root) |
 |------|----------------------------|
-| Frontend | `cd hushh-webapp && npm ci && npx tsc --noEmit && npm run lint && npm run build && npm run cap:build` |
+| Frontend | `cd hushh-webapp && npm ci && npm run typecheck && npm run lint -- --max-warnings=161 && npm run verify:design-system && npm run verify:investor-language && npm run build && npm run test:ci` |
 | Backend | `cd consent-protocol && pip install -r requirements.txt -r requirements-dev.txt && ruff check . && mypy --config-file pyproject.toml --ignore-missing-imports && pytest tests/` |
 | Integration | `cd hushh-webapp && npm ci && npm run verify:routes` |
 | All | `./scripts/test-ci-local.sh` |

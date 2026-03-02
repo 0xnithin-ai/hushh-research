@@ -2,7 +2,7 @@
 
 > Single entry point for all project documentation.
 
-Hushh is a **Personal Data Agent (PDA)** platform where users own their data, agents are bound by consent, and encryption keys never leave the client. The architecture enforces four invariants:
+Hushh is a **Personal Agent (PA)** platform where users own their data, agents are bound by consent, and encryption keys never leave the client. The architecture enforces four invariants:
 
 1. **BYOK** -- Bring Your Own Key. Server stores ciphertext only.
 2. **Consent-First** -- All data access requires a cryptographic consent token. No bypasses.
@@ -41,7 +41,7 @@ For repo-level setup instructions, see the root [`readme.md`](../readme.md) and 
 | Assess blast radius before merges | [reference/kai-change-impact-matrix.md](./reference/kai-change-impact-matrix.md) |
 | Validate world-model evolution safely | [reference/world-model-compatibility-playbook.md](./reference/world-model-compatibility-playbook.md) |
 | Fill PR impact map consistently | [reference/pr-impact-checklist.md](./reference/pr-impact-checklist.md) |
-| Check plugin parity status | [audits/plugins-parity.md](./audits/plugins-parity.md) |
+| Check runtime DB facts (sanitized snapshot) | [reference/runtime-db-fact-sheet.md](./reference/runtime-db-fact-sheet.md) |
 | Read the product vision | [vision/README.md](./vision/README.md) |
 | Deep-dive Agent Kai vision | [vision/kai/README.md](./vision/kai/README.md) |
 
@@ -79,17 +79,13 @@ docs/
     mobile-kai-parity-map.md         # Route + feature parity map for Web/iOS/Android
     world-model-compatibility-playbook.md # Migration-safe world-model rules
     pr-impact-checklist.md           # Mandatory PR impact mapping
+    runtime-db-fact-sheet.md         # Sanitized runtime table/function snapshot
 
   guides/                            # How do I DO something
     getting-started.md               # Prerequisites, setup, run, deploy
     new-feature.md                   # Feature checklist (tri-flow)
     mobile.md                        # Capacitor iOS/Android development
     native_streaming.md              # Native SSE streaming implementation
-
-  audits/                            # Living tracking matrices
-    plugins-parity.md                # iOS/Android plugin parity matrix
-    kai-retro-change-map-2026-02-21.md # Retro mapping for current Kai branch
-    kai-launch-readiness-2026-02-21.md # Strict launch readiness checkpoint
 
   vision/                            # Where is this going
     README.md                        # Philosophy, roadmap, community strategy

@@ -590,11 +590,18 @@ When users exit from root-level pages:
 
 **Top bar (native and web):**
 
-- **StatusBarBlur** (native only): Fixed strip under the system status bar with height `env(safe-area-inset-top)`; uses the same glass style as the breadcrumb bar so both bands match.
-- **TopAppBar**: Fixed breadcrumb bar; height **64px**; on native sits below StatusBarBlur at `top: env(safe-area-inset-top)`.
-- Both use the **masked blur** style (`.top-bar-glass`): theme-aware semi-transparent background, `backdrop-filter: blur(3px) saturate(180%)`, and a faded bottom edge via `mask-image` so the bar blends into the content.
-- **No spacer in layout**: The main scroll container in `Providers` has `pt-[45px]` and extends under the fixed bar so content can scroll behind it; body already has `padding-top: env(safe-area-inset-top)` for the notch/safe area.
-- **TopAppBarSpacer** is no longer used in the root layout; the scroll container’s padding provides clearance. The component remains available if a page needs to reserve space for the bar outside the main providers layout.
+- System bars are controlled by the Capacitor `SystemBars` runtime manager (`components/status-bar-manager.tsx`) on native platforms.
+- Capacitor config uses immersive edge-to-edge with CSS inset injection:
+  - `ios.contentInset = "never"`
+  - `plugins.SystemBars.insetsHandling = "css"`
+- Root layout owns top geometry for all shell-visible routes:
+  - `resolveTopShellMetrics(pathname)` sets route profile inputs.
+  - `Providers` writes the CSS variables (`--app-top-shell-visible`, `--app-top-has-tabs`, `--app-top-mask-tail-clearance`).
+  - A structural spacer uses `height: var(--app-top-content-offset)` so pages start below top chrome.
+- Safe-area resolution is tokenized in CSS:
+  - `--app-safe-area-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px))`
+  - `--app-safe-area-top-effective` includes iOS max inset fallback.
+- Do not use page-level `pt-*` hacks for notch/status-bar overlap fixes.
 
 ## Authentication Token Passing
 

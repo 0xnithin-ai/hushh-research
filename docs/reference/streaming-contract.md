@@ -63,8 +63,8 @@ Rules:
 ### Import Portfolio (`stream_kind=portfolio_import`)
 
 - `stage`
-- `thinking`
 - `chunk`
+- `progress`
 - `aborted` (terminal)
 - `complete` (terminal)
 - `error` (terminal)
@@ -73,7 +73,6 @@ Import phase values now include:
 - `uploading`
 - `indexing`
 - `scanning`
-- `thinking`
 - `extracting`
 - `normalizing`
 - `validating`
@@ -148,7 +147,7 @@ Thought summaries are best-effort telemetry.
 
 - UI must never depend on thought events for control-flow progression.
 - Missing thought events is valid and must not block completion.
-- Import/optimize `thinking` payloads normalize to:
+- Optimize `thinking` payloads normalize to:
   - `phase`
   - `message`
   - `thought`
@@ -156,7 +155,8 @@ Thought summaries are best-effort telemetry.
   - `token_source`
   - `timestamp` (envelope-normalized)
   - `progress_pct` (envelope-normalized)
-- Import uses phase-aware thought streaming for the single deterministic extraction pass.
+- Import extraction does not emit investor-visible thought chunks; `thought_count` remains `0` in diagnostics.
+- Import `holdings_preview` is derived from confirmed parsed holding objects during stream assembly.
 - Analyze stream continues to use `kai_thinking` plus `agent_token`; `agent_token` includes `token_source`.
 
 ## Parser Requirements

@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/🤫_Hushh-Personal_Data_Agents-blueviolet?style=for-the-badge" alt="Hushh"/>
+  <img src="https://img.shields.io/badge/🤫_Hushh-Personal_Agent-blueviolet?style=for-the-badge" alt="Hushh"/>
 </p>
 
 <h1 align="center">Hushh Research</h1>
 
 <p align="center">
-  <strong>Consent-First Personal Data Agent System</strong><br/>
+  <strong>Consent-First Personal Agent System</strong><br/>
   <em>Your data. Your vault. Your agents.</em>
 </p>
 

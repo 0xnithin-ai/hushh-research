@@ -22,7 +22,7 @@
   - fullscreen-flow spacer exemption: `/kai/onboarding`, `/kai/import`
 - Main scroll root inserts a structural spacer with `height: var(--app-top-content-offset)` so page content starts below top chrome even when nested layouts use full-height wrappers.
 - Result:
-  - Shell-visible routes (`/kai`, `/consents`, `/profile`, `/chat`, `/api-docs`, `/agent-nav`, etc.) start below masked top chrome by default.
+  - Shell-visible routes (for example `/kai`, `/consents`, `/profile`) start below masked top chrome by default.
   - Page-level top padding hacks should not be added for shell overlap fixes.
   - Onboarding/import keep fullscreen-flow route behavior (spacer suppressed).
 

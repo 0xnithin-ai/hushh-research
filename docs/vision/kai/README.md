@@ -74,7 +74,7 @@ This is a faithful consumer translation of the **AlphaAgents framework**:
 
 ### What Hushh IS
 
-**Hushh is your Personal Data Agent (PDA)** — a _fiduciary intelligence_.
+**Hushh is your Personal Agent (PA)** — a _fiduciary intelligence_.
 
 An agent that:
 

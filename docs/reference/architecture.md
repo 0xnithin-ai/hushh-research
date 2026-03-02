@@ -1,6 +1,6 @@
 # Architecture
 
-> System-level technical architecture for the Hushh Personal Data Agent platform.
+> System-level technical architecture for the Hushh Personal Agent platform.
 
 ---
 
@@ -278,7 +278,7 @@ hushh-webapp/
 
 Connection: SQLAlchemy with Supabase Session Pooler. No ORM models -- raw SQL through `DatabaseClient`.
 
-### Live Tables (11)
+### Live Tables (13)
 
 | Table                       | Purpose                                     | Encrypted |
 | --------------------------- | ------------------------------------------- | --------- |
@@ -290,18 +290,25 @@ Connection: SQLAlchemy with Supabase Session Pooler. No ORM models -- raw SQL th
 | `consent_audit`             | Token lifecycle audit trail                 | No        |
 | `consent_exports`           | Encrypted exports for MCP consumption       | Yes       |
 | `user_push_tokens`          | FCM push tokens per user/platform           | No        |
+| `kai_market_cache_entries`  | Server-side market payload cache entries    | No        |
+| `tickers`                   | Ticker master and enrichment metadata       | No        |
 | `renaissance_universe`      | Investable stock universe                   | No        |
 | `renaissance_screening_criteria` | Screening tier definitions              | No        |
 | `renaissance_avoid`         | Excluded stocks                             | No        |
 
 See [World Model](../../consent-protocol/docs/reference/world-model.md) for detailed schema.
 
-### RPCs
+### RPCs (Core + Optional)
 
-| Function                  | Purpose                                      |
-| ------------------------- | -------------------------------------------- |
-| `merge_domain_summary`    | Atomic JSONB merge into `world_model_index_v2` |
-| `remove_domain_summary_key` | Atomic key removal from domain summary     |
+Runtime can use optional RPC accelerators when present, but world-model reads/writes include fallback paths when RPCs are unavailable.
+
+| Function                              | Runtime Role |
+| ------------------------------------- | ------------ |
+| `get_user_world_model_metadata`       | Preferred metadata read helper for world-model summaries |
+| `update_world_model_data_timestamp`   | Timestamp maintenance helper |
+| `consent_audit_notify`                | Consent-audit trigger helper |
+
+Optional migration/legacy functions such as `merge_domain_summary` and `remove_domain_summary_key` are not assumed to exist in every runtime database.
 
 ---
 
@@ -322,7 +329,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) with path-filtered jobs:
 | Job              | Trigger                        | Checks                                   |
 | ---------------- | ------------------------------ | ---------------------------------------- |
 | `secret-scan`    | Every push/PR/merge queue      | `gitleaks` OSS CLI on event commit range |
-| `web-check`      | `hushh-webapp/**` changes      | ESLint, TypeScript, Vitest               |
+| `web-check`      | `hushh-webapp/**` changes      | Typecheck, lint, design/investor-language verification, build, audit budget, `test:ci` |
 | `protocol-check` | `consent-protocol/**` changes  | Ruff, mypy, pytest                       |
 | `integration-check` | Frontend or backend changes | Route contract verification               |
 | `subtree-sync-check` | Every push/PR/merge queue   | Upstream subtree drift warning            |

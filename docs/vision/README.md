@@ -14,7 +14,7 @@ Every product decision, GTM story, and policy stance ladders up to this principl
 
 ## What Hushh Is
 
-**Hushh is your Personal Data Agent (PDA)** -- a fiduciary intelligence.
+**Hushh is your Personal Agent (PA)** -- a fiduciary intelligence.
 
 An agent that:
 

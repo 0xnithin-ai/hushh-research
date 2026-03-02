@@ -221,7 +221,7 @@ Before marking feature as complete:
 - [ ] No `fetch()` calls in components
 - [ ] Documentation updated
 - [ ] PR impact checklist sections completed
-- [ ] If AI-assisted: commit message includes `Signed-off-by` and `Tokens used` (when available); see [Contributing](../contributing.md)
+- [ ] If AI-assisted: commit message includes `Signed-off-by` and `Tokens used` (when available); see [Contributing](../../contributing.md)
 
 ## Platform-Specific Features
 

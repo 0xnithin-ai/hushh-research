@@ -269,25 +269,24 @@ Terminal payload from `POST /api/kai/portfolio/import/stream` now includes:
 - `analytics_v2` (materialized dashboard/debate/optimize metrics)
 - `quality_report_v2` (deterministic quality report and gate output)
 - `timings_ms` (phase timings, includes `total_ms`)
-- `token_counts` (phase -> `{chunks, thoughts}`)
-- `coverage_metrics` (positions coverage and reconciliation checks)
+- `token_counts` (phase -> `{chunks, thoughts}`; import thoughts are suppressed for investor-facing output)
+- `coverage_metrics` (positions availability coverage checks)
 - `quality_gate`:
   - `passed`
   - `holdings_count`
   - `placeholder_symbol_count`
   - `account_header_row_count`
-  - `expected_total_value`
-  - `holdings_market_value_sum`
-  - `reconciliation_gap`
-  - `reconciled_within_cent`
+  - `core_keys_present`
+  - `rows_with_symbol_pct`
+  - `rows_with_market_value_pct`
 
-If strict validation fails, stream emits terminal `aborted` with:
+If import cannot proceed, terminal events are:
 
-- `code=IMPORT_QUALITY_GATE_FAILED`
-- `quality_gate`
-- `quality_report_v2`
+- terminal `error` with `code=IMPORT_JSON_INVALID` (invalid/non-JSON extractor output)
+- terminal `error` with `code=IMPORT_SCHEMA_INVALID` (missing required top-level keys)
+- terminal `error` or `aborted` with `code=IMPORT_NO_HOLDINGS` (no confirmed holdings available)
 
-No silent success is emitted when quality gate fails.
+No silent success is emitted on terminal failures.
 
 ---
 
