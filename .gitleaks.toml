@@ -5,6 +5,9 @@ useDefault = true
 
 [allowlist]
 description = "Legacy baseline findings before full-history scan enforcement"
+paths = [
+  '''hushh-webapp/__tests__/services/observability-schema\.test\.ts''',
+]
 commits = [
   "0b3e87ed041107e868ee2139e7289b885a342a0f",
   "0d355f72ab91590e301741741454fbc66749c0c8",

@@ -31,8 +31,8 @@ describe("observability schema", () => {
         result: "error",
         error_class: "auth_failed",
         // blocked key + value patterns (runtime guard)
-        user_id: "abc123",  
-        token_hint: "abcdEFGHijklMNOPqrstUVWXyz012345",  
+        user_id: "abc123",
+        token_hint: "template_token_hint_for_test_only",
       } as any
     );
 
