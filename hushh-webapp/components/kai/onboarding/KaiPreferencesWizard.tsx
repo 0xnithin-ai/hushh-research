@@ -224,16 +224,18 @@ export function KaiPreferencesWizard(props: {
             Help us tailor your investment plan.
           </p>
 
-          <h1
+          <p
+            role="heading"
+            aria-level={1}
             className={cn(
-              "font-extrabold tracking-tight whitespace-pre-line",
+              "whitespace-pre-line tracking-[-0.015em] text-balance",
               layout === "page"
-                ? "text-[clamp(1.55rem,6.2vw,2rem)] leading-[1.14]"
-                : "text-[clamp(1.45rem,4.8vw,1.85rem)] leading-[1.16]"
+                ? "text-[clamp(0.98rem,3.2vw,1.35rem)] leading-[1.3] font-semibold"
+                : "text-[clamp(0.95rem,2.8vw,1.2rem)] leading-[1.3] font-semibold"
             )}
           >
             {activeQuestion.prompt}
-          </h1>
+          </p>
         </div>
 
         <div className="pt-5">

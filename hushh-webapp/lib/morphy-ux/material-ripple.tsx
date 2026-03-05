@@ -14,7 +14,7 @@
  * - Dark mode: Silver accents for Hushh brand
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { type ColorVariant, type ComponentEffect } from "./types";
 import "@material/web/ripple/ripple.js";
 
@@ -156,6 +156,11 @@ export const MaterialRipple = ({
 }: MaterialRippleProps) => {
   const rippleRef = useRef<MdRipple>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Check for dark mode
@@ -219,11 +224,13 @@ export const MaterialRipple = ({
       // Ensure the ripple clips correctly for pill/rounded buttons.
       style={{ borderRadius: "inherit" }}
     >
-      {React.createElement("md-ripple", {
-        ref: rippleRef,
-        disabled: disabled || undefined,
-        className: "morphy-md-ripple",
-      })}
+      {mounted
+        ? React.createElement("md-ripple", {
+            ref: rippleRef,
+            disabled: disabled || undefined,
+            className: "morphy-md-ripple",
+          })
+        : null}
     </div>
   );
 };
