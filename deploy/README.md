@@ -20,6 +20,65 @@ gcloud builds submit --config=deploy/frontend.cloudbuild.yaml
 
 ---
 
+## 🧭 Environment Profiles (Dev/UAT/Prod)
+
+Use profile sources and activate one profile into the live local files:
+
+- Backend active file: `consent-protocol/.env`
+- Frontend active file: `hushh-webapp/.env.local`
+
+Profile sources (local only, not committed):
+
+- `consent-protocol/.env.dev.local`, `.env.uat.local`, `.env.prod.local`
+- `hushh-webapp/.env.dev.local`, `.env.uat.local`, `.env.prod.local`
+
+Activation:
+
+```bash
+bash scripts/env/use_profile.sh dev
+bash scripts/env/use_profile.sh uat
+bash scripts/env/use_profile.sh prod --confirm-prod-local
+```
+
+Makefile wrappers:
+
+```bash
+make env-use ENV=dev
+make env-use ENV=uat
+make env-use ENV=prod CONFIRM_PROD_LOCAL=1
+make run-web ENV=uat
+make run-backend ENV=dev
+```
+
+### Blocking vs optional validation
+
+Blocking by default:
+
+1. `scripts/ci/secret-scan.sh`
+2. `scripts/ci/web-check.sh`
+3. `scripts/ci/protocol-check.sh`
+4. `scripts/ci/integration-check.sh`
+
+Optional/advisory by default:
+
+1. `scripts/ci/docs-parity-check.sh`
+2. `scripts/ci/subtree-sync-check.sh`
+3. `scripts/ops/verify-env-secrets-parity.py` (release/deploy preflight)
+4. Native parity checks for native release lanes
+
+Local full run with advisory checks:
+
+```bash
+INCLUDE_ADVISORY_CHECKS=1 ./scripts/test-ci-local.sh
+```
+
+### UAT analytics divergence note
+
+`deploy_uat` currently includes newer analytics/auth-split expectations (`NEXT_PUBLIC_AUTH_FIREBASE_*`, measurement IDs, GTM IDs).  
+Production analytics key migration is deferred intentionally and should be handled as a separate release task.
+
+---
+
 ## 📋 Prerequisites
 
 1. **Google Cloud SDK** installed and authenticated
@@ -50,12 +109,13 @@ gcloud builds submit --config=deploy/frontend.cloudbuild.yaml
      --frontend-service hushh-webapp
    ```
 
-   Required backend secrets (10):
+   Required backend secrets (11):
 
    - `SECRET_KEY`
    - `VAULT_ENCRYPTION_KEY`
    - `GOOGLE_API_KEY`
    - `FIREBASE_SERVICE_ACCOUNT_JSON`
+   - `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON`
    - `FRONTEND_URL`
    - `DB_USER`
    - `DB_PASSWORD`
@@ -148,7 +208,7 @@ Manual dispatch now supports `scope`:
 ### CI Security Gates
 
 - `.github/workflows/ci.yml` runs `gitleaks` as a mandatory secret-scanning gate.
-- The same workflow validates that committed mobile Firebase artifacts are templates (`npm run verify:mobile-firebase`).
+- Native parity checks are optional in baseline CI and enabled for native release lanes.
 
 ### Option 1: Cloud Build Triggers (Recommended)
 

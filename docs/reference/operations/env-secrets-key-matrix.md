@@ -9,6 +9,17 @@ For live evidence across `.env`, `.env.local`, deploy manifests, Secret Manager,
 bash scripts/verify-pre-launch.sh
 ```
 
+Canonical environment keys:
+
+1. Backend: `ENVIRONMENT=development|uat|production`
+2. Frontend: `NEXT_PUBLIC_APP_ENV=development|uat|production`
+
+Current branch divergence policy:
+
+1. `deploy_uat` carries analytics/auth-split keys as the active rollout lane.
+2. Production analytics key parity is intentionally deferred until approved migration.
+3. Missing production analytics keys should be tracked as migration backlog, not silently backfilled outside release planning.
+
 ## Contract Matrix
 
 | key | read_by_code | backend_local_env | frontend_local_env | secret_manager | backend_cloudbuild | frontend_cloudbuild | cloud_run_live_backend | cloud_run_live_frontend | classification |
@@ -46,7 +57,13 @@ bash scripts/verify-pre-launch.sh
 | `NEXT_PUBLIC_AUTH_FIREBASE_PROJECT_ID` | `hushh-webapp/lib/firebase/config.ts` | N | Y | Y | N | Y | N | N | required |
 | `NEXT_PUBLIC_AUTH_FIREBASE_APP_ID` | `hushh-webapp/lib/firebase/config.ts` | N | Y | Y | N | Y | N | N | required |
 | `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | `hushh-webapp/lib/notifications/fcm-service.ts` | N | Y | Y | N | Y | N | N | required |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_STAGING` | `hushh-webapp/lib/firebase/config.ts` | N | Y | Y | N | Y | N | N | required |
+| `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_PRODUCTION` | `hushh-webapp/lib/firebase/config.ts` | N | Y | Y | N | Y | N | N | required |
+| `NEXT_PUBLIC_GTM_ID_STAGING` | `hushh-webapp/lib/observability/env.ts` | N | Y | Y | N | Y | N | N | required |
+| `NEXT_PUBLIC_GTM_ID_PRODUCTION` | `hushh-webapp/lib/observability/env.ts` | N | Y | Y | N | Y | N | N | required |
 | `NEXT_PUBLIC_APP_ENV` | `hushh-webapp/lib/app-env.ts` | N | Y | N | N | N | N | N | required |
+| `IOS_GOOGLESERVICE_INFO_PLIST_B64` | native release pipeline | N | N | Y | N | N | N | N | optional |
+| `ANDROID_GOOGLE_SERVICES_JSON_B64` | native release pipeline | N | N | Y | N | N | N | N | optional |
 | `NEXT_PUBLIC_ENVIRONMENT_MODE` | `hushh-webapp/lib/app-env.ts` | N | Y | N | N | N | N | N | legacy |
 | `REVIEWER_EMAIL` | none | N | N | N | N | N | N | N | legacy |
 | `REVIEWER_PASSWORD` | none | N | N | N | N | N | N | N | legacy |

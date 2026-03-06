@@ -8,6 +8,17 @@ This document describes the **Tri-Flow CI** workflow and how to stay aligned wit
 
 ---
 
+## Fundamental Blocking Policy
+
+To prevent CI check-sprawl, only these checks are hard-blocking by default:
+
+1. `scripts/ci/secret-scan.sh`
+2. `scripts/ci/web-check.sh`
+3. `scripts/ci/protocol-check.sh`
+4. `scripts/ci/integration-check.sh`
+
+The `CI Status Gate` remains the single required status for branch protection and only aggregates the blocking checks above.
+
 ## When CI Runs
 
 | Trigger | Branches | Behavior |
@@ -30,8 +41,23 @@ This document describes the **Tri-Flow CI** workflow and how to stay aligned wit
 | Gate | Purpose | Behavior |
 |------|---------|----------|
 | Secret Scan | Detect leaked credentials/tokens early | `gitleaks` OSS CLI (license-free) scans commit range for each event |
-| Upstream Sync | Detect monorepo/subtree drift | Warns when `consent-protocol/` tree differs from upstream `main` |
+| Upstream Sync | Detect monorepo/subtree drift | Advisory only; warnings are non-blocking |
 | CI Status Gate | Single required check for branch protection | Fails if any required job fails/cancels/times out; allows intentional `skipped` jobs |
+
+## Advisory Checks (Non-Blocking By Default)
+
+1. `scripts/ci/docs-parity-check.sh`
+2. `scripts/ci/subtree-sync-check.sh`
+3. Native parity checks (`verify:parity`, `verify:capacitor:*`) for native release lanes
+4. `scripts/ops/verify-env-secrets-parity.py` for release preflight and deployment readiness
+
+Do not add new CI/parity scripts without replacing or consolidating an existing check.
+
+## Branch Divergence Clarity (UAT now, Prod later)
+
+1. `deploy_uat` currently carries newer analytics/auth-split expectations.
+2. Production branch rollout is intentionally deferred for those analytics keys until migration approval.
+3. CI should validate branch-local contracts; production analytics parity is handled as a separate migration packet, not mixed into day-to-day UAT delivery.
 
 ---
 
@@ -149,6 +175,12 @@ This script:
 3. Runs **frontend** checks: install, `tsc`, lint, Next build, Capacitor build.
 4. Runs **backend** checks: install, Ruff, mypy, pytest.
 5. Runs **integration**: route contract verification.
+
+To include advisory checks locally:
+
+```bash
+INCLUDE_ADVISORY_CHECKS=1 ./scripts/test-ci-local.sh
+```
 
 If it exits 0, CI should pass. If it fails, fix the reported step before committing.
 

@@ -12,6 +12,26 @@ See also: [deploy/README.md](../../../deploy/README.md), [consent-protocol/.env.
 - **Local:** `.env` (backend) and `.env.local` (frontend) must contain exactly the keys the application code reads. Use the repo `.env.example` files as the template; they are audited to match the code.
 - **Production:** GCP Secret Manager must hold **exactly** the secrets the code expects — no more, no less. The Cloud Build config (`deploy/*.cloudbuild.yaml`) injects only these; do not add secrets that are not read by the code, and do not remove any that are.
 
+## Canonical 3-environment contract
+
+1. Backend environment identity is `ENVIRONMENT` and must be one of: `development`, `uat`, `production`.
+2. Frontend environment identity is `NEXT_PUBLIC_APP_ENV` and must be one of: `development`, `uat`, `production`.
+3. Legacy frontend fallback keys are read-only compatibility paths for one release cycle:
+- `NEXT_PUBLIC_OBSERVABILITY_ENV`
+- `NEXT_PUBLIC_ENVIRONMENT_MODE`
+4. Local profile model (non-committed):
+- backend templates: `consent-protocol/.env.dev.local.example`, `consent-protocol/.env.uat.local.example`, `consent-protocol/.env.prod.local.example`
+- frontend templates: `hushh-webapp/.env.dev.local.example`, `hushh-webapp/.env.uat.local.example`, `hushh-webapp/.env.prod.local.example`
+- local source files are created from templates and kept uncommitted
+- active files: `consent-protocol/.env`, `hushh-webapp/.env.local`
+5. Profile activation command:
+
+```bash
+bash scripts/env/use_profile.sh dev
+bash scripts/env/use_profile.sh uat
+bash scripts/env/use_profile.sh prod --confirm-prod-local
+```
+
 ### One-command parity audit
 
 ```bash
@@ -22,11 +42,24 @@ python3 scripts/ops/verify-env-secrets-parity.py \
   --frontend-service hushh-webapp
 ```
 
+Native release preflight (adds required Firebase artifact keys):
+
+```bash
+python3 scripts/ops/verify-env-secrets-parity.py \
+  --project hushh-pda-uat \
+  --require-native-artifacts
+```
+
 The script reports:
-- key matrix across local env files, deploy manifests, Secret Manager, and live Cloud Run
-- unknown live secret refs
-- missing required secrets
-- legacy keys still wired
+- required backend/frontend key lists
+- whether each required key exists in the target project
+- missing keys (if any), with non-zero exit on failure
+
+### Branch divergence note (current)
+
+1. `deploy_uat` currently includes analytics/auth-split expectations (`NEXT_PUBLIC_AUTH_FIREBASE_*`, measurement IDs, GTM IDs).
+2. Production branch rollout does not yet require all analytics keys until the dedicated migration step is approved.
+3. Production analytics migration remains deferred by policy; do not mutate production to match UAT-only analytics during routine UAT delivery.
 
 ### Ops-only GitHub secrets (backup/recovery governance)
 
