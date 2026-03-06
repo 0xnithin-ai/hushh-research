@@ -40,6 +40,7 @@ import {
 } from "@/lib/navigation/kai-bottom-chrome-visibility";
 import { getKaiChromeState } from "@/lib/navigation/kai-chrome-state";
 import { cn } from "@/lib/utils";
+import { PersonaBootstrapRedirect } from "@/components/iam/persona-bootstrap-redirect";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -129,6 +130,7 @@ export function Providers({ children }: ProvidersProps) {
         {/* Step-based progress bar at top of viewport */}
         <StepProgressBar />
         <AuthProvider>
+          <PersonaBootstrapRedirect />
           <CacheProvider>
             <VaultProvider>
               <ConsentNotificationProvider>

@@ -41,7 +41,8 @@ bash scripts/verify-pre-launch.sh
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `hushh-webapp/lib/firebase/config.ts` | N | Y | Y | N | Y | N | N | required |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | `hushh-webapp/lib/firebase/config.ts` | N | Y | Y | N | Y | N | N | required |
 | `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | `hushh-webapp/lib/notifications/fcm-service.ts` | N | Y | Y | N | Y | N | N | required |
-| `NEXT_PUBLIC_ENVIRONMENT_MODE` | `hushh-webapp/app/page.tsx` | N | Y | N | N | N | N | N | required |
+| `NEXT_PUBLIC_APP_ENV` | `hushh-webapp/lib/app-env.ts` | N | Y | N | N | N | N | N | required |
+| `NEXT_PUBLIC_ENVIRONMENT_MODE` | `hushh-webapp/lib/app-env.ts` | N | Y | N | N | N | N | N | legacy |
 | `REVIEWER_EMAIL` | none | N | N | N | N | N | N | N | legacy |
 | `REVIEWER_PASSWORD` | none | N | N | N | N | N | N | N | legacy |
 | `NEXT_PUBLIC_API_URL` | none | N | N | N | N | N | N | N | legacy |

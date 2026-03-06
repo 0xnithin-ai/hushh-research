@@ -24,6 +24,7 @@ For repo setup, see [`readme.md`](../readme.md) and [`getting_started.md`](../ge
 | Operate observability | [reference/operations/observability-google-first.md](./reference/operations/observability-google-first.md) |
 | Operate production DB backup/recovery | [reference/operations/production-db-backup-and-recovery.md](./reference/operations/production-db-backup-and-recovery.md) |
 | Review cloud + on-device AI future plan | [reference/ai/on-device-future-plan/README.md](./reference/ai/on-device-future-plan/README.md) |
+| Review Investor + RIA IAM architecture and policy | [reference/iam/README.md](./reference/iam/README.md) |
 | Follow docs governance and naming rules | [reference/operations/docs-governance.md](./reference/operations/docs-governance.md) |
 | Understand Kai runtime dependencies | [reference/kai/kai-interconnection-map.md](./reference/kai/kai-interconnection-map.md) |
 | Run Kai impact/risk checks | [reference/kai/kai-change-impact-matrix.md](./reference/kai/kai-change-impact-matrix.md) |
@@ -54,6 +55,7 @@ docs/
     ai/
       on-device-future-plan/
     architecture/
+    iam/
     kai/
     operations/
     quality/

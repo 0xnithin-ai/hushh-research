@@ -6,6 +6,11 @@ export const ROUTE_ID_VALUES = [
   "logout",
   "profile",
   "consents",
+  "marketplace",
+  "ria_onboarding",
+  "ria_clients",
+  "ria_requests",
+  "ria_workspace",
   "kai_home",
   "kai_onboarding",
   "kai_import",
@@ -24,6 +29,11 @@ export function resolveRouteId(pathname: string): RouteId {
   if (pathname === ROUTES.LOGOUT) return "logout";
   if (pathname === ROUTES.PROFILE) return "profile";
   if (pathname === ROUTES.CONSENTS) return "consents";
+  if (pathname === ROUTES.MARKETPLACE) return "marketplace";
+  if (pathname === ROUTES.RIA_ONBOARDING) return "ria_onboarding";
+  if (pathname === ROUTES.RIA_CLIENTS) return "ria_clients";
+  if (pathname === ROUTES.RIA_REQUESTS) return "ria_requests";
+  if (pathname.startsWith(`${ROUTES.RIA_HOME}/workspace/`)) return "ria_workspace";
   if (pathname === ROUTES.KAI_HOME) return "kai_home";
   if (pathname === ROUTES.KAI_ONBOARDING) return "kai_onboarding";
   if (pathname === ROUTES.KAI_IMPORT) return "kai_import";
@@ -124,6 +134,50 @@ const API_TEMPLATE_RULES: Array<{ regex: RegExp; template: string }> = [
   {
     regex: /^\/api\/account\/delete(?:\?.*)?$/i,
     template: "/api/account/delete",
+  },
+  {
+    regex: /^\/api\/iam\/persona(?:\?.*)?$/i,
+    template: "/api/iam/persona",
+  },
+  {
+    regex: /^\/api\/iam\/persona\/switch(?:\?.*)?$/i,
+    template: "/api/iam/persona/switch",
+  },
+  {
+    regex: /^\/api\/iam\/marketplace\/opt-in(?:\?.*)?$/i,
+    template: "/api/iam/marketplace/opt-in",
+  },
+  {
+    regex: /^\/api\/ria\/onboarding\/submit(?:\?.*)?$/i,
+    template: "/api/ria/onboarding/submit",
+  },
+  {
+    regex: /^\/api\/ria\/onboarding\/status(?:\?.*)?$/i,
+    template: "/api/ria/onboarding/status",
+  },
+  {
+    regex: /^\/api\/ria\/clients(?:\?.*)?$/i,
+    template: "/api/ria/clients",
+  },
+  {
+    regex: /^\/api\/ria\/requests(?:\?.*)?$/i,
+    template: "/api/ria/requests",
+  },
+  {
+    regex: /^\/api\/ria\/workspace\/[^/?]+(?:\?.*)?$/i,
+    template: "/api/ria/workspace/{investor_user_id}",
+  },
+  {
+    regex: /^\/api\/marketplace\/rias(?:\?.*)?$/i,
+    template: "/api/marketplace/rias",
+  },
+  {
+    regex: /^\/api\/marketplace\/investors(?:\?.*)?$/i,
+    template: "/api/marketplace/investors",
+  },
+  {
+    regex: /^\/api\/marketplace\/ria\/[^/?]+(?:\?.*)?$/i,
+    template: "/api/marketplace/ria/{ria_id}",
   },
 ];
 

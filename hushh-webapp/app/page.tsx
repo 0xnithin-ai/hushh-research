@@ -10,6 +10,7 @@ import { isOnboardingFlowActiveCookieEnabled } from "@/lib/services/onboarding-r
 import { IntroStep } from "@/components/onboarding/IntroStep";
 import { PreviewCarouselStep } from "@/components/onboarding/PreviewCarouselStep";
 import { ROUTES } from "@/lib/navigation/routes";
+import { resolveAppEnvironment } from "@/lib/app-env";
 
 type HomeStep = "intro" | "preview";
 
@@ -21,10 +22,7 @@ function HomeContent() {
   const { user, loading } = useAuth();
   const [step, setStep] = useState<HomeStep | null>(null);
 
-  const forceOnboardingInDev =
-    process.env.NODE_ENV !== "production" &&
-    (process.env.NEXT_PUBLIC_ENVIRONMENT_MODE ?? "").toLowerCase() ===
-      "development";
+  const forceOnboardingInDev = resolveAppEnvironment() === "development";
 
   // Debug helper (browser console): resets Steps 1-2 visibility flag.
   useEffect(() => {

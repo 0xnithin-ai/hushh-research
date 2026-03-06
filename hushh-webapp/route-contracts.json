@@ -291,6 +291,48 @@
       }
     },
     {
+      "id": "iamProxy",
+      "webRouteFile": "hushh-webapp/app/api/iam/[...path]/route.ts",
+      "backend": {
+        "file": "consent-protocol/api/routes/iam.py",
+        "routerPrefix": "/api/iam",
+        "paths": [
+          "/persona",
+          "/persona/switch",
+          "/marketplace/opt-in"
+        ]
+      }
+    },
+    {
+      "id": "riaProxy",
+      "webRouteFile": "hushh-webapp/app/api/ria/[...path]/route.ts",
+      "backend": {
+        "file": "consent-protocol/api/routes/ria.py",
+        "routerPrefix": "/api/ria",
+        "paths": [
+          "/onboarding/submit",
+          "/onboarding/status",
+          "/firms",
+          "/clients",
+          "/requests",
+          "/workspace/{investor_user_id}"
+        ]
+      }
+    },
+    {
+      "id": "marketplaceProxy",
+      "webRouteFile": "hushh-webapp/app/api/marketplace/[...path]/route.ts",
+      "backend": {
+        "file": "consent-protocol/api/routes/marketplace.py",
+        "routerPrefix": "/api/marketplace",
+        "paths": [
+          "/rias",
+          "/investors",
+          "/ria/{ria_id}"
+        ]
+      }
+    },
+    {
       "id": "authSessionInternal",
       "webRouteFile": "hushh-webapp/app/api/auth/session/route.ts"
     }
@@ -489,6 +531,62 @@
         "vaultWebProxy",
         "vaultOwnerToken",
         "accountDelete"
+      ]
+    },
+    {
+      "id": "marketplacePage",
+      "pageFile": "hushh-webapp/app/marketplace/page.tsx",
+      "serviceFiles": [
+        "hushh-webapp/lib/services/ria-service.ts"
+      ],
+      "apiContractIds": [
+        "marketplaceProxy",
+        "riaProxy",
+        "iamProxy"
+      ]
+    },
+    {
+      "id": "riaHomePage",
+      "pageFile": "hushh-webapp/app/ria/page.tsx"
+    },
+    {
+      "id": "riaOnboardingPage",
+      "pageFile": "hushh-webapp/app/ria/onboarding/page.tsx",
+      "serviceFiles": [
+        "hushh-webapp/lib/services/ria-service.ts"
+      ],
+      "apiContractIds": [
+        "riaProxy"
+      ]
+    },
+    {
+      "id": "riaClientsPage",
+      "pageFile": "hushh-webapp/app/ria/clients/page.tsx",
+      "serviceFiles": [
+        "hushh-webapp/lib/services/ria-service.ts"
+      ],
+      "apiContractIds": [
+        "riaProxy"
+      ]
+    },
+    {
+      "id": "riaRequestsPage",
+      "pageFile": "hushh-webapp/app/ria/requests/page.tsx",
+      "serviceFiles": [
+        "hushh-webapp/lib/services/ria-service.ts"
+      ],
+      "apiContractIds": [
+        "riaProxy"
+      ]
+    },
+    {
+      "id": "riaWorkspacePage",
+      "pageFile": "hushh-webapp/app/ria/workspace/[clientId]/page.tsx",
+      "serviceFiles": [
+        "hushh-webapp/lib/services/ria-service.ts"
+      ],
+      "apiContractIds": [
+        "riaProxy"
       ]
     },
     {

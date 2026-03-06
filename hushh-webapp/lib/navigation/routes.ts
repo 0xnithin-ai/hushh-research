@@ -9,6 +9,11 @@ export const ROUTES = {
   LOGOUT: "/logout",
   PROFILE: "/profile",
   CONSENTS: "/consents",
+  MARKETPLACE: "/marketplace",
+  RIA_HOME: "/ria",
+  RIA_ONBOARDING: "/ria/onboarding",
+  RIA_CLIENTS: "/ria/clients",
+  RIA_REQUESTS: "/ria/requests",
   KAI_HOME: "/kai",
   KAI_ONBOARDING: "/kai/onboarding",
   KAI_IMPORT: "/kai/import",
@@ -31,4 +36,8 @@ export function isPublicRoute(pathname: string): boolean {
     pathname === ROUTES.LOGOUT ||
     pathname === ROUTES.PROFILE
   );
+}
+
+export function isRiaRoute(pathname: string): boolean {
+  return pathname === ROUTES.RIA_HOME || pathname.startsWith(`${ROUTES.RIA_HOME}/`);
 }

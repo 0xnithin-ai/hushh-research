@@ -4,6 +4,8 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 WEB_DIR="$REPO_ROOT/hushh-webapp"
 
+bash "$REPO_ROOT/scripts/ci/no-ria-feature-flags.sh"
+
 cd "$WEB_DIR"
 
 npm --version

@@ -57,6 +57,7 @@ import { UserLocalStateService } from "@/lib/services/user-local-state-service";
 import { DashboardRouteTabs } from "@/components/kai/layout/dashboard-route-tabs";
 import { resolveTopShellMetrics } from "@/components/app-ui/top-shell-metrics";
 import { useKaiBottomChromeVisibility } from "@/lib/navigation/kai-bottom-chrome-visibility";
+import { PersonaSwitcher } from "@/components/iam/persona-switcher";
 
 /* ── Re-exports (backward compat) ─────────────────────────────────── */
 export {
@@ -79,6 +80,8 @@ export function TopAppBarSpacer() { return null; }
 /* ── Helpers ───────────────────────────────────────────────────────── */
 function getTopBarTitle(pathname: string): string | null {
   if (pathname.startsWith(ROUTES.KAI_HOME)) return "Kai";
+  if (pathname.startsWith(ROUTES.RIA_HOME)) return "RIA";
+  if (pathname.startsWith(ROUTES.MARKETPLACE)) return "Marketplace";
   if (pathname.startsWith(ROUTES.CONSENTS)) return "Consents";
   if (pathname.startsWith(ROUTES.PROFILE)) return "Profile";
   return null;
@@ -154,6 +157,7 @@ export function TopAppBar({ className }: TopAppBarProps) {
             </div>
 
             <div className="flex min-w-0 items-center justify-center px-2">
+              <PersonaSwitcher className="mr-2" />
               {centerTitle ? (
                 <span className="truncate text-base font-semibold tracking-tight text-foreground sm:text-lg">
                   {centerTitle}

@@ -10,6 +10,9 @@ describe("observability route map", () => {
     expect(resolveRouteId("/kai")).toBe("kai_home");
     expect(resolveRouteId("/kai/dashboard")).toBe("kai_dashboard");
     expect(resolveRouteId("/kai/dashboard/analysis")).toBe("kai_dashboard_legacy_redirect");
+    expect(resolveRouteId("/marketplace")).toBe("marketplace");
+    expect(resolveRouteId("/ria/clients")).toBe("ria_clients");
+    expect(resolveRouteId("/ria/workspace/user_123")).toBe("ria_workspace");
     expect(resolveRouteId("/unknown/path")).toBe("unknown");
   });
 
@@ -22,6 +25,9 @@ describe("observability route map", () => {
     );
     expect(normalizeApiPathToTemplate("/api/vault/get?userId=test")).toBe(
       "/db/vault/get"
+    );
+    expect(normalizeApiPathToTemplate("/api/ria/workspace/user_123")).toBe(
+      "/api/ria/workspace/{investor_user_id}"
     );
   });
 

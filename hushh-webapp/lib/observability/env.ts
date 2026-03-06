@@ -1,25 +1,19 @@
+import { resolveAppEnvironment } from "@/lib/app-env";
+
 export type ObservabilityEnvironment = "uat" | "production";
 
-function normalizeEnv(raw: string | undefined | null): string {
+function normalizeValue(raw: string | undefined | null): string {
   return String(raw || "")
     .trim()
     .toLowerCase();
 }
 
 export function resolveObservabilityEnvironment(): ObservabilityEnvironment {
-  const explicit = normalizeEnv(process.env.NEXT_PUBLIC_OBSERVABILITY_ENV);
-  if (explicit === "staging") {
-    // Backward compatibility with older env values.
-    return "uat";
-  }
-  if (explicit === "uat" || explicit === "production") {
-    return explicit;
-  }
-  return process.env.NODE_ENV === "production" ? "production" : "uat";
+  return resolveAppEnvironment() === "production" ? "production" : "uat";
 }
 
 export function isObservabilityEnabled(): boolean {
-  const raw = normalizeEnv(process.env.NEXT_PUBLIC_OBSERVABILITY_ENABLED);
+  const raw = normalizeValue(process.env.NEXT_PUBLIC_OBSERVABILITY_ENABLED);
   if (!raw) {
     return true;
   }
@@ -27,7 +21,7 @@ export function isObservabilityEnabled(): boolean {
 }
 
 export function isObservabilityDebugEnabled(): boolean {
-  const raw = normalizeEnv(process.env.NEXT_PUBLIC_OBSERVABILITY_DEBUG);
+  const raw = normalizeValue(process.env.NEXT_PUBLIC_OBSERVABILITY_DEBUG);
   return ["1", "true", "yes", "on"].includes(raw);
 }
 

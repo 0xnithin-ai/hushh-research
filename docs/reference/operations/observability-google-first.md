@@ -75,7 +75,8 @@ This document captures the repo implementation for the GA4 + GTM + Firebase + De
 
 ## Environment Model (Two Envs)
 
-- `NEXT_PUBLIC_OBSERVABILITY_ENV=staging|production`
+- `NEXT_PUBLIC_APP_ENV=uat|production` (canonical)
+- `NEXT_PUBLIC_OBSERVABILITY_ENV=uat|production` (legacy fallback, temporary)
 - GTM IDs:
   - `NEXT_PUBLIC_GTM_ID_STAGING`
   - `NEXT_PUBLIC_GTM_ID_PRODUCTION`

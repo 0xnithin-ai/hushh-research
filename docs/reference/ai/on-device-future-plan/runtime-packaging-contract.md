@@ -2,7 +2,7 @@
 
 ## Status
 
-`Future Plan` contract draft. Interfaces here are planned targets and should be finalized only during implementation.
+`Future Plan` contract draft. Interfaces here are target contracts and should be finalized only during implementation.
 
 ## Purpose
 
@@ -49,7 +49,7 @@ export interface LocalRuntimeCapability {
 }
 ```
 
-## Capability Endpoint Contract (Planned)
+## Capability Endpoint Contract (Target)
 
 Endpoint contract to add during implementation phase:
 

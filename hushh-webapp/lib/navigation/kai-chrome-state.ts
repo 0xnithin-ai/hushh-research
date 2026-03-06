@@ -33,7 +33,9 @@ export function getKaiChromeState(
     useOnboardingChrome ||
     path === ROUTES.HOME ||
     path.startsWith(ROUTES.LOGIN) ||
-    path.startsWith(ROUTES.LOGOUT);
+    path.startsWith(ROUTES.LOGOUT) ||
+    path.startsWith(ROUTES.MARKETPLACE) ||
+    path.startsWith(ROUTES.RIA_HOME);
 
   return {
     isOnboardingRoute,

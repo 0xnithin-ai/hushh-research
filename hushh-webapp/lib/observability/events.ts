@@ -25,6 +25,14 @@ export type ObservabilityEventName =
   | "consent_pending_loaded"
   | "consent_action_submitted"
   | "consent_action_result"
+  | "persona_switched"
+  | "ria_onboarding_submitted"
+  | "ria_verification_status_changed"
+  | "marketplace_profile_viewed"
+  | "ria_request_created"
+  | "ria_request_blocked_policy"
+  | "ria_workspace_opened"
+  | "mcp_ria_read_tool_called"
   | "profile_method_switch_result"
   | "account_delete_requested"
   | "account_delete_completed"
@@ -135,6 +143,37 @@ export interface EventPayloadMap {
     action: ConsentAction;
     result: EventResult;
     status_bucket?: StatusBucket;
+  };
+  persona_switched: {
+    action: "investor" | "ria";
+    result: EventResult;
+  };
+  ria_onboarding_submitted: {
+    result: EventResult;
+  };
+  ria_verification_status_changed: {
+    action: "draft" | "submitted" | "finra_verified" | "active" | "rejected";
+    result: EventResult;
+  };
+  marketplace_profile_viewed: {
+    action: "ria" | "investor";
+    result: EventResult;
+  };
+  ria_request_created: {
+    result: EventResult;
+    status_bucket?: StatusBucket;
+  };
+  ria_request_blocked_policy: {
+    result: "expected_error";
+    error_class?: string;
+  };
+  ria_workspace_opened: {
+    result: EventResult;
+    status_bucket?: StatusBucket;
+  };
+  mcp_ria_read_tool_called: {
+    action: "list_ria_profiles" | "get_ria_profile" | "list_marketplace_investors" | "get_ria_verification_status" | "get_ria_client_access_summary";
+    result: EventResult;
   };
   profile_method_switch_result: {
     result: EventResult;

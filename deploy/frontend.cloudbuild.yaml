@@ -44,7 +44,7 @@ steps:
           --build-arg NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_STAGING=$$NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_STAGING_VAL \
           --build-arg NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_PRODUCTION=$$NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_PRODUCTION_VAL \
           --build-arg NEXT_PUBLIC_BACKEND_URL=$$BACKEND_URL_VAL \
-          --build-arg NEXT_PUBLIC_OBSERVABILITY_ENV=${_OBS_ENV} \
+          --build-arg NEXT_PUBLIC_APP_ENV=${_APP_ENV} \
           --build-arg NEXT_PUBLIC_OBSERVABILITY_ENABLED=true \
           --build-arg NEXT_PUBLIC_OBSERVABILITY_DEBUG=false \
           --build-arg NEXT_PUBLIC_OBSERVABILITY_SAMPLE_RATE=1 \
@@ -119,7 +119,7 @@ timeout: "1200s"
 substitutions:
   _FRONTEND_SERVICE: hushh-webapp
   _REGION: us-central1
-  _OBS_ENV: production
+  _APP_ENV: production
   _IMAGE_TAG: v2.1.2
 
 # Secrets to fetch

@@ -15,25 +15,70 @@
       ],
       "fixAvailable": true
     },
+    "@google-cloud/firestore": {
+      "name": "@google-cloud/firestore",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "google-gax"
+      ],
+      "effects": [
+        "firebase-admin"
+      ],
+      "range": "7.5.0-pre.0 || >=7.6.0",
+      "nodes": [
+        "node_modules/@google-cloud/firestore"
+      ],
+      "fixAvailable": true
+    },
     "@google-cloud/storage": {
       "name": "@google-cloud/storage",
       "severity": "low",
       "isDirect": false,
       "via": [
-        "fast-xml-parser"
+        "fast-xml-parser",
+        "retry-request",
+        "teeny-request"
       ],
       "effects": [
         "firebase-admin"
       ],
-      "range": "6.12.0 - 7.18.0",
+      "range": ">=5.19.0",
       "nodes": [
         "node_modules/@google-cloud/storage"
       ],
-      "fixAvailable": {
-        "name": "firebase-admin",
-        "version": "11.11.1",
-        "isSemVerMajor": true
-      }
+      "fixAvailable": true
+    },
+    "@tootallnate/once": {
+      "name": "@tootallnate/once",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1113977,
+          "name": "@tootallnate/once",
+          "dependency": "@tootallnate/once",
+          "title": "@tootallnate/once vulnerable to Incorrect Control Flow Scoping",
+          "url": "https://github.com/advisories/GHSA-vpq2-c234-7xj6",
+          "severity": "low",
+          "cwe": [
+            "CWE-705"
+          ],
+          "cvss": {
+            "score": 3.3,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": "<3.0.1"
+        }
+      ],
+      "effects": [
+        "http-proxy-agent"
+      ],
+      "range": "<3.0.1",
+      "nodes": [
+        "node_modules/@tootallnate/once"
+      ],
+      "fixAvailable": true
     },
     "@vitest/coverage-v8": {
       "name": "@vitest/coverage-v8",
@@ -79,7 +124,7 @@
       "isDirect": false,
       "via": [
         {
-          "source": 1113428,
+          "source": 1113714,
           "name": "ajv",
           "dependency": "ajv",
           "title": "ajv has ReDoS when using `$data` option",
@@ -144,7 +189,7 @@
       "isDirect": false,
       "via": [
         {
-          "source": 1113565,
+          "source": 1113666,
           "name": "fast-xml-parser",
           "dependency": "fast-xml-parser",
           "title": "fast-xml-parser has stack overflow in XMLBuilder with preserveOrder",
@@ -157,39 +202,64 @@
             "score": 0,
             "vectorString": null
           },
-          "range": "<5.3.8"
+          "range": ">=5.0.0 <5.3.8"
         }
       ],
       "effects": [
         "@google-cloud/storage"
       ],
-      "range": "<5.3.8",
+      "range": "5.0.0 - 5.3.7",
       "nodes": [
         "node_modules/fast-xml-parser"
       ],
-      "fixAvailable": {
-        "name": "firebase-admin",
-        "version": "11.11.1",
-        "isSemVerMajor": true
-      }
+      "fixAvailable": true
     },
     "firebase-admin": {
       "name": "firebase-admin",
       "severity": "low",
       "isDirect": true,
       "via": [
+        "@google-cloud/firestore",
         "@google-cloud/storage"
       ],
       "effects": [],
-      "range": ">=12.0.0",
+      "range": ">=12.1.1",
       "nodes": [
         "node_modules/firebase-admin"
       ],
-      "fixAvailable": {
-        "name": "firebase-admin",
-        "version": "11.11.1",
-        "isSemVerMajor": true
-      }
+      "fixAvailable": true
+    },
+    "google-gax": {
+      "name": "google-gax",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "retry-request"
+      ],
+      "effects": [
+        "@google-cloud/firestore"
+      ],
+      "range": ">=4.0.5-experimental",
+      "nodes": [
+        "node_modules/google-gax"
+      ],
+      "fixAvailable": true
+    },
+    "http-proxy-agent": {
+      "name": "http-proxy-agent",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "@tootallnate/once"
+      ],
+      "effects": [
+        "teeny-request"
+      ],
+      "range": "4.0.1 - 5.0.0",
+      "nodes": [
+        "node_modules/http-proxy-agent"
+      ],
+      "fixAvailable": true
     },
     "minimatch": {
       "name": "minimatch",
@@ -351,6 +421,23 @@
       ],
       "fixAvailable": true
     },
+    "retry-request": {
+      "name": "retry-request",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "teeny-request"
+      ],
+      "effects": [
+        "@google-cloud/storage",
+        "google-gax"
+      ],
+      "range": ">=7.0.0",
+      "nodes": [
+        "node_modules/retry-request"
+      ],
+      "fixAvailable": true
+    },
     "rollup": {
       "name": "rollup",
       "severity": "high",
@@ -400,14 +487,48 @@
             "vectorString": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
           },
           "range": "<7.5.8"
+        },
+        {
+          "source": 1114071,
+          "name": "tar",
+          "dependency": "tar",
+          "title": "tar has Hardlink Path Traversal via Drive-Relative Linkpath",
+          "url": "https://github.com/advisories/GHSA-qffp-2rhf-9h96",
+          "severity": "high",
+          "cwe": [
+            "CWE-22",
+            "CWE-59"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=7.5.9"
         }
       ],
       "effects": [
         "@capacitor/cli"
       ],
-      "range": "<7.5.8",
+      "range": "<=7.5.9",
       "nodes": [
         "node_modules/tar"
+      ],
+      "fixAvailable": true
+    },
+    "teeny-request": {
+      "name": "teeny-request",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "http-proxy-agent"
+      ],
+      "effects": [
+        "@google-cloud/storage",
+        "retry-request"
+      ],
+      "range": ">=7.1.3",
+      "nodes": [
+        "node_modules/teeny-request"
       ],
       "fixAvailable": true
     },
@@ -479,19 +600,19 @@
   "metadata": {
     "vulnerabilities": {
       "info": 0,
-      "low": 3,
+      "low": 9,
       "moderate": 7,
       "high": 4,
       "critical": 0,
-      "total": 14
+      "total": 20
     },
     "dependencies": {
-      "prod": 424,
-      "dev": 510,
-      "optional": 175,
+      "prod": 425,
+      "dev": 516,
+      "optional": 181,
       "peer": 25,
       "peerOptional": 0,
-      "total": 1024
+      "total": 1031
     }
   }
 }
