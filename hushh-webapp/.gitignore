@@ -34,7 +34,6 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.*.example
-.dev-profile-state.json
 
 # vercel
 .vercel

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const fs = require("node:fs");
 const path = require("node:path");
 const readline = require("node:readline");
 const { spawn, spawnSync } = require("node:child_process");
@@ -8,7 +7,6 @@ const { spawn, spawnSync } = require("node:child_process");
 const PROFILE_VALUES = ["dev", "uat", "prod"];
 const repoRoot = path.resolve(__dirname, "../..");
 const webRoot = path.resolve(__dirname, "..");
-const profileStatePath = path.join(webRoot, ".dev-profile-state.json");
 
 function parseArgs(argv) {
   const passthrough = [];
@@ -40,25 +38,6 @@ function normalizeProfile(raw) {
   if (normalized === "development") return "dev";
   if (PROFILE_VALUES.includes(normalized)) return normalized;
   return null;
-}
-
-function loadLastProfile() {
-  try {
-    if (!fs.existsSync(profileStatePath)) return "dev";
-    const parsed = JSON.parse(fs.readFileSync(profileStatePath, "utf8"));
-    const profile = normalizeProfile(parsed.lastProfile);
-    return profile || "dev";
-  } catch {
-    return "dev";
-  }
-}
-
-function saveLastProfile(profile) {
-  const body = {
-    lastProfile: profile,
-    updatedAt: new Date().toISOString(),
-  };
-  fs.writeFileSync(profileStatePath, `${JSON.stringify(body, null, 2)}\n`, "utf8");
 }
 
 function promptSelectProfile(defaultProfile) {
@@ -128,15 +107,15 @@ async function main() {
   const { profile: argProfile, passthrough } = parseArgs(process.argv.slice(2));
   const envProfile = normalizeProfile(process.env.APP_PROFILE);
   const requested = normalizeProfile(argProfile) || envProfile;
-  const lastProfile = loadLastProfile();
+  const defaultProfile = "dev";
 
   let profile = requested;
   if (!profile) {
     if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      profile = lastProfile || "dev";
+      profile = defaultProfile;
       console.log(`No interactive TTY detected. Using profile: ${profile}`);
     } else {
-      profile = await promptSelectProfile(lastProfile || "dev");
+      profile = await promptSelectProfile(defaultProfile);
     }
   }
 
@@ -162,7 +141,6 @@ async function main() {
   }
 
   activateProfile(profile);
-  saveLastProfile(profile);
 
   const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
   const args = ["run", "dev:next"];
