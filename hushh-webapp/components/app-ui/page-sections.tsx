@@ -32,7 +32,7 @@ export function PageHeader({
         <div className="max-w-3xl">
           <div className="flex items-start gap-3">
             {icon ? (
-              <span className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-card/80 text-primary shadow-sm">
+              <span className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/8 text-primary">
                 <Icon icon={icon} size="md" />
               </span>
             ) : null}
@@ -80,7 +80,7 @@ export function SectionHeader({
         <div className="min-w-0">
           <div className="flex items-start gap-3">
             {icon ? (
-              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/85 text-primary shadow-sm">
+              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
                 <Icon icon={icon} size="sm" />
               </span>
             ) : null}
@@ -110,7 +110,7 @@ export function ContentSurface({
   return (
     <section
       className={cn(
-        "rounded-[24px] border border-border/60 bg-card/70 p-5 shadow-sm backdrop-blur-sm",
+        "rounded-[24px] bg-transparent p-0 shadow-none backdrop-blur-none",
         className
       )}
     >

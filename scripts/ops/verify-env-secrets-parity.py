@@ -26,6 +26,12 @@ BACKEND_REQUIRED = (
     "MCP_DEVELOPER_TOKEN",
 )
 
+BACKEND_PLAID_REQUIRED = (
+    "PLAID_CLIENT_ID",
+    "PLAID_SECRET",
+    "PLAID_TOKEN_ENCRYPTION_KEY",
+)
+
 FRONTEND_REQUIRED = (
     "BACKEND_URL",
     "FIREBASE_SERVICE_ACCOUNT_JSON",
@@ -92,11 +98,18 @@ def main() -> int:
         action="store_true",
         help="Also require native Firebase artifact secrets for native release checks.",
     )
+    parser.add_argument(
+        "--require-plaid",
+        action="store_true",
+        help="Also require Plaid backend secrets for brokerage-enabled environments.",
+    )
     args = parser.parse_args()
 
     del args.region, args.backend_service, args.frontend_service
 
     required = list(BACKEND_REQUIRED + FRONTEND_REQUIRED)
+    if args.require_plaid:
+        required.extend(BACKEND_PLAID_REQUIRED)
     if args.require_native_artifacts:
         required.extend(NATIVE_RELEASE_REQUIRED)
     required = tuple(dict.fromkeys(required))
@@ -104,6 +117,11 @@ def main() -> int:
 
     print(f"Project: {args.project}")
     print(f"Required backend secrets ({len(BACKEND_REQUIRED)}): {_format_names(BACKEND_REQUIRED)}")
+    if args.require_plaid:
+        print(
+            "Required Plaid backend secrets "
+            f"({len(BACKEND_PLAID_REQUIRED)}): {_format_names(BACKEND_PLAID_REQUIRED)}"
+        )
     print(f"Required frontend secrets ({len(FRONTEND_REQUIRED)}): {_format_names(FRONTEND_REQUIRED)}")
     if args.require_native_artifacts:
         print(

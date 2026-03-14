@@ -35,6 +35,7 @@
           "/plaid/refresh/{run_id}",
           "/plaid/source",
           "/plaid/webhook",
+          "/support/message",
           "/portfolio/import",
           "/portfolio/import/stream",
           "/portfolio/summary/{user_id}",

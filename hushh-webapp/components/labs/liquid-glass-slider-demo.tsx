@@ -224,7 +224,6 @@ function LiquidGlassSlider({
   }, []);
 
   const pressMultiplier = dragging ? 0.9 : 0.4;
-  const scaleRatio = pressMultiplier;
   const scaleSpring = dragging ? SCALE_DRAG : SCALE_REST;
   const backgroundOpacity = dragging ? 0.1 : 1;
   const visualState = dragging ? (motionActive ? "dragging" : "held") : "active";

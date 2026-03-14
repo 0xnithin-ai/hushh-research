@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { SegmentedPill } from "@/lib/morphy-ux/ui/segmented-pill";
 import type { PortfolioFreshness, PortfolioSource } from "@/lib/kai/brokerage/portfolio-sources";
-import { Building2, Layers3, Link2, RefreshCw, ScrollText } from "lucide-react";
+import { Building2, Link2, RefreshCw, ScrollText } from "lucide-react";
 import { Button } from "@/lib/morphy-ux/button";
 
 interface PortfolioSourceSwitcherProps {
@@ -14,7 +14,6 @@ interface PortfolioSourceSwitcherProps {
   onRefreshPlaid?: () => void;
   onManageConnections?: () => void;
   isRefreshing?: boolean;
-  analysisSelectionRequired?: boolean;
 }
 
 function formatRelativeTimestamp(value: string | null | undefined): string {
@@ -37,7 +36,6 @@ export function PortfolioSourceSwitcher({
   onRefreshPlaid,
   onManageConnections,
   isRefreshing = false,
-  analysisSelectionRequired = false,
 }: PortfolioSourceSwitcherProps) {
   const options = [
     {
@@ -52,12 +50,6 @@ export function PortfolioSourceSwitcher({
       icon: Link2,
       disabled: !availableSources.includes("plaid"),
       tone: "accent" as const,
-    },
-    {
-      value: "combined",
-      label: "Combined",
-      icon: Layers3,
-      disabled: !availableSources.includes("combined"),
     },
   ];
 
@@ -107,11 +99,6 @@ export function PortfolioSourceSwitcher({
         ) : null}
       </div>
 
-      {analysisSelectionRequired ? (
-        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          Combined is comparison-only. Choose Statement or Plaid before running Debate or Optimize.
-        </div>
-      ) : null}
     </div>
   );
 }

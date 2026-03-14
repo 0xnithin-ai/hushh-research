@@ -6,10 +6,11 @@
       "severity": "high",
       "isDirect": true,
       "via": [
+        "native-run",
         "tar"
       ],
       "effects": [],
-      "range": "0.0.10 - 1.1.1 || 3.0.0-alpha.0 - 7.4.5 || 8.0.0-alpha.1 - 8.0.2-nightly-20260127T151145.0",
+      "range": "0.0.10 - 1.1.1 || >=3.0.0-alpha.0",
       "nodes": [
         "node_modules/@capacitor/cli"
       ],
@@ -94,7 +95,7 @@
       ],
       "fixAvailable": {
         "name": "@vitest/coverage-v8",
-        "version": "4.0.18",
+        "version": "4.1.0",
         "isSemVerMajor": true
       }
     },
@@ -114,7 +115,7 @@
       ],
       "fixAvailable": {
         "name": "vitest",
-        "version": "4.0.18",
+        "version": "4.1.0",
         "isSemVerMajor": true
       }
     },
@@ -179,7 +180,7 @@
       ],
       "fixAvailable": {
         "name": "vitest",
-        "version": "4.0.18",
+        "version": "4.1.0",
         "isSemVerMajor": true
       }
     },
@@ -189,7 +190,7 @@
       "isDirect": false,
       "via": [
         {
-          "source": 1113666,
+          "source": 1114153,
           "name": "fast-xml-parser",
           "dependency": "fast-xml-parser",
           "title": "fast-xml-parser has stack overflow in XMLBuilder with preserveOrder",
@@ -229,6 +230,35 @@
       ],
       "fixAvailable": true
     },
+    "flatted": {
+      "name": "flatted",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1114526,
+          "name": "flatted",
+          "dependency": "flatted",
+          "title": "flatted vulnerable to unbounded recursion DoS in parse() revive phase",
+          "url": "https://github.com/advisories/GHSA-25h7-pfq9-p65f",
+          "severity": "high",
+          "cwe": [
+            "CWE-674"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<3.4.0"
+        }
+      ],
+      "effects": [],
+      "range": "<3.4.0",
+      "nodes": [
+        "node_modules/flatted"
+      ],
+      "fixAvailable": true
+    },
     "google-gax": {
       "name": "google-gax",
       "severity": "low",
@@ -242,6 +272,35 @@
       "range": ">=4.0.5-experimental",
       "nodes": [
         "node_modules/google-gax"
+      ],
+      "fixAvailable": true
+    },
+    "hono": {
+      "name": "hono",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1114341,
+          "name": "hono",
+          "dependency": "hono",
+          "title": "Hono vulnerable to Prototype Pollution possible through __proto__ key allowed in parseBody({ dot: true })",
+          "url": "https://github.com/advisories/GHSA-v8w9-8mx6-g223",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 4.8,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": "<4.12.7"
+        }
+      ],
+      "effects": [],
+      "range": "<4.12.7",
+      "nodes": [
+        "node_modules/hono"
       ],
       "fixAvailable": true
     },
@@ -421,6 +480,22 @@
       ],
       "fixAvailable": true
     },
+    "native-run": {
+      "name": "native-run",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "yauzl"
+      ],
+      "effects": [
+        "@capacitor/cli"
+      ],
+      "range": ">=0.0.3",
+      "nodes": [
+        "node_modules/native-run"
+      ],
+      "fixAvailable": true
+    },
     "retry-request": {
       "name": "retry-request",
       "severity": "low",
@@ -489,7 +564,7 @@
           "range": "<7.5.8"
         },
         {
-          "source": 1114071,
+          "source": 1114200,
           "name": "tar",
           "dependency": "tar",
           "title": "tar has Hardlink Path Traversal via Drive-Relative Linkpath",
@@ -504,12 +579,28 @@
             "vectorString": null
           },
           "range": "<=7.5.9"
+        },
+        {
+          "source": 1114302,
+          "name": "tar",
+          "dependency": "tar",
+          "title": "node-tar Symlink Path Traversal via Drive-Relative Linkpath",
+          "url": "https://github.com/advisories/GHSA-9ppj-qmqm-q256",
+          "severity": "high",
+          "cwe": [
+            "CWE-22"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=7.5.10"
         }
       ],
       "effects": [
         "@capacitor/cli"
       ],
-      "range": "<=7.5.9",
+      "range": "<=7.5.10",
       "nodes": [
         "node_modules/tar"
       ],
@@ -550,7 +641,7 @@
       ],
       "fixAvailable": {
         "name": "vitest",
-        "version": "4.0.18",
+        "version": "4.1.0",
         "isSemVerMajor": true
       }
     },
@@ -570,7 +661,7 @@
       ],
       "fixAvailable": {
         "name": "vitest",
-        "version": "4.0.18",
+        "version": "4.1.0",
         "isSemVerMajor": true
       }
     },
@@ -592,27 +683,58 @@
       ],
       "fixAvailable": {
         "name": "vitest",
-        "version": "4.0.18",
+        "version": "4.1.0",
         "isSemVerMajor": true
       }
+    },
+    "yauzl": {
+      "name": "yauzl",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1114530,
+          "name": "yauzl",
+          "dependency": "yauzl",
+          "title": "yauzl contains an off-by-one error",
+          "url": "https://github.com/advisories/GHSA-gmq8-994r-jv83",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-193"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": "<3.2.1"
+        }
+      ],
+      "effects": [
+        "native-run"
+      ],
+      "range": "<3.2.1",
+      "nodes": [
+        "node_modules/yauzl"
+      ],
+      "fixAvailable": true
     }
   },
   "metadata": {
     "vulnerabilities": {
       "info": 0,
       "low": 9,
-      "moderate": 7,
-      "high": 4,
+      "moderate": 10,
+      "high": 5,
       "critical": 0,
-      "total": 20
+      "total": 24
     },
     "dependencies": {
-      "prod": 425,
-      "dev": 516,
-      "optional": 181,
-      "peer": 25,
+      "prod": 427,
+      "dev": 740,
+      "optional": 179,
+      "peer": 28,
       "peerOptional": 0,
-      "total": 1031
+      "total": 1255
     }
   }
 }

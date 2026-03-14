@@ -364,7 +364,7 @@ export default function RiaOnboardingPage() {
             <h2 className="text-xl font-semibold text-foreground">Firm</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Capture the primary firm context now. Verified memberships and discoverability can be
-              refined later from settings.
+              refined later from the RIA dashboard.
             </p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
@@ -527,10 +527,10 @@ export default function RiaOnboardingPage() {
                 Open RIA Home
               </Link>
               <Link
-                href={ROUTES.RIA_SETTINGS}
+                href={ROUTES.RIA_CLIENTS}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-background/60 px-4 text-sm font-medium text-foreground"
               >
-                Review settings
+                Open Clients
               </Link>
             </div>
           </RiaSurface>

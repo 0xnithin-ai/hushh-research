@@ -176,8 +176,6 @@ function calculateDisplacementMapWithShape(
   }
 
   const radius = actualRadius;
-  const widthBetweenRadiuses = Math.max(0, objectWidthPx - radius * 2);
-  const heightBetweenRadiuses = Math.max(0, objectHeightPx - radius * 2);
 
   const squircleDistance = (x: number, y: number, r: number, n: number): number => {
     if (r === 0) return Math.sqrt(x * x + y * y);

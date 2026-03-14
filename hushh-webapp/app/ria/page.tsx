@@ -261,7 +261,7 @@ export default function RiaHomePage() {
               (status || riaOnboardingStatus)?.verification_status === "active" ||
               (status || riaOnboardingStatus)?.verification_status === "finra_verified"
                 ? "Use the client roster to send invites, move pending relationships forward, and reopen revoked or expired access."
-                : "RIA access requests remain blocked until verification reaches a trusted state. Finish onboarding, confirm your firm data, and enable marketplace discoverability from settings."
+                : "RIA access requests remain blocked until verification reaches a trusted state. Finish onboarding, confirm your firm data, and enable marketplace discoverability from the RIA dashboard."
             }
             actions={
               <Link

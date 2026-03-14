@@ -119,11 +119,11 @@ export function PersonaProvider({ children }: { children: ReactNode }) {
       if (!user || !isAuthenticated) return null;
       const idToken = await user.getIdToken();
       const next = await RiaService.switchPersona(idToken, target);
-      CacheSyncService.onPersonaStateChanged(user.uid);
       const cache = CacheService.getInstance();
+      CacheSyncService.onPersonaStateChanged(user.uid, { preservePersonaState: true });
       cache.set(CACHE_KEYS.PERSONA_STATE(user.uid), next, CACHE_TTL.SESSION);
       setPersonaState(next);
-      await refresh({ force: true });
+      void refresh({ force: true });
       return next;
     },
     [isAuthenticated, refresh, user]

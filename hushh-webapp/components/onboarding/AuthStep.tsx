@@ -73,7 +73,7 @@ export function AuthStep({
         router.push(fallbackPath);
       }
     },
-    [redirectPath, router]
+    [redirectPath, router, user]
   );
 
   const debugLog = (...args: unknown[]) => {

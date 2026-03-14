@@ -5,7 +5,15 @@
 
 import React, { useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BriefcaseBusiness, Shield, Store, TrendingUp, User } from "lucide-react";
+import {
+  Activity,
+  BriefcaseBusiness,
+  LayoutDashboard,
+  LineChart,
+  Store,
+  User,
+  Users,
+} from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { usePendingConsentCount } from "@/components/consent/notification-provider";
@@ -18,14 +26,18 @@ import { ROUTES } from "@/lib/navigation/routes";
 import { cn } from "@/lib/utils";
 import { morphyToast as toast } from "@/lib/morphy-ux/morphy";
 import { usePersonaState } from "@/lib/persona/persona-context";
+import { activeKaiRouteTabFromPath } from "@/lib/navigation/kai-route-tabs";
+import { activeRiaRouteTabFromPath } from "@/lib/navigation/ria-route-tabs";
 
-type NavKey = "primary" | "market" | "consents" | "profile";
+type InvestorNavKey = "market" | "dashboard" | "analysis" | "profile";
+type RiaNavKey = "home" | "clients" | "activity" | "profile";
+type NavKey = InvestorNavKey | RiaNavKey;
 
 export const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { primaryNavPersona, riaEntryRoute } = usePersonaState();
+  const { activePersona, riaEntryRoute } = usePersonaState();
   const pendingConsents = usePendingConsentCount();
   const pillRef = React.useRef<HTMLDivElement | null>(null);
   const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
@@ -77,51 +89,84 @@ export const Navbar = () => {
       useKaiSession.getState().setLastRiaPath(pathname);
     }
   }, [pathname]);
-  const primaryPersona =
-    pathname?.startsWith("/ria")
-      ? "ria"
-      : pathname?.startsWith("/kai")
-        ? "investor"
-        : primaryNavPersona;
-  const primaryNavLabel = primaryPersona === "ria" ? "RIA" : "Investor";
-  const primaryNavIcon = primaryPersona === "ria" ? BriefcaseBusiness : TrendingUp;
-  const primaryHref =
-    primaryPersona === "ria" ? lastRiaPath || riaEntryRoute : lastKaiPath || "/kai";
+  const hideNavbar = pathname?.startsWith(ROUTES.LABS_PROFILE_APPEARANCE);
 
-  if (pathname?.startsWith(ROUTES.LABS_PROFILE_APPEARANCE)) {
-    return null;
-  }
+  useEffect(() => {
+    if (activePersona === "ria") {
+      router.prefetch(lastRiaPath || riaEntryRoute);
+      router.prefetch(ROUTES.RIA_CLIENTS);
+      router.prefetch(ROUTES.RIA_REQUESTS);
+      return;
+    }
+
+    router.prefetch(lastKaiPath || ROUTES.KAI_HOME);
+    router.prefetch(ROUTES.KAI_DASHBOARD);
+    router.prefetch(ROUTES.KAI_ANALYSIS);
+  }, [activePersona, lastKaiPath, lastRiaPath, riaEntryRoute, router]);
 
   const navOptions = useMemo<SegmentedPillOption[]>(
-    () => [
-      {
-        value: "primary",
-        label: primaryNavLabel,
-        icon: primaryNavIcon,
-        dataTourId: "nav-kai",
-      },
-      {
-        value: "market",
-        label: "Market",
-        icon: Store,
-        dataTourId: "nav-marketplace",
-      },
-      {
-        value: "consents",
-        label: "Consents",
-        icon: Shield,
-        badge: pendingConsents,
-        dataTourId: "nav-consents",
-      },
-      {
-        value: "profile",
-        label: "Profile",
-        icon: User,
-        dataTourId: "nav-profile",
-      },
-    ],
-    [pendingConsents, primaryNavIcon, primaryNavLabel]
+    () =>
+      activePersona === "ria"
+        ? [
+            {
+              value: "home",
+              label: "Home",
+              icon: BriefcaseBusiness,
+              dataTourId: "nav-ria-home",
+            },
+            {
+              value: "clients",
+              label: "Clients",
+              icon: Users,
+              dataTourId: "nav-ria-clients",
+            },
+            {
+              value: "activity",
+              label: "Activity",
+              icon: Activity,
+              dataTourId: "nav-ria-activity",
+            },
+            {
+              value: "profile",
+              label: "Profile",
+              icon: User,
+              badge: pendingConsents > 0 ? pendingConsents : undefined,
+              dataTourId: "nav-profile",
+            },
+          ]
+        : [
+            {
+              value: "market",
+              label: "Market",
+              icon: Store,
+              dataTourId: "nav-market",
+            },
+            {
+              value: "dashboard",
+              label: "Dashboard",
+              icon: LayoutDashboard,
+              dataTourId: "nav-dashboard",
+            },
+            {
+              value: "analysis",
+              label: "Analysis",
+              icon: LineChart,
+              dataTourId: "nav-analysis",
+            },
+            {
+              value: "profile",
+              label: "Profile",
+              icon: User,
+              badge: pendingConsents > 0 ? pendingConsents : undefined,
+              dataTourId: "nav-profile",
+            },
+          ],
+    [activePersona, pendingConsents]
   );
+
+  if (hideNavbar) {
+    return null;
+  }
 
   if (!isAuthenticated || useOnboardingChrome) {
     return (
@@ -140,13 +185,12 @@ export const Navbar = () => {
   }
 
   const normalizedPathname = pathname?.replace(/\/$/, "") || "";
-  const activeNav: NavKey = normalizedPathname.startsWith("/consents")
-    ? "consents"
-    : normalizedPathname.startsWith("/marketplace")
-      ? "market"
-    : normalizedPathname.startsWith("/profile")
+  const activeNav: NavKey =
+    normalizedPathname.startsWith(ROUTES.PROFILE) || normalizedPathname.startsWith(ROUTES.CONSENTS)
       ? "profile"
-      : "primary";
+      : activePersona === "ria"
+      ? activeRiaRouteTabFromPath(normalizedPathname)
+      : activeKaiRouteTabFromPath(normalizedPathname);
 
   const navigateTo = (value: string) => {
     if (busyOperations["portfolio_save"]) {
@@ -165,17 +209,26 @@ export const Navbar = () => {
     }
 
     switch (value as NavKey) {
-      case "primary":
-        router.push(primaryHref);
-        return;
       case "market":
-        router.push("/marketplace");
+        router.push(ROUTES.KAI_HOME);
         return;
-      case "consents":
-        router.push("/consents");
+      case "dashboard":
+        router.push(ROUTES.KAI_DASHBOARD);
+        return;
+      case "analysis":
+        router.push(`${ROUTES.KAI_ANALYSIS}?tab=history`);
+        return;
+      case "home":
+        router.push(lastRiaPath || riaEntryRoute);
+        return;
+      case "clients":
+        router.push(ROUTES.RIA_CLIENTS);
+        return;
+      case "activity":
+        router.push(ROUTES.RIA_REQUESTS);
         return;
       case "profile":
-        router.push("/profile");
+        router.push(ROUTES.PROFILE);
         return;
       default:
         return;
@@ -200,11 +253,12 @@ export const Navbar = () => {
       <SegmentedPill
         ref={pillRef}
         size="compact"
+        layout="stacked"
         value={activeNav}
         options={navOptions}
         onValueChange={navigateTo}
         ariaLabel="Main navigation"
-        className="pointer-events-auto w-full max-w-[460px]"
+        className="pointer-events-auto w-full max-w-[480px]"
       />
     </nav>
   );

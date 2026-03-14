@@ -236,9 +236,16 @@ export class CacheSyncService {
     cache.invalidate(CACHE_KEYS.VAULT_STATUS(userId));
   }
 
-  static onPersonaStateChanged(userId: string): void {
+  static onPersonaStateChanged(
+    userId: string,
+    options?: {
+      preservePersonaState?: boolean;
+    }
+  ): void {
     const cache = CacheService.getInstance();
-    cache.invalidate(CACHE_KEYS.PERSONA_STATE(userId));
+    if (!options?.preservePersonaState) {
+      cache.invalidate(CACHE_KEYS.PERSONA_STATE(userId));
+    }
     cache.invalidate(CACHE_KEYS.RIA_ONBOARDING_STATUS(userId));
     cache.invalidate(CACHE_KEYS.CONSENT_CENTER(userId, "all"));
     cache.invalidate(CACHE_KEYS.RIA_ROSTER_SUMMARY(userId));

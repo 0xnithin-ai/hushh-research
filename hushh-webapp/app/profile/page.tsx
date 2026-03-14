@@ -8,14 +8,13 @@
  * Mobile-first design with Morphy-UX styling.
  */
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/lib/morphy-ux/morphy";
 import { useAuth } from "@/hooks/use-auth";
 import { useVault } from "@/lib/vault/vault-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { KaiPreferencesSheet } from "@/components/kai/onboarding/KaiPreferencesSheet";
-import { PersonaSwitcher } from "@/components/iam/persona-switcher";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useStepProgress } from "@/lib/progress/step-progress-context";
@@ -38,7 +37,11 @@ import {
   MessageSquare,
   ChevronRight,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Bug,
+  Code2,
+  LifeBuoy,
+  SendHorizontal,
 } from "lucide-react";
 import { WorldModelService, DomainSummary } from "@/lib/services/world-model-service";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,6 +50,8 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AccountService } from "@/lib/services/account-service";
@@ -80,9 +85,14 @@ import { ROUTES } from "@/lib/navigation/routes";
 import { toInvestorMessage } from "@/lib/copy/investor-language";
 import { RiaService } from "@/lib/services/ria-service";
 import { usePersonaState } from "@/lib/persona/persona-context";
-import { RiaSettingsSection } from "@/components/profile/ria-settings-section";
 import { ContentSurface, SectionHeader } from "@/components/app-ui/page-sections";
 import { cn } from "@/lib/utils";
+import { usePendingConsentCount } from "@/components/consent/notification-provider";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  SupportService,
+  type SupportMessageKind,
+} from "@/lib/services/support-service";
 
 // Icon mapping for domains
 const DOMAIN_ICONS: Record<string, LucideIcon> = {
@@ -139,11 +149,10 @@ function ProfileSection({
 
 export default function ProfilePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, loading: authLoading, signOut } = useAuth();
-  const { personaState, riaOnboardingStatus, riaCapability, refresh: refreshPersonaState } =
-    usePersonaState();
+  const { personaState, refresh: refreshPersonaState } = usePersonaState();
   const { vaultKey, vaultOwnerToken, isVaultUnlocked } = useVault();
+  const pendingConsents = usePendingConsentCount();
   const { registerSteps, completeStep, reset } = useStepProgress();
   const [showVaultUnlock, setShowVaultUnlock] = useState(false);
   const [vaultUnlockReason, setVaultUnlockReason] = useState<
@@ -168,6 +177,12 @@ export default function ProfilePage() {
   const [marketplaceOptIn, setMarketplaceOptIn] = useState(false);
   const [loadingMarketplaceOptIn, setLoadingMarketplaceOptIn] = useState(true);
   const [savingMarketplaceOptIn, setSavingMarketplaceOptIn] = useState(false);
+  const [supportDialogOpen, setSupportDialogOpen] = useState(false);
+  const [supportKind, setSupportKind] =
+    useState<SupportMessageKind>("support_request");
+  const [supportSubject, setSupportSubject] = useState("");
+  const [supportMessage, setSupportMessage] = useState("");
+  const [sendingSupportMessage, setSendingSupportMessage] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -231,17 +246,6 @@ export default function ProfilePage() {
     setMarketplaceOptIn(Boolean(personaState.investor_marketplace_opt_in));
     setLoadingMarketplaceOptIn(false);
   }, [personaState, user]);
-
-  useEffect(() => {
-    if (searchParams.get("section") !== "ria") return;
-    const id = window.requestAnimationFrame(() => {
-      document.getElementById("ria-settings-section")?.scrollIntoView({
-        block: "start",
-        behavior: "smooth",
-      });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [searchParams]);
 
   // Load world model data - auth is handled by VaultLockGuard in layout
   useEffect(() => {
@@ -488,6 +492,27 @@ export default function ProfilePage() {
       ? "Unlock to Delete Account"
       : "Delete Account";
 
+  const supportKindCopy: Record<
+    SupportMessageKind,
+    { title: string; description: string; subject: string }
+  > = {
+    bug_report: {
+      title: "Report a bug",
+      description: "Tell us what broke, what you expected, and anything we should look at.",
+      subject: "Bug report",
+    },
+    support_request: {
+      title: "Contact support",
+      description: "Ask for help with your account, portfolio flows, or something unclear in the app.",
+      subject: "Support request",
+    },
+    developer_reachout: {
+      title: "Reach the developer",
+      description: "Share product feedback, implementation notes, or a direct engineering question.",
+      subject: "Developer feedback",
+    },
+  };
+
   const recommendedQuickMethod =
     capabilityMatrix?.recommendedMethod &&
     capabilityMatrix.recommendedMethod !== "passphrase"
@@ -526,6 +551,62 @@ export default function ProfilePage() {
     vaultUnlockReason === "delete_account"
       ? "Unlock your vault to confirm deletion. This is permanent and removes all encrypted records."
       : "Unlock your vault to access profile settings.";
+
+  function openSupportDialog(kind: SupportMessageKind) {
+    setSupportKind(kind);
+    setSupportSubject(supportKindCopy[kind].subject);
+    setSupportMessage("");
+    setSupportDialogOpen(true);
+  }
+
+  async function submitSupportMessage() {
+    if (!user) return;
+    const trimmedSubject = supportSubject.trim();
+    const trimmedMessage = supportMessage.trim();
+
+    if (trimmedSubject.length < 3) {
+      toast.error("Add a short subject so we can triage this quickly.");
+      return;
+    }
+    if (trimmedMessage.length < 10) {
+      toast.error("Add a bit more detail so we can help properly.");
+      return;
+    }
+
+    setSendingSupportMessage(true);
+    try {
+      const idToken = await user.getIdToken();
+      const pageUrl =
+        typeof window !== "undefined" ? window.location.href : ROUTES.PROFILE;
+      const result = await SupportService.submitMessage({
+        idToken,
+        userId: user.uid,
+        kind: supportKind,
+        subject: trimmedSubject,
+        message: trimmedMessage,
+        userEmail: user.email,
+        userDisplayName: user.displayName,
+        persona: personaState?.active_persona || null,
+        pageUrl,
+      });
+      toast.success(
+        result.delivery_mode === "test"
+          ? `Sent in test mode to ${result.recipient}.`
+          : `Sent to ${result.recipient}.`
+      );
+      setSupportDialogOpen(false);
+      setSupportMessage("");
+    } catch (error) {
+      console.error("[ProfilePage] Failed to send support message:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't send your message right now."
+      );
+    } finally {
+      setSendingSupportMessage(false);
+    }
+  }
 
   async function switchToQuickMethod(targetMethod: VaultMethod) {
     if (!user?.uid) return;
@@ -654,15 +735,9 @@ export default function ProfilePage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Persona
             </p>
-            <div className="flex justify-center">
-              <PersonaSwitcher />
-            </div>
-            {riaCapability === "setup" ? (
-              <p className="text-xs text-muted-foreground">
-                Use this same login to set up your RIA profile. You can keep both personas on one
-                account.
-              </p>
-            ) : null}
+            <p className="text-sm text-muted-foreground">
+              Switch between Investor and RIA from the role menu in the top app bar.
+            </p>
           </div>
         </div>
       </div>
@@ -704,11 +779,6 @@ export default function ProfilePage() {
             </Button>
           </div>
       </ProfileSection>
-
-      <RiaSettingsSection
-        capability={riaCapability}
-        onboardingStatus={riaOnboardingStatus}
-      />
 
       <ProfileSection
         title={
@@ -846,6 +916,100 @@ export default function ProfilePage() {
         title={
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Icon icon={MessageSquare} size="md" className="text-primary" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span>Privacy and consents</span>
+              {pendingConsents > 0 ? <Badge variant="secondary">{pendingConsents}</Badge> : null}
+            </div>
+          </div>
+        }
+        description="Review pending approvals and active access from your profile settings."
+      >
+        <div className="rounded-xl bg-muted/35 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                {pendingConsents > 0
+                  ? `${pendingConsents} consent request${pendingConsents === 1 ? "" : "s"} waiting`
+                  : "Consent center"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Open the consent center to approve requests and review current data access.
+              </p>
+            </div>
+            <Button
+              variant="none"
+              effect="fade"
+              size="sm"
+              onClick={() => router.push(ROUTES.CONSENTS)}
+            >
+              Open Consents
+            </Button>
+          </div>
+        </div>
+      </ProfileSection>
+
+      <ProfileSection
+        title={
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Icon icon={LifeBuoy} size="md" className="text-primary" />
+            </div>
+            <span>Support and feedback</span>
+          </div>
+        }
+        description="Send a bug report, ask for help, or reach the developer without leaving your profile."
+      >
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              {
+                kind: "bug_report" as SupportMessageKind,
+                label: "Report bug",
+                description: "Broken flow, confusing UI, or something off in the product.",
+                icon: Bug,
+              },
+              {
+                kind: "support_request" as SupportMessageKind,
+                label: "Get support",
+                description: "Need help with onboarding, portfolio data, or account setup.",
+                icon: LifeBuoy,
+              },
+              {
+                kind: "developer_reachout" as SupportMessageKind,
+                label: "Reach developer",
+                description: "Direct product or engineering feedback routed through support.",
+                icon: Code2,
+              },
+            ].map((action) => (
+              <button
+                key={action.kind}
+                type="button"
+                onClick={() => openSupportDialog(action.kind)}
+                className="rounded-xl bg-muted/35 p-4 text-left transition-colors hover:bg-muted/55"
+              >
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                  <Icon icon={action.icon} size="md" className="text-primary" />
+                </div>
+                <p className="text-sm font-semibold">{action.label}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {action.description}
+                </p>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Messages are sent from <span className="font-medium">support@hushh.ai</span>.
+            In local or test delivery mode, they can be routed to the developer inbox for verification.
+          </p>
+        </div>
+      </ProfileSection>
+
+      <ProfileSection
+        title={
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
               <Icon icon={Cloud} size="md" className="text-primary" />
             </div>
             <div className="flex items-center gap-2">
@@ -887,7 +1051,7 @@ export default function ProfilePage() {
             <span>Vault security methods</span>
           </div>
         }
-        description="Manage passphrase, passkey, and biometric unlock without changing your encrypted vault model."
+        description="Manage passphrase, passkey, and biometric unlock without changing how your Vault stays protected."
       >
         <div className="space-y-4">
           {hasVault === false && (
@@ -1120,6 +1284,72 @@ export default function ProfilePage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={supportDialogOpen} onOpenChange={setSupportDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{supportKindCopy[supportKind].title}</DialogTitle>
+            <DialogDescription>
+              {supportKindCopy[supportKind].description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-xl bg-muted/35 p-3 text-xs text-muted-foreground">
+              Routed through <span className="font-medium text-foreground">support@hushh.ai</span>
+              {user?.email ? (
+                <>
+                  {" "}
+                  with replies pointing back to{" "}
+                  <span className="font-medium text-foreground">{user.email}</span>.
+                </>
+              ) : (
+                "."
+              )}
+            </div>
+            <Input
+              value={supportSubject}
+              onChange={(event) => setSupportSubject(event.target.value)}
+              placeholder="Subject"
+              maxLength={140}
+            />
+            <Textarea
+              value={supportMessage}
+              onChange={(event) => setSupportMessage(event.target.value)}
+              placeholder="What happened, what you expected, and anything else we should know"
+              className="min-h-[160px]"
+              maxLength={8000}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="none"
+              effect="fade"
+              size="default"
+              onClick={() => setSupportDialogOpen(false)}
+              disabled={sendingSupportMessage}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="default"
+              onClick={() => void submitSupportMessage()}
+              disabled={sendingSupportMessage}
+            >
+              {sendingSupportMessage ? (
+                <>
+                  <Icon icon={Loader2} size="sm" className="mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Icon icon={SendHorizontal} size="sm" className="mr-2" />
+                  Send message
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

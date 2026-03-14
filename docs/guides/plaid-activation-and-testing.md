@@ -42,6 +42,14 @@ Set these in the backend runtime profile:
 
 `FRONTEND_URL` must match the active frontend origin for the current profile.
 
+Webhook values to use:
+
+- local active stack: `https://<your-current-tunnel>/api/kai/plaid/webhook`
+- UAT: `https://uat.kai.hushh.ai/api/kai/plaid/webhook`
+- production: `https://kai.hushh.ai/api/kai/plaid/webhook`
+
+`PLAID_WEBHOOK_URL` is the exact value that must be added to the backend env. It is not relative, and it is not allowlisted in the Plaid dashboard.
+
 ## Localhost
 
 Use:
@@ -71,13 +79,17 @@ Backend must use the matching `FRONTEND_URL` for each profile so the callback or
 ## Activation Steps
 
 1. Apply `consent-protocol/db/migrations/023_kai_plaid_portfolio.sql`.
-2. Restart the backend so the new Plaid env values load.
-3. Start the frontend on the matching origin.
-4. Open Kai import or dashboard.
-5. Click `Connect Plaid`.
-6. Complete Link.
-7. For OAuth institutions, confirm you return to `/kai/plaid/oauth/return` and then back into Kai.
-8. If you changed webhook targets after Items already existed, do a one-time operator update for existing Items using Plaid's `/item/webhook/update`.
+2. Set `PLAID_WEBHOOK_URL` for the active backend:
+   - localhost/local-uatdb: your current tunnel URL ending in `/api/kai/plaid/webhook`
+   - UAT: `https://uat.kai.hushh.ai/api/kai/plaid/webhook`
+3. Set a stable `PLAID_TOKEN_ENCRYPTION_KEY`.
+4. Restart the backend so the new Plaid env values load.
+5. Start the frontend on the matching origin.
+6. Open Kai import or dashboard.
+7. Click `Connect Plaid`.
+8. Complete Link.
+9. For OAuth institutions, confirm you return to `/kai/plaid/oauth/return` and then back into Kai.
+10. If you changed webhook targets after Items already existed, do a one-time operator update for existing Items using Plaid's `/item/webhook/update`.
 
 BYOK note:
 

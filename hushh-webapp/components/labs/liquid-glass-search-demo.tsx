@@ -198,7 +198,7 @@ function LiquidGlassSearchBar({
   placeholder,
   size,
   backgroundImage,
-  showBackgroundImage,
+  showBackgroundImage: _showBackgroundImage,
 }: {
   value: string;
   onValueChange: (next: string) => void;

@@ -2,7 +2,7 @@
 
 import type { PortfolioData } from "@/components/kai/types/portfolio";
 
-export type PortfolioSource = "statement" | "plaid" | "combined";
+export type PortfolioSource = "statement" | "plaid";
 export type PortfolioSyncStatus =
   | "idle"
   | "running"
@@ -99,33 +99,9 @@ export interface PlaidPortfolioStatusResponse {
   webhook_configured?: boolean;
   webhook_url?: string | null;
   user_id: string;
-  source_preference: PortfolioSource;
+  source_preference: PortfolioSource | string;
   items: PlaidItemSummary[];
   aggregate: PlaidAggregateStatus;
-}
-
-export interface CombinedSourcePosition {
-  symbol: string;
-  name: string;
-  market_value: number;
-  quantity: number;
-  source: "statement" | "plaid";
-}
-
-export interface CombinedPortfolioSummary {
-  hasBothSources: boolean;
-  overlapCount: number;
-  statementOnlyCount: number;
-  plaidOnlyCount: number;
-  institutions: string[];
-  totals: {
-    statement: number;
-    plaid: number;
-  };
-  topPositionsBySource: {
-    statement: CombinedSourcePosition[];
-    plaid: CombinedSourcePosition[];
-  };
 }
 
 export interface NormalizedPortfolioTransaction {
@@ -238,66 +214,6 @@ export function normalizePortfolioTransactions(
   return normalized.sort((left, right) => sortDateValue(right) - sortDateValue(left));
 }
 
-function topPositions(
-  portfolio: PortfolioData | null | undefined,
-  source: "statement" | "plaid"
-): CombinedSourcePosition[] {
-  if (!hasPortfolioHoldings(portfolio)) return [];
-  return [...portfolio.holdings]
-    .map((holding) => ({
-      symbol: normalizeSymbol(holding.symbol) || "UNKNOWN",
-      name: String(holding.name || "").trim() || "Unknown",
-      market_value: toNumber(holding.market_value),
-      quantity: toNumber(holding.quantity),
-      source,
-    }))
-    .sort((left, right) => right.market_value - left.market_value)
-    .slice(0, 8);
-}
-
-export function buildCombinedSummary(params: {
-  statementPortfolio?: PortfolioData | null;
-  plaidPortfolio?: PortfolioData | null;
-  plaidStatus?: PlaidPortfolioStatusResponse | null;
-}): CombinedPortfolioSummary | null {
-  const statementPortfolio = params.statementPortfolio ?? null;
-  const plaidPortfolio = params.plaidPortfolio ?? null;
-  const statementHasData = hasPortfolioHoldings(statementPortfolio);
-  const plaidHasData = hasPortfolioHoldings(plaidPortfolio);
-  if (!statementHasData && !plaidHasData) return null;
-
-  const statementSymbols = new Set(
-    (statementPortfolio?.holdings || []).map((holding) => normalizeSymbol(holding.symbol)).filter(Boolean)
-  );
-  const plaidSymbols = new Set(
-    (plaidPortfolio?.holdings || []).map((holding) => normalizeSymbol(holding.symbol)).filter(Boolean)
-  );
-
-  let overlapCount = 0;
-  for (const symbol of statementSymbols) {
-    if (plaidSymbols.has(symbol)) overlapCount += 1;
-  }
-
-  const statementOnlyCount = [...statementSymbols].filter((symbol) => !plaidSymbols.has(symbol)).length;
-  const plaidOnlyCount = [...plaidSymbols].filter((symbol) => !statementSymbols.has(symbol)).length;
-
-  return {
-    hasBothSources: statementHasData && plaidHasData,
-    overlapCount,
-    statementOnlyCount,
-    plaidOnlyCount,
-    institutions: params.plaidStatus?.aggregate?.institution_names || [],
-    totals: {
-      statement: toNumber(statementPortfolio?.total_value),
-      plaid: toNumber(plaidPortfolio?.total_value),
-    },
-    topPositionsBySource: {
-      statement: topPositions(statementPortfolio, "statement"),
-      plaid: topPositions(plaidPortfolio, "plaid"),
-    },
-  };
-}
-
 export function resolveAvailableSources(params: {
   statementPortfolio?: PortfolioData | null;
   plaidPortfolio?: PortfolioData | null;
@@ -308,9 +224,6 @@ export function resolveAvailableSources(params: {
   }
   if (hasPortfolioHoldings(params.plaidPortfolio)) {
     sources.push("plaid");
-  }
-  if (sources.length >= 2) {
-    sources.push("combined");
   }
   return sources;
 }

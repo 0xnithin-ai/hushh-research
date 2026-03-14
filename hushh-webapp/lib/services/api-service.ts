@@ -325,6 +325,25 @@ export interface KaiHomeWatchlistItem {
   as_of: string | null;
 }
 
+export interface KaiHomeRenaissanceItem {
+  symbol: string;
+  company_name: string;
+  sector?: string | null;
+  tier?: string | null;
+  tier_rank?: number | null;
+  conviction_weight?: number | null;
+  recommendation_bias?: string | null;
+  investment_thesis?: string | null;
+  fcf_billions?: number | null;
+  price: number | null;
+  change_pct: number | null;
+  volume: number | null;
+  market_cap: number | null;
+  source_tags: string[];
+  degraded: boolean;
+  as_of: string | null;
+}
+
 export interface KaiHomeMover {
   symbol: string;
   company_name: string;
@@ -442,6 +461,7 @@ export interface KaiHomeInsightsV2 {
   provider_status?: Record<string, string>;
   hero?: KaiHomeHero;
   watchlist?: KaiHomeWatchlistItem[];
+  renaissance_list?: KaiHomeRenaissanceItem[];
   movers?: KaiHomeMovers;
   sector_rotation?: KaiHomeSectorItem[];
   news_tape?: KaiHomeNewsItem[];

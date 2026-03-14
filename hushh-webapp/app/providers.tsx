@@ -164,9 +164,9 @@ export function Providers({ children }: ProvidersProps) {
                               "--app-bar-shadow":
                                 "inset 0 1px 0 rgba(255,255,255,0.18), 0 -14px 30px rgba(0,0,0,0.18)",
                               maskImage:
-                                "linear-gradient(to top, black 0%, black 62%, rgba(0, 0, 0, 0.95) 76%, rgba(0, 0, 0, 0.72) 88%, rgba(0, 0, 0, 0.36) 95%, transparent 100%)",
+                                "linear-gradient(to top, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0.96) 12%, black 28%, black 58%, rgba(0, 0, 0, 0.95) 74%, rgba(0, 0, 0, 0.74) 86%, rgba(0, 0, 0, 0.38) 94%, transparent 100%)",
                               WebkitMaskImage:
-                                "linear-gradient(to top, black 0%, black 62%, rgba(0, 0, 0, 0.95) 76%, rgba(0, 0, 0, 0.72) 88%, rgba(0, 0, 0, 0.36) 95%, transparent 100%)",
+                                "linear-gradient(to top, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0.96) 12%, black 28%, black 58%, rgba(0, 0, 0, 0.95) 74%, rgba(0, 0, 0, 0.74) 86%, rgba(0, 0, 0, 0.38) 94%, transparent 100%)",
                             } as CSSProperties
                           }
                         />

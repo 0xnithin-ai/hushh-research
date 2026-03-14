@@ -504,6 +504,13 @@ hydrate_backend_cloud_reference() {
   set_secret_key_or_cached "$file" "$profile" "$project" "MCP_DEVELOPER_TOKEN" "true" "$cache_file"
   set_secret_key_or_cached "$file" "$profile" "$project" "FINNHUB_API_KEY" "false" "$cache_file"
   set_secret_key_or_cached "$file" "$profile" "$project" "PMP_API_KEY" "false" "$cache_file"
+  set_secret_key_or_cached "$file" "$profile" "$project" "PLAID_CLIENT_ID" "false" "$cache_file"
+  set_secret_key_or_cached "$file" "$profile" "$project" "PLAID_SECRET" "false" "$cache_file"
+  set_secret_key_or_cached "$file" "$profile" "$project" "PLAID_TOKEN_ENCRYPTION_KEY" "false" "$cache_file"
+
+  for key in PLAID_ENV PLAID_CLIENT_NAME PLAID_COUNTRY_CODES PLAID_WEBHOOK_URL PLAID_REDIRECT_PATH PLAID_REDIRECT_URI PLAID_TX_HISTORY_DAYS; do
+    set_if_non_empty "$file" "$key" "$(resolve_cloud_or_cached_env_value "$project" "$BACKEND_SERVICE" "$key" "$cache_file")"
+  done
 
   if [ -z "$(read_env_value "$file" "FIREBASE_AUTH_SERVICE_ACCOUNT_JSON")" ]; then
     set_if_non_empty "$file" "FIREBASE_AUTH_SERVICE_ACCOUNT_JSON" "$(read_env_value "$file" "FIREBASE_SERVICE_ACCOUNT_JSON")"
@@ -514,12 +521,16 @@ hydrate_backend_local_uatdb() {
   local file="$1"
   local profile="local-uatdb"
   local project="$2"
+  local existing_local_plaid_webhook=""
+
+  existing_local_plaid_webhook="$(read_env_value "$file" "PLAID_WEBHOOK_URL")"
 
   hydrate_backend_cloud_reference "$file" "$profile" "$project" "development"
   upsert_env_value "$file" "FRONTEND_URL" "http://localhost:3000"
   upsert_env_value "$file" "CORS_ALLOWED_ORIGINS" "http://localhost:3000"
   upsert_env_value "$file" "ENVIRONMENT" "development"
   upsert_env_value "$file" "PORT" "8000"
+  upsert_env_value "$file" "PLAID_WEBHOOK_URL" "$existing_local_plaid_webhook"
 
   local runtime_db_host runtime_db_port runtime_socket instance_name
   local cache_file="$file"

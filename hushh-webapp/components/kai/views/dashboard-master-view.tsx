@@ -55,7 +55,6 @@ import { ROUTES } from "@/lib/navigation/routes";
 import {
   buildDebateContextFromPortfolio,
   normalizePortfolioTransactions,
-  type CombinedPortfolioSummary,
   type PlaidItemSummary,
   type PortfolioSource,
 } from "@/lib/kai/brokerage/portfolio-sources";
@@ -378,11 +377,9 @@ export function DashboardMasterView({
     error: sourcesError,
     plaidStatus,
     statementPortfolio,
-    plaidPortfolio,
     activeSource,
     availableSources,
     activePortfolio,
-    combinedSummary,
     freshness,
     changeActiveSource,
     refreshPlaid,
@@ -424,7 +421,6 @@ export function DashboardMasterView({
   const canEditStatement = activeSource === "statement" && Boolean(statementEditablePortfolio);
   const displayedPortfolio = activeSource === "statement" ? statementEditablePortfolio : activePortfolio;
   const isPlaidView = activeSource === "plaid";
-  const isCombinedView = activeSource === "combined";
   const hasPlaidConnections = (plaidStatus?.aggregate?.item_count || 0) > 0;
   const plaidConfigured = plaidStatus?.configured ?? true;
 
@@ -610,7 +606,7 @@ export function DashboardMasterView({
   const openPlaidLinkFlow = useCallback(
     async (itemId?: string) => {
       if (!vaultOwnerToken) {
-        toast.error("Vault owner token is missing. Please unlock your Vault and try again.");
+        toast.error("Please unlock your Vault and try again.");
         return;
       }
 
@@ -707,10 +703,6 @@ export function DashboardMasterView({
 
   const handleAnalyzeFromDashboard = useCallback(
     (symbol: string) => {
-      if (activeSource === "combined") {
-        toast.info("Choose Statement or Plaid before starting Debate.");
-        return;
-      }
       onAnalyzeStock?.(symbol, {
         portfolioSource: activeSource,
         portfolioContext: workflowPortfolioContext,
@@ -720,10 +712,6 @@ export function DashboardMasterView({
   );
 
   const handleOptimizePortfolio = useCallback(() => {
-    if (activeSource === "combined") {
-      toast.info("Choose Statement or Plaid before running Optimize.");
-      return;
-    }
     if (!workflowPortfolio || !Array.isArray(workflowPortfolio.holdings) || workflowPortfolio.holdings.length === 0) {
       toast.error("No holdings available for optimization.");
       return;
@@ -1583,10 +1571,9 @@ export function DashboardMasterView({
       }),
     [plaidItems]
   );
-  const sourceDisplayLabel =
-    activeSource === "statement" ? "Statement" : activeSource === "plaid" ? "Plaid" : "Combined";
+  const sourceDisplayLabel = activeSource === "statement" ? "Statement" : "Plaid";
 
-  if (isSourcesLoading && !displayedPortfolio && !combinedSummary) {
+  if (isSourcesLoading && !displayedPortfolio) {
     return (
       <div className="mx-auto flex w-full max-w-5xl items-center justify-center px-5 pb-6 pt-[var(--kai-view-top-gap,16px)] sm:px-8">
         <Card variant="none" effect="glass" className="w-full rounded-[24px]">
@@ -1599,7 +1586,7 @@ export function DashboardMasterView({
     );
   }
 
-  if (!displayedPortfolio && !combinedSummary) {
+  if (!displayedPortfolio) {
     return (
       <div className="mx-auto w-full max-w-5xl space-y-6 overflow-x-hidden px-5 pb-6 pt-[var(--kai-view-top-gap,16px)] sm:px-8">
         <PortfolioSourceSwitcher
@@ -1649,7 +1636,6 @@ export function DashboardMasterView({
         onRefreshPlaid={hasPlaidConnections ? handleRefreshPlaid : undefined}
         onManageConnections={plaidConfigured !== false ? () => void openPlaidLinkFlow() : undefined}
         isRefreshing={isPlaidRefreshing || isLinkingPlaid}
-        analysisSelectionRequired={isCombinedView}
       />
 
       {sourcesError ? (
@@ -1660,152 +1646,6 @@ export function DashboardMasterView({
         </Card>
       ) : null}
 
-      {isCombinedView && combinedSummary ? (
-        <>
-          <Card
-            variant="muted"
-            effect="fill"
-            className="overflow-hidden rounded-[26px] p-0 !border-transparent shadow-[0_14px_44px_rgba(15,23,42,0.06)]"
-          >
-            <CardContent className="space-y-6 p-6 sm:p-7">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Combined portfolio rollup</p>
-                  <p className="text-4xl font-black tracking-tight">
-                    {formatCurrency(combinedSummary.totals.statement + combinedSummary.totals.plaid)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Comparison-only view across editable statements and Plaid brokerage data.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full bg-background px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Overlap: {combinedSummary.overlapCount}
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-background px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Statement only: {combinedSummary.statementOnlyCount}
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-background px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Plaid only: {combinedSummary.plaidOnlyCount}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-border/60 bg-background/75 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Statement total
-                  </p>
-                  <p className="mt-1 text-2xl font-black">{formatCurrency(combinedSummary.totals.statement)}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/75 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Plaid total
-                  </p>
-                  <p className="mt-1 text-2xl font-black">{formatCurrency(combinedSummary.totals.plaid)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <section className="grid gap-4 lg:grid-cols-2">
-            <Card variant="none" effect="glass" className="rounded-[24px]">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Top Statement Positions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {combinedSummary.topPositionsBySource.statement.length > 0 ? (
-                  combinedSummary.topPositionsBySource.statement.map((position) => (
-                    <div
-                      key={`statement-${position.symbol}`}
-                      className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold">{position.symbol}</p>
-                        <p className="text-xs text-muted-foreground">{position.name}</p>
-                      </div>
-                      <p className="text-sm font-semibold">{formatCurrency(position.market_value)}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No statement holdings available.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card variant="none" effect="glass" className="rounded-[24px]">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Top Plaid Positions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {combinedSummary.topPositionsBySource.plaid.length > 0 ? (
-                  combinedSummary.topPositionsBySource.plaid.map((position) => (
-                    <div
-                      key={`plaid-${position.symbol}`}
-                      className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold">{position.symbol}</p>
-                        <p className="text-xs text-muted-foreground">{position.name}</p>
-                      </div>
-                      <p className="text-sm font-semibold">{formatCurrency(position.market_value)}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No Plaid holdings available.</p>
-                )}
-              </CardContent>
-            </Card>
-          </section>
-
-          <Card variant="none" effect="glass" className="rounded-[24px]">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Connected Brokerages</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {plaidItems.length > 0 ? (
-                plaidItems.map((item) => (
-                  <div
-                    key={item.item_id}
-                    className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/70 p-4 lg:flex-row lg:items-center lg:justify-between"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {item.institution_name || item.institution_id || "Connected brokerage"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.accounts?.length || 0} account{(item.accounts?.length || 0) === 1 ? "" : "s"} • {item.sync_status}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <MorphyButton
-                        variant="none"
-                        effect="fade"
-                        size="sm"
-                        onClick={() => void refreshPlaid(item.item_id).catch(() => undefined)}
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Refresh
-                      </MorphyButton>
-                      <MorphyButton
-                        variant="none"
-                        effect="fade"
-                        size="sm"
-                        onClick={() => void openPlaidLinkFlow(item.item_id)}
-                      >
-                        Manage Connection
-                      </MorphyButton>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No Plaid brokerages connected yet.</p>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-        <>
       <Card
         variant="muted"
         effect="fill"
@@ -2390,9 +2230,6 @@ export function DashboardMasterView({
           </div>
         </CardContent>
       </Card>
-
-      </>
-      )}
 
       <EditHoldingModal
         isOpen={isModalOpen}

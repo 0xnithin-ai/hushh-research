@@ -348,47 +348,53 @@ function LiquidGlassNav({
     }, 280);
   };
 
-  const finishGesture = (clientX: number) => {
-    setPointerDown(false);
-    const thumbCenter = currentThumbX + thumbWidth / 2;
-    let index = Math.floor(thumbCenter / itemWidth);
-    index = Math.max(0, Math.min(index, items.length - 1));
+  const finishGesture = useCallback(
+    (clientX: number) => {
+      setPointerDown(false);
+      const thumbCenter = currentThumbX + thumbWidth / 2;
+      let index = Math.floor(thumbCenter / itemWidth);
+      index = Math.max(0, Math.min(index, items.length - 1));
 
-    if (Math.abs(clientX - pointerStartXRef.current) < 5) {
-      index = Math.round(targetThumbX / itemWidth);
-    }
+      if (Math.abs(clientX - pointerStartXRef.current) < 5) {
+        index = Math.round(targetThumbX / itemWidth);
+      }
 
-    const nextItem = items[index];
-    if (nextItem && nextItem.id !== value) {
-      onValueChange(nextItem.id);
-    } else {
-      setCurrentThumbX(targetThumbX);
-    }
-    showGlassBriefly();
-  };
+      const nextItem = items[index];
+      if (nextItem && nextItem.id !== value) {
+        onValueChange(nextItem.id);
+      } else {
+        setCurrentThumbX(targetThumbX);
+      }
+      showGlassBriefly();
+    },
+    [currentThumbX, itemWidth, items, onValueChange, targetThumbX, thumbWidth, value]
+  );
 
-  const handlePointerMove = (clientX: number) => {
-    const delta = clientX - pointerStartXRef.current;
-    let nextPos = thumbStartXRef.current + delta;
-    const maxPos = sliderWidth - thumbWidth - centerOffset;
-    const minPos = centerOffset;
+  const handlePointerMove = useCallback(
+    (clientX: number) => {
+      const delta = clientX - pointerStartXRef.current;
+      let nextPos = thumbStartXRef.current + delta;
+      const maxPos = sliderWidth - thumbWidth - centerOffset;
+      const minPos = centerOffset;
 
-    if (nextPos < minPos) {
-      const overflow = minPos - nextPos;
-      nextPos = minPos - overflow / 3;
-    }
-    if (nextPos > maxPos) {
-      const overflow = nextPos - maxPos;
-      nextPos = maxPos + overflow / 3;
-    }
+      if (nextPos < minPos) {
+        const overflow = minPos - nextPos;
+        nextPos = minPos - overflow / 3;
+      }
+      if (nextPos > maxPos) {
+        const overflow = nextPos - maxPos;
+        nextPos = maxPos + overflow / 3;
+      }
 
-    const speed = Math.abs(nextPos - currentThumbX);
-    const stretchFactor = 1 + Math.min(speed * 0.05, 0.4);
-    const squashFactor = 1 / stretchFactor;
-    setWobbleScaleX((prev: number) => prev * 0.8 + stretchFactor * 0.2);
-    setWobbleScaleY((prev: number) => prev * 0.8 + squashFactor * 0.2);
-    setCurrentThumbX(nextPos);
-  };
+      const speed = Math.abs(nextPos - currentThumbX);
+      const stretchFactor = 1 + Math.min(speed * 0.05, 0.4);
+      const squashFactor = 1 / stretchFactor;
+      setWobbleScaleX((prev: number) => prev * 0.8 + stretchFactor * 0.2);
+      setWobbleScaleY((prev: number) => prev * 0.8 + squashFactor * 0.2);
+      setCurrentThumbX(nextPos);
+    },
+    [centerOffset, currentThumbX, sliderWidth, thumbWidth]
+  );
 
   useEffect(() => {
     if (!pointerDown) return;
@@ -407,7 +413,7 @@ function LiquidGlassNav({
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [pointerDown, currentThumbX, itemWidth, items, sliderWidth, targetThumbX, thumbWidth, value]);
+  }, [finishGesture, handlePointerMove, pointerDown]);
 
   const handleThumbPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     setPointerDown(true);
@@ -651,45 +657,6 @@ function LiquidGlassNav({
   );
 }
 
-function NavBaseSubstrate({ width, height }: { width: number; height: number }) {
-  return (
-    <>
-      <div
-        className="absolute inset-0"
-        style={{
-          borderRadius: height / 2,
-          background:
-            "linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.03) 35%, rgba(22,24,31,0.16) 100%)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow:
-            "0 4px 20px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -8px 18px rgba(0,0,0,0.08)",
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          left: Math.round(width * 0.12),
-          right: Math.round(width * 0.12),
-          top: Math.round(height * 0.18),
-          height: Math.round(height * 0.22),
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.075)",
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          left: Math.round(width * 0.16),
-          right: Math.round(width * 0.16),
-          bottom: Math.round(height * 0.18),
-          height: Math.round(height * 0.18),
-          borderRadius: 999,
-          background: "rgba(0,0,0,0.08)",
-        }}
-      />
-    </>
-  );
-}
 
 function paintNavSubstrate(
   ctx: CanvasRenderingContext2D,

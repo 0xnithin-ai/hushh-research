@@ -11,11 +11,9 @@ import {
 import type { PortfolioData } from "@/components/kai/types/portfolio";
 import { ROUTES } from "@/lib/navigation/routes";
 import {
-  buildCombinedSummary,
   hasPortfolioHoldings,
   resolveAvailableSources,
   resolvePortfolioFreshness,
-  type CombinedPortfolioSummary,
   type PlaidPortfolioStatusResponse,
   type PortfolioFreshness,
   type PortfolioSource,
@@ -46,7 +44,6 @@ export interface UsePortfolioSourcesResult {
   activeSource: PortfolioSource;
   availableSources: PortfolioSource[];
   activePortfolio: PortfolioData | null;
-  combinedSummary: CombinedPortfolioSummary | null;
   freshness: PortfolioFreshness | null;
   changeActiveSource: (nextSource: PortfolioSource) => Promise<void>;
   refreshPlaid: (itemId?: string) => Promise<void>;
@@ -54,16 +51,19 @@ export interface UsePortfolioSourcesResult {
 }
 
 function pickPreferredSource(params: {
-  preferred: PortfolioSource | null | undefined;
+  preferred: PortfolioSource | string | null | undefined;
   availableSources: PortfolioSource[];
 }): PortfolioSource {
   const preferred = params.preferred;
-  if (preferred && params.availableSources.includes(preferred)) {
+  if (
+    (preferred === "statement" || preferred === "plaid") &&
+    params.availableSources.includes(preferred)
+  ) {
     return preferred;
   }
   if (params.availableSources.includes("statement")) return "statement";
   if (params.availableSources.includes("plaid")) return "plaid";
-  return "combined";
+  return "statement";
 }
 
 export function usePortfolioSources({
@@ -178,16 +178,6 @@ export function usePortfolioSources({
     setActiveSource((current) => pickPreferredSource({ preferred: current, availableSources }));
   }, [availableSources]);
 
-  const combinedSummary = useMemo(
-    () =>
-      buildCombinedSummary({
-        statementPortfolio,
-        plaidPortfolio,
-        plaidStatus,
-      }),
-    [plaidPortfolio, plaidStatus, statementPortfolio]
-  );
-
   const freshness = useMemo(
     () => resolvePortfolioFreshness(plaidStatus),
     [plaidStatus]
@@ -195,8 +185,7 @@ export function usePortfolioSources({
 
   const activePortfolio = useMemo(() => {
     if (activeSource === "statement") return statementPortfolio;
-    if (activeSource === "plaid") return plaidPortfolio;
-    return null;
+    return plaidPortfolio;
   }, [activeSource, plaidPortfolio, statementPortfolio]);
 
   const changeActiveSource = useCallback(
@@ -305,7 +294,6 @@ export function usePortfolioSources({
     activeSource,
     availableSources,
     activePortfolio,
-    combinedSummary,
     freshness,
     changeActiveSource,
     refreshPlaid,

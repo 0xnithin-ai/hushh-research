@@ -135,13 +135,19 @@ Plaid is the read-only brokerage connectivity layer for Kai. It supports Link/OA
 | POST | `/api/kai/plaid/exchange-public-token` | Exchange Plaid `public_token`, sync holdings + investment transactions, and aggregate the read-only source |
 | POST | `/api/kai/plaid/refresh` | Start a manual refresh run for one or more connected Plaid Items |
 | GET | `/api/kai/plaid/refresh/{run_id}` | Inspect a Plaid refresh run status |
-| POST | `/api/kai/plaid/source` | Persist the active Kai portfolio source (`statement`, `plaid`, `combined`) |
+| POST | `/api/kai/plaid/source` | Persist the active Kai portfolio source (`statement`, `plaid`) |
 | POST | `/api/kai/plaid/webhook` | Receive Plaid webhook updates for holdings refresh and item health |
 
 Operational note:
 
 - webhook URLs are supplied to Plaid during Link token creation via backend configuration, not dashboard allowlisting
 - if `PLAID_WEBHOOK_URL` changes after Items exist, existing Items need a one-time `/item/webhook/update` maintenance pass
+
+#### Kai Support Messaging
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| POST | `/api/kai/support/message` | Send a profile-originated bug report, support request, or developer reachout through the Gmail-backed support inbox |
 
 #### Kai Analysis
 

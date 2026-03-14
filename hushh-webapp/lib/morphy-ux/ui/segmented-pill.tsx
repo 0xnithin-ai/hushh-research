@@ -17,12 +17,14 @@ export type SegmentedPillOption = {
 };
 
 type SegmentedPillSize = "compact" | "default";
+type SegmentedPillLayout = "inline" | "stacked";
 
 type SegmentedPillProps = {
   value: string;
   options: SegmentedPillOption[];
   onValueChange: (value: string) => void;
   size?: SegmentedPillSize;
+  layout?: SegmentedPillLayout;
   className?: string;
   ariaLabel?: string;
 };
@@ -35,6 +37,10 @@ const SIZE_STYLES: Record<
     icon: "xs" | "sm" | "md";
     label: string;
     gap: string;
+    stackedContainer: string;
+    stackedButton: string;
+    stackedLabel: string;
+    stackedGap: string;
   }
 > = {
   compact: {
@@ -43,6 +49,10 @@ const SIZE_STYLES: Record<
     icon: "sm",
     label: "text-[11px] font-medium leading-none",
     gap: "gap-1",
+    stackedContainer: "min-h-[58px] p-1",
+    stackedButton: "px-1.5 py-1.5",
+    stackedLabel: "text-[10px] font-medium leading-[1.05]",
+    stackedGap: "gap-1",
   },
   default: {
     container: "min-h-[45px] p-1",
@@ -50,6 +60,10 @@ const SIZE_STYLES: Record<
     icon: "sm",
     label: "text-sm font-medium",
     gap: "gap-1.5",
+    stackedContainer: "min-h-[66px] p-1",
+    stackedButton: "px-2 py-2",
+    stackedLabel: "text-xs font-medium leading-tight",
+    stackedGap: "gap-1.5",
   },
 };
 
@@ -60,12 +74,14 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
       options,
       onValueChange,
       size = "default",
+      layout = "inline",
       className,
       ariaLabel = "Segmented selector",
     },
     ref
   ) => {
     const styles = SIZE_STYLES[size];
+    const isStacked = layout === "stacked";
     const activeIndex = Math.max(
       0,
       options.findIndex((option) => option.value === value)
@@ -79,7 +95,7 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
         aria-label={ariaLabel}
         className={cn(
           "relative grid items-center rounded-full border border-border/70 bg-muted/75 shadow-sm backdrop-blur-xl",
-          styles.container,
+          isStacked ? styles.stackedContainer : styles.container,
           className
         )}
         style={{
@@ -113,9 +129,10 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
                 onValueChange(option.value);
               }}
               className={cn(
-                "relative z-10 flex min-w-0 items-center justify-center rounded-full transition-[color,opacity,transform] duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] disabled:cursor-not-allowed",
-                styles.button,
-                styles.gap,
+                "relative z-10 flex min-w-0 items-center justify-center rounded-full text-center transition-[color,opacity,transform] duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] disabled:cursor-not-allowed",
+                isStacked ? "flex-col" : "flex-row",
+                isStacked ? styles.stackedButton : styles.button,
+                isStacked ? styles.stackedGap : styles.gap,
                 isActive
                   ? "text-background"
                   : isAccent
@@ -143,7 +160,14 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
                   ) : null}
                 </span>
               ) : null}
-              <span className={cn("whitespace-nowrap", styles.label)}>{option.label}</span>
+              <span
+                className={cn(
+                  isStacked ? "max-w-full whitespace-normal" : "whitespace-nowrap",
+                  isStacked ? styles.stackedLabel : styles.label
+                )}
+              >
+                {option.label}
+              </span>
             </button>
           );
         })}

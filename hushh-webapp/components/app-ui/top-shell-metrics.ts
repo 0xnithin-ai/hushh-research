@@ -65,7 +65,7 @@ export function isTopShellFullscreenFlowRoute(pathname: string): boolean {
   return resolveTopShellRouteProfile(pathname).id === "kai-fullscreen-flow";
 }
 
-export function shouldShowKaiTabsInTopShell(pathname: string): boolean {
+export function shouldShowKaiTabsInTopShell(_pathname: string): boolean {
   return false;
 }
 

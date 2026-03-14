@@ -246,7 +246,6 @@ export default function PortfolioHealthPage() {
   const sourceLabel = useMemo(() => {
     const raw = String(input?.portfolioSource || "").trim().toLowerCase();
     if (raw === "plaid") return "Plaid";
-    if (raw === "combined") return "Combined";
     return "Statement";
   }, [input?.portfolioSource]);
   
@@ -274,12 +273,6 @@ export default function PortfolioHealthPage() {
       if (!input) {
         setLoading(false);
         setError("No Optimize Portfolio context found. Please start from the Kai dashboard.");
-        return;
-      }
-
-      if (input.portfolioSource === "combined") {
-        setLoading(false);
-        setError("Choose Statement or Plaid on the Kai dashboard before running Optimize.");
         return;
       }
 

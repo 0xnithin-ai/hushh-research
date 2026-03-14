@@ -18,6 +18,7 @@ import {
 import { NewsTape } from "@/components/kai/home/news-tape";
 import { ConnectPortfolioCta } from "@/components/kai/cards/connect-portfolio-cta";
 import { MarketOverviewGrid, type MarketOverviewMetric } from "@/components/kai/cards/market-overview-grid";
+import { RenaissanceMarketList } from "@/components/kai/cards/renaissance-market-list";
 import { SpotlightCard } from "@/components/kai/cards/spotlight-card";
 import { ThemeFocusList, type ThemeFocusItem } from "@/components/kai/cards/theme-focus-list";
 import { useAuth } from "@/hooks/use-auth";
@@ -741,6 +742,13 @@ export function KaiMarketPreviewView() {
   const hasPayload = Boolean(payload);
   const overviewMetrics = useMemo(() => toOverviewMetrics(payload), [payload]);
   const themeItems = useMemo(() => toThemeItems(payload), [payload]);
+  const renaissanceRows = useMemo(
+    () =>
+      Array.isArray(payload?.renaissance_list)
+        ? payload.renaissance_list.filter((row) => Boolean(row?.symbol)).slice(0, 12)
+        : [],
+    [payload?.renaissance_list]
+  );
   const spotlightRows = useMemo(
     () =>
       Array.isArray(payload?.spotlights)
@@ -834,6 +842,11 @@ export function KaiMarketPreviewView() {
       <section className="mt-10">
         <SectionLabel>Market Overview</SectionLabel>
         <MarketOverviewGrid metrics={overviewMetrics} />
+      </section>
+
+      <section className="mt-10">
+        <SectionLabel>Renaissance Core</SectionLabel>
+        <RenaissanceMarketList rows={renaissanceRows} />
       </section>
 
       <section className="mt-10">

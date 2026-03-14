@@ -17,8 +17,17 @@
  * evaluates correctly in both environments.
  */
 
-import { useMemo, useState } from "react";
-import { BriefcaseBusiness, LogOut, MoreHorizontal, Trash2, UserRound } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BriefcaseBusiness,
+  Check,
+  ChevronDown,
+  Loader2,
+  LogOut,
+  MoreHorizontal,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/lib/morphy-ux/button";
@@ -56,6 +65,8 @@ import { UserLocalStateService } from "@/lib/services/user-local-state-service";
 import { resolveTopShellMetrics } from "@/components/app-ui/top-shell-metrics";
 import { useKaiBottomChromeVisibility } from "@/lib/navigation/kai-bottom-chrome-visibility";
 import { usePersonaState } from "@/lib/persona/persona-context";
+import { useKaiSession } from "@/lib/stores/kai-session-store";
+import type { Persona } from "@/lib/services/ria-service";
 
 /* ── Re-exports (backward compat) ─────────────────────────────────── */
 export {
@@ -68,7 +79,7 @@ export {
 
 /* ── Constants ─────────────────────────────────────────────────────── */
 export const TOP_SHELL_ICON_BUTTON_CLASSNAME =
-  "grid h-11 w-11 place-items-center rounded-full border border-border/60 bg-background/70 shadow-sm backdrop-blur-sm transition-colors hover:bg-muted/50 active:bg-muted/80";
+  "grid h-11 w-11 place-items-center rounded-full bg-background/55 backdrop-blur-sm transition-colors hover:bg-muted/40 active:bg-muted/70";
 
 /* ── Stubs (kept for import stability) ─────────────────────────────── */
 export function TopBarBackground() { return null; }
@@ -77,18 +88,30 @@ export function TopAppBarSpacer() { return null; }
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 function getTopBarTitle(pathname: string, activePersona: "investor" | "ria") {
-  if (
+  const isPersonaShellRoute =
     pathname.startsWith(ROUTES.KAI_HOME) ||
     pathname.startsWith(ROUTES.RIA_HOME) ||
     pathname.startsWith(ROUTES.MARKETPLACE) ||
     pathname.startsWith(ROUTES.CONSENTS) ||
-    pathname.startsWith(ROUTES.PROFILE)
-  ) {
+    pathname.startsWith(ROUTES.PROFILE);
+
+  if (isPersonaShellRoute) {
     return activePersona === "ria"
       ? { label: "RIA", icon: BriefcaseBusiness }
       : { label: "Investor", icon: UserRound };
   }
   return null;
+}
+
+function routeForPersona(params: {
+  persona: Persona;
+  lastKaiPath: string;
+  lastRiaPath: string;
+  riaEntryRoute: string;
+}) {
+  return params.persona === "ria"
+    ? params.lastRiaPath || params.riaEntryRoute
+    : params.lastKaiPath || ROUTES.KAI_HOME;
 }
 
 /* ── TopAppBar ─────────────────────────────────────────────────────── */
@@ -97,9 +120,17 @@ interface TopAppBarProps {
 }
 
 export function TopAppBar({ className }: TopAppBarProps) {
+  const router = useRouter();
   const { isVaultUnlocked } = useVault();
-  const { activePersona } = usePersonaState();
+  const {
+    activePersona,
+    riaCapability,
+    riaEntryRoute,
+    switchPersona,
+  } = usePersonaState();
   const pathname = usePathname();
+  const lastKaiPath = useKaiSession((s) => s.lastKaiPath);
+  const lastRiaPath = useKaiSession((s) => s.lastRiaPath);
   const topShellMetrics = useMemo(() => resolveTopShellMetrics(pathname), [pathname]);
   const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
   const showOnboardingActions = chromeState.useOnboardingChrome;
@@ -109,6 +140,50 @@ export function TopAppBar({ className }: TopAppBarProps) {
     [activePersona, pathname]
   );
   const showKaiTabs = topShellMetrics.hasTabs;
+  const [switchingPersona, setSwitchingPersona] = useState<Persona | null>(null);
+
+  useEffect(() => {
+    router.prefetch(lastKaiPath || ROUTES.KAI_HOME);
+    router.prefetch(lastRiaPath || riaEntryRoute);
+  }, [lastKaiPath, lastRiaPath, riaEntryRoute, router]);
+
+  const handlePersonaSelect = useCallback(
+    async (target: Persona) => {
+      const nextRoute = routeForPersona({
+        persona: target,
+        lastKaiPath,
+        lastRiaPath,
+        riaEntryRoute,
+      });
+
+      if (target === activePersona) {
+        return;
+      }
+
+      if (target === "ria" && riaCapability === "disabled") {
+        toast.info("RIA access is not available in this environment yet.");
+        return;
+      }
+
+      if (target === "ria" && riaCapability === "setup") {
+        setSwitchingPersona(target);
+        router.push(nextRoute);
+        return;
+      }
+
+      setSwitchingPersona(target);
+      try {
+        await switchPersona(target);
+        router.push(nextRoute);
+      } catch (error) {
+        console.error("[TopAppBar] Failed to switch persona:", error);
+        toast.error("Couldn't switch roles right now. Please retry.");
+      } finally {
+        setSwitchingPersona(null);
+      }
+    },
+    [activePersona, lastKaiPath, lastRiaPath, riaCapability, riaEntryRoute, router, switchPersona]
+  );
 
   // Subscribe to scroll-direction store so top glass height follows tabs visibility.
   const { progress: tabsScrollHideProgress } = useKaiBottomChromeVisibility(showKaiTabs);
@@ -124,9 +199,9 @@ export function TopAppBar({ className }: TopAppBarProps) {
       "--app-bar-shadow":
         "inset 0 1px 0 rgba(255,255,255,0.2), 0 16px 30px rgba(0,0,0,0.18)",
       maskImage:
-        "linear-gradient(to bottom, black 0%, black 54%, rgba(0, 0, 0, 0.96) 70%, rgba(0, 0, 0, 0.82) 82%, rgba(0, 0, 0, 0.58) 90%, rgba(0, 0, 0, 0.24) 96%, transparent 100%)",
+        "linear-gradient(to bottom, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0.96) 12%, black 28%, black 58%, rgba(0, 0, 0, 0.96) 74%, rgba(0, 0, 0, 0.8) 86%, rgba(0, 0, 0, 0.46) 94%, transparent 100%)",
       WebkitMaskImage:
-        "linear-gradient(to bottom, black 0%, black 54%, rgba(0, 0, 0, 0.96) 70%, rgba(0, 0, 0, 0.82) 82%, rgba(0, 0, 0, 0.58) 90%, rgba(0, 0, 0, 0.24) 96%, transparent 100%)",
+        "linear-gradient(to bottom, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0.96) 12%, black 28%, black 58%, rgba(0, 0, 0, 0.96) 74%, rgba(0, 0, 0, 0.8) 86%, rgba(0, 0, 0, 0.46) 94%, transparent 100%)",
     }),
     [showKaiTabs, tabsScrollHideProgress]
   );
@@ -159,10 +234,59 @@ export function TopAppBar({ className }: TopAppBarProps) {
 
             <div className="flex min-w-0 items-center justify-center px-2">
               {centerTitle ? (
-                <span className="flex min-w-0 items-center justify-center gap-2 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg">
-                  <Icon icon={centerTitle.icon} size="sm" className="shrink-0 text-primary" />
-                  <span className="truncate">{centerTitle.label}</span>
-                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      data-tour-id="nav-role-switch"
+                      className="flex min-w-0 items-center justify-center gap-2 rounded-full px-3 py-1.5 text-base font-semibold tracking-tight text-foreground transition-colors hover:bg-muted/40 sm:text-lg"
+                      aria-label="Switch role"
+                    >
+                      <Icon
+                        icon={switchingPersona ? Loader2 : centerTitle.icon}
+                        size="sm"
+                        className={cn(
+                          "shrink-0 text-primary",
+                          switchingPersona ? "animate-spin" : ""
+                        )}
+                      />
+                      <span className="truncate">
+                        {switchingPersona
+                          ? `Switching to ${switchingPersona === "ria" ? "RIA" : "Investor"}`
+                          : centerTitle.label}
+                      </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" className="min-w-[200px]">
+                    <DropdownMenuItem
+                      onClick={() => void handlePersonaSelect("investor")}
+                      disabled={switchingPersona !== null}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <UserRound className="h-4 w-4" />
+                        <span>Investor</span>
+                      </div>
+                      {activePersona === "investor" ? (
+                        <Check className="ml-auto h-4 w-4 text-primary" />
+                      ) : null}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => void handlePersonaSelect("ria")}
+                      disabled={riaCapability === "disabled" || switchingPersona !== null}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <BriefcaseBusiness className="h-4 w-4" />
+                        <span>{riaCapability === "setup" ? "Set up RIA" : "RIA"}</span>
+                      </div>
+                      {switchingPersona === "ria" ? (
+                        <Loader2 className="ml-auto h-4 w-4 animate-spin text-primary" />
+                      ) : activePersona === "ria" ? (
+                        <Check className="ml-auto h-4 w-4 text-primary" />
+                      ) : null}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null}
             </div>
 

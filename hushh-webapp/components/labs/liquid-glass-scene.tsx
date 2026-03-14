@@ -104,14 +104,15 @@ export function LiquidGlassSceneRoot({
   style?: CSSProperties;
   children?: ReactNode;
 }) {
-  const context = useLiquidGlassScene();
+  const sceneRootRef = useLiquidGlassSceneRootRef();
+  const sceneStyle = useLiquidGlassSceneStyle();
   return (
     <div
-      ref={context.sceneRootRef}
+      ref={sceneRootRef}
       data-liquid-scene-root="true"
       aria-hidden="true"
       className={cn("pointer-events-none select-none", className)}
-      style={{ ...context.sceneStyle, ...style }}
+      style={{ ...sceneStyle, ...style }}
     >
       {children}
     </div>
@@ -128,6 +129,10 @@ export function useLiquidGlassScene() {
 
 export function useLiquidGlassSceneStyle() {
   return useLiquidGlassScene().sceneStyle;
+}
+
+export function useLiquidGlassSceneRootRef() {
+  return useLiquidGlassScene().sceneRootRef;
 }
 
 export function useSceneMetrics(elementRef: React.RefObject<HTMLElement | null>) {
