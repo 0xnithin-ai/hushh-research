@@ -63,6 +63,19 @@ Activate a profile into `consent-protocol/.env` and `hushh-webapp/.env.local`:
 bash scripts/env/use_profile.sh local-uatdb
 ```
 
+For `local-uatdb`, start the backend with the launcher instead of running
+`python`/`uvicorn` directly:
+
+```bash
+bash scripts/runtime/run_backend_local.sh local-uatdb
+```
+
+That launcher starts the local Cloud SQL proxy automatically when the active
+profile points at UAT Cloud SQL. It authenticates the proxy from
+`FIREBASE_SERVICE_ACCOUNT_JSON` in the active backend env, or from
+`CLOUDSQL_PROXY_CREDENTIALS_FILE` if you set one explicitly. It refuses to
+fall back to local `gcloud`/ADC credentials.
+
 Supported profile names:
 
 - `local-uatdb`

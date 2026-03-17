@@ -41,6 +41,18 @@ bash scripts/env/use_profile.sh uat-remote
 bash scripts/env/use_profile.sh prod-remote
 ```
 
+`local-uatdb` backend note:
+
+- Start the backend with `bash scripts/runtime/run_backend_local.sh local-uatdb`
+  or the `make local-backend` wrapper.
+- Do not start local UAT DB access with bare `python`/`uvicorn` unless the
+  proxy is already running.
+- The launcher starts `cloud-sql-proxy` automatically for the UAT Cloud SQL
+  instance and authenticates it from `FIREBASE_SERVICE_ACCOUNT_JSON` in the
+  active backend env, or `CLOUDSQL_PROXY_CREDENTIALS_FILE` if explicitly set.
+- The launcher refuses to fall back to local `gcloud`/ADC credentials for this
+  path.
+
 Makefile wrappers:
 
 ```bash
