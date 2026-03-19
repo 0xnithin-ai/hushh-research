@@ -36,6 +36,18 @@ def _is_production() -> bool:
     return _environment() == "production"
 
 
+REQUIRED_RUNTIME_TABLES = (
+    "vault_keys",
+    "vault_key_wrappers",
+    "consent_audit",
+    "user_push_tokens",
+    "internal_access_events",
+    "runtime_persona_state",
+    "ria_pick_uploads",
+    "ria_pick_upload_rows",
+)
+
+
 def _is_app_review_mode_enabled() -> bool:
     return _env_truthy("APP_REVIEW_MODE") or _env_truthy("HUSHH_APP_REVIEW_MODE")
 
@@ -66,6 +78,10 @@ def _parse_cors_allowed_origins() -> list[str]:
 from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 
+from api.middlewares.observability import (  # noqa: E402
+    configure_opentelemetry,
+    observability_middleware,
+)
 from api.middlewares.rate_limit import limiter  # noqa: E402
 from api.routes import (  # noqa: E402
     account,
@@ -78,7 +94,6 @@ from api.routes import (  # noqa: E402
     notifications,
     session,
     sse,
-    sync,
 )
 
 # Dynamic root_path for Swagger docs in production
@@ -92,9 +107,11 @@ app = FastAPI(
     root_path=root_path,
 )
 
+app.middleware("http")(observability_middleware)
+
 # Rate limiting
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # CORS allowlist: explicit origins only (no wildcard regex).
 cors_origins = _parse_cors_allowed_origins()
@@ -110,6 +127,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+configure_opentelemetry(app)
+
+from mcp_remote import remote_mcp_app, shutdown_remote_mcp, startup_remote_mcp  # noqa: E402
+
+app.mount("/mcp", remote_mcp_app)
+
 
 # ============================================================================
 # REGISTER ROUTERS
@@ -124,11 +147,11 @@ app.include_router(agents.router)
 # Consent management routes (/api/consent/...)
 app.include_router(consent.router)
 
-# Developer API v1 routes (/api/v1/...)
-app.include_router(developer.router)
-
 # Session token routes (/api/consent/issue-token, /api/user/lookup, etc.)
 app.include_router(session.router)
+
+# Developer API routes (/api/v1/*)
+app.include_router(developer.router)
 
 # Database proxy routes (/db/vault/...) - for iOS native app
 app.include_router(db_proxy.router)
@@ -165,15 +188,10 @@ from api.routes import tickers  # noqa: E402
 
 app.include_router(tickers.router)
 
-# Phase 2: Identity Resolution (Consent-then-encrypt flow)
+# Identity compatibility routes
 from api.routes import identity  # noqa: E402
 
 app.include_router(identity.router)
-
-# Phase 6: Fundamental Analysis Agent
-from api.routes import analysis  # noqa: E402
-
-app.include_router(analysis.router)
 
 # Phase 7: World Model (Dynamic Domain Management)
 from api.routes import world_model  # noqa: E402
@@ -183,8 +201,13 @@ app.include_router(world_model.router)
 # Account deletion and management
 app.include_router(account.router)
 
-# Data synchronization
-app.include_router(sync.router)
+from api.routes import iam, invites, marketplace, ria  # noqa: E402
+
+app.include_router(iam.router)
+app.include_router(ria.router)
+app.include_router(marketplace.router)
+app.include_router(invites.router)
+logger.info("ria.routes_enabled")
 
 logger.info(
     "🚀 Hushh Consent Protocol server initialized with modular routes - KAI V2 + PHASE 2 + WORLD MODEL ENABLED"
@@ -232,6 +255,47 @@ async def startup_regulated_runtime_guards():
 
     if _env_truthy("DEVELOPER_API_ENABLED", "false"):
         logger.warning("security.developer_api_enabled_in_production")
+
+
+@app.on_event("startup")
+async def startup_required_schema_guard():
+    """Fail fast when the runtime database is missing core contract tables."""
+    from db.connection import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = ANY($1::text[])
+            """,
+            list(REQUIRED_RUNTIME_TABLES),
+        )
+
+    existing = {row["table_name"] for row in rows}
+    missing = [table for table in REQUIRED_RUNTIME_TABLES if table not in existing]
+    if missing:
+        logger.critical("startup.required_schema_guard_failed missing=%s", missing)
+        raise RuntimeError(
+            "Required runtime tables are missing: "
+            + ", ".join(missing)
+            + ". Run `python db/migrate.py --consent`, `python db/migrate.py --iam`, "
+            + "or `python db/migrate.py --init` against the active database before starting the server."
+        )
+
+
+@app.on_event("startup")
+async def startup_remote_mcp_transport():
+    """Start the hosted remote MCP session manager."""
+    await startup_remote_mcp()
+
+
+@app.on_event("shutdown")
+async def shutdown_remote_mcp_transport():
+    """Stop the hosted remote MCP session manager."""
+    await shutdown_remote_mcp()
 
 
 @app.on_event("startup")
@@ -286,4 +350,4 @@ async def debug_consent_listener():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104
+    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=False)  # noqa: S104

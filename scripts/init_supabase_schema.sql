@@ -9,13 +9,37 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- 1. vault_keys (user authentication keys)
 CREATE TABLE IF NOT EXISTS vault_keys (
     user_id TEXT PRIMARY KEY,
-    vault_key_hash TEXT NOT NULL,
+    vault_status TEXT NOT NULL DEFAULT 'active' CHECK (vault_status IN ('placeholder', 'active')),
+    vault_key_hash TEXT,
     primary_method TEXT NOT NULL DEFAULT 'passphrase',
-    recovery_encrypted_vault_key TEXT NOT NULL,
-    recovery_salt TEXT NOT NULL,
-    recovery_iv TEXT NOT NULL,
+    primary_wrapper_id TEXT NOT NULL DEFAULT 'default',
+    recovery_encrypted_vault_key TEXT,
+    recovery_salt TEXT,
+    recovery_iv TEXT,
+    first_login_at BIGINT,
+    last_login_at BIGINT,
+    login_count INTEGER NOT NULL DEFAULT 0,
+    pre_onboarding_completed BOOLEAN,
+    pre_onboarding_skipped BOOLEAN,
+    pre_onboarding_completed_at BIGINT,
+    pre_nav_tour_completed_at BIGINT,
+    pre_nav_tour_skipped_at BIGINT,
+    pre_state_updated_at BIGINT,
     created_at BIGINT NOT NULL,
-    updated_at BIGINT NOT NULL
+    updated_at BIGINT NOT NULL,
+    CONSTRAINT vault_keys_placeholder_integrity_check CHECK (
+        (vault_status = 'placeholder'
+            AND vault_key_hash IS NULL
+            AND recovery_encrypted_vault_key IS NULL
+            AND recovery_salt IS NULL
+            AND recovery_iv IS NULL)
+        OR
+        (vault_status = 'active'
+            AND vault_key_hash IS NOT NULL
+            AND recovery_encrypted_vault_key IS NOT NULL
+            AND recovery_salt IS NOT NULL
+            AND recovery_iv IS NOT NULL)
+    )
 );
 
 -- 1b. vault_key_wrappers (one wrapper per method per user)
@@ -23,17 +47,24 @@ CREATE TABLE IF NOT EXISTS vault_key_wrappers (
     id BIGSERIAL PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES vault_keys(user_id) ON DELETE CASCADE,
     method TEXT NOT NULL,
+    wrapper_id TEXT NOT NULL DEFAULT 'default',
     encrypted_vault_key TEXT NOT NULL,
     salt TEXT NOT NULL,
     iv TEXT NOT NULL,
     passkey_credential_id TEXT,
     passkey_prf_salt TEXT,
+    passkey_rp_id TEXT,
+    passkey_provider TEXT,
+    passkey_device_label TEXT,
+    passkey_last_used_at BIGINT,
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
-    UNIQUE (user_id, method)
+    UNIQUE (user_id, method, wrapper_id)
 );
 CREATE INDEX IF NOT EXISTS idx_vkw_user_id ON vault_key_wrappers(user_id);
 CREATE INDEX IF NOT EXISTS idx_vkw_method ON vault_key_wrappers(method);
+CREATE INDEX IF NOT EXISTS idx_vkw_user_method_wrapper ON vault_key_wrappers(user_id, method, wrapper_id);
+CREATE INDEX IF NOT EXISTS idx_vkw_passkey_rp_id ON vault_key_wrappers(passkey_rp_id);
 
 -- 2. investor_profiles (public discovery layer)
 CREATE TABLE IF NOT EXISTS investor_profiles (
@@ -107,7 +138,18 @@ CREATE OR REPLACE FUNCTION consent_audit_notify()
 RETURNS TRIGGER AS $$
 DECLARE payload TEXT;
 BEGIN
-  payload := json_build_object('user_id', NEW.user_id, 'request_id', COALESCE(NEW.request_id, ''), 'action', NEW.action, 'scope', COALESCE(NEW.scope, ''), 'agent_id', COALESCE(NEW.agent_id, ''), 'issued_at', NEW.issued_at)::TEXT;
+  payload := json_build_object(
+    'user_id', NEW.user_id,
+    'request_id', COALESCE(NEW.request_id, ''),
+    'action', NEW.action,
+    'scope', COALESCE(NEW.scope, ''),
+    'agent_id', COALESCE(NEW.agent_id, ''),
+    'scope_description', COALESCE(NEW.scope_description, ''),
+    'issued_at', NEW.issued_at,
+    'bundle_id', COALESCE(NEW.metadata->>'bundle_id', ''),
+    'bundle_label', COALESCE(NEW.metadata->>'bundle_label', ''),
+    'bundle_scope_count', COALESCE(NEW.metadata->>'bundle_scope_count', '1')
+  )::TEXT;
   PERFORM pg_notify('consent_audit_new', payload);
   RETURN NEW;
 END;
@@ -126,6 +168,28 @@ CREATE TABLE IF NOT EXISTS user_push_tokens (
     UNIQUE (user_id, platform)
 );
 CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user_id);
+
+-- 4c. internal_access_events (self/internal app activity; not user-facing consent history)
+CREATE TABLE IF NOT EXISTS internal_access_events (
+    id SERIAL PRIMARY KEY,
+    token_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    action TEXT NOT NULL,
+    issued_at BIGINT NOT NULL,
+    expires_at BIGINT,
+    revoked_at BIGINT,
+    metadata JSONB,
+    token_type VARCHAR(20) DEFAULT 'internal',
+    request_id VARCHAR(32),
+    scope_description TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_internal_access_events_user_id ON internal_access_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_internal_access_events_user_action ON internal_access_events(user_id, action);
+CREATE INDEX IF NOT EXISTS idx_internal_access_events_issued_at ON internal_access_events(issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_internal_access_events_user_scope_agent
+    ON internal_access_events(user_id, agent_id, scope, issued_at DESC);
 
 -- Verification: Show all created tables
 SELECT table_name 

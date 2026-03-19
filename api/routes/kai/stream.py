@@ -12,17 +12,20 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
+from api.middlewares.observability import get_request_id
 from api.routes.kai._streaming import (
     STOCK_ANALYZE_TIMEOUT_SECONDS,
     CanonicalSSEStream,
 )
+from api.routes.kai.run_manager import KaiAnalyzeRunManager
 from hushh_mcp.agents.kai.debate_engine import DebateEngine
 from hushh_mcp.agents.kai.fundamental_agent import FundamentalAgent, FundamentalInsight
 from hushh_mcp.agents.kai.sentiment_agent import SentimentAgent, SentimentInsight
@@ -44,6 +47,30 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Kai Streaming"])
 _TICKER_SYMBOL_RE = re.compile(r"^[A-Z][A-Z0-9.\-]{0,5}$")
+_RUN_MANAGER = KaiAnalyzeRunManager()
+
+
+async def _require_vault_owner_token(
+    *,
+    user_id: str,
+    authorization: Optional[str],
+) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing consent token. Call /api/consent/owner-token first.",
+        )
+
+    consent_token = authorization.replace("Bearer ", "")
+    valid, reason, payload = validate_token(consent_token, ConsentScope.VAULT_OWNER)
+
+    if not valid or not payload:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {reason}")
+
+    if payload.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Token user mismatch")
+
+    return consent_token
 
 
 # ============================================================================
@@ -55,6 +82,18 @@ class StreamAnalyzeRequest(BaseModel):
     """Request for streaming analysis."""
 
     user_id: str
+    ticker: str
+    risk_profile: str = "balanced"
+    context: Optional[Dict[str, Any]] = None
+    run_id: Optional[str] = None
+    resume_cursor: Optional[int] = Field(default=0, ge=0)
+
+
+class StartAnalyzeRunRequest(BaseModel):
+    """Request to create or attach to a session-locked analysis run."""
+
+    user_id: str
+    debate_session_id: str
     ticker: str
     risk_profile: str = "balanced"
     context: Optional[Dict[str, Any]] = None
@@ -138,8 +177,8 @@ def _build_fallback_fundamental_insight(ticker: str, error: Exception) -> Fundam
     message = str(error) or "provider unavailable"
     return FundamentalInsight(
         summary=(
-            f"Fundamental stream degraded for {ticker}: {message}. "
-            "Proceeding with conservative baseline assumptions."
+            f"Fundamental inputs are limited for {ticker} ({message}). "
+            "Using a conservative baseline while live coverage recovers."
         ),
         key_metrics={},
         quant_metrics={},
@@ -158,8 +197,8 @@ def _build_fallback_sentiment_insight(ticker: str, error: Exception) -> Sentimen
     message = str(error) or "provider unavailable"
     return SentimentInsight(
         summary=(
-            f"Sentiment stream degraded for {ticker}: {message}. "
-            "Using neutral market-sentiment fallback."
+            f"Sentiment coverage is limited for {ticker} ({message}). "
+            "Using a neutral baseline until live headlines recover."
         ),
         sentiment_score=0.0,
         key_catalysts=[],
@@ -174,8 +213,8 @@ def _build_fallback_valuation_insight(ticker: str, error: Exception) -> Valuatio
     message = str(error) or "provider unavailable"
     return ValuationInsight(
         summary=(
-            f"Valuation stream degraded for {ticker}: {message}. "
-            "Using fair-value fallback until peer quotes recover."
+            f"Valuation coverage is limited for {ticker} ({message}). "
+            "Using a fair-value baseline until peer quotes recover."
         ),
         valuation_metrics={},
         peer_comparison={},
@@ -560,6 +599,114 @@ def _derive_company_strength_score(
     return round(_clamp(blended, 0.0, 10.0), 2)
 
 
+def _derive_market_snapshot(
+    *,
+    valuation_metrics: dict[str, Any] | None,
+    price_targets: dict[str, Any] | None,
+    analysis_updated_at: str,
+) -> dict[str, Any]:
+    candidate_fields = (
+        ("current_price", valuation_metrics, "valuation_metrics.current_price"),
+        ("price", valuation_metrics, "valuation_metrics.price"),
+        ("market_price", price_targets, "price_targets.market_price"),
+        ("current_price", price_targets, "price_targets.current_price"),
+        ("current", price_targets, "price_targets.current"),
+    )
+    for key, source, source_label in candidate_fields:
+        if not isinstance(source, dict):
+            continue
+        parsed = _safe_float(source.get(key))
+        if parsed is not None:
+            return {
+                "last_price": round(parsed, 4),
+                "observed_at": analysis_updated_at,
+                "source": source_label,
+            }
+    return {
+        "last_price": None,
+        "observed_at": analysis_updated_at,
+        "source": "unavailable",
+    }
+
+
+def _validate_world_model_context_requirements(
+    full_user_context: dict[str, Any],
+) -> list[str]:
+    missing: list[str] = []
+    request_context = (
+        full_user_context.get("request_context")
+        if isinstance(full_user_context.get("request_context"), dict)
+        else {}
+    )
+
+    holdings = request_context.get("holdings")
+    if not isinstance(holdings, list) or len(holdings) == 0:
+        missing.append("world_model_holdings")
+
+    debate_context = request_context.get("debate_context")
+    if not isinstance(debate_context, dict):
+        missing.append("world_model_debate_context")
+        return missing
+
+    portfolio_snapshot = debate_context.get("portfolio_snapshot")
+    if not isinstance(portfolio_snapshot, dict) or len(portfolio_snapshot) == 0:
+        missing.append("world_model_portfolio_snapshot")
+
+    coverage = debate_context.get("coverage")
+    if not isinstance(coverage, dict) or len(coverage) == 0:
+        missing.append("world_model_coverage")
+
+    return missing
+
+
+def _validate_renaissance_context_requirements(
+    renaissance_context: dict[str, Any],
+    renaissance_lookup_error: Exception | None,
+) -> list[str]:
+    missing: list[str] = []
+    if renaissance_lookup_error is not None:
+        missing.append("renaissance_context_lookup")
+        return missing
+
+    if not isinstance(renaissance_context, dict) or not renaissance_context:
+        missing.append("renaissance_context_payload")
+        return missing
+
+    if "is_investable" not in renaissance_context:
+        missing.append("renaissance_investable_flag")
+
+    return missing
+
+
+def _build_renaissance_comparison(renaissance_context: dict[str, Any]) -> dict[str, Any]:
+    tier = renaissance_context.get("tier")
+    is_investable = bool(renaissance_context.get("is_investable"))
+    is_avoid = bool(renaissance_context.get("is_avoid"))
+    recommendation_bias = renaissance_context.get("recommendation_bias")
+
+    if is_avoid:
+        status = "avoid"
+        comparison_label = "Renaissance avoid"
+    elif is_investable:
+        status = "investable"
+        comparison_label = f"Renaissance investable ({tier})" if tier else "Renaissance investable"
+    elif renaissance_context.get("is_investable") is False:
+        status = "outside_universe"
+        comparison_label = "Outside Renaissance investable universe"
+    else:
+        status = "unknown"
+        comparison_label = "Renaissance status unavailable"
+
+    return {
+        "status": status,
+        "tier": tier,
+        "is_investable": is_investable,
+        "is_avoid": is_avoid,
+        "comparison_label": comparison_label,
+        "recommendation_bias": recommendation_bias,
+    }
+
+
 async def stream_agent_thinking(
     agent_name: str,
     ticker: str,
@@ -618,8 +765,8 @@ Think step by step in 2-3 sentences about what you'll analyze and why it matters
 
         if token_count == 0 and stream_error_message:
             fallback_text = (
-                f"Live stream unavailable ({stream_error_message}). "
-                "Proceeding with deterministic analysis so results still complete."
+                f"Live commentary is temporarily unavailable ({stream_error_message}). "
+                "Continuing analysis so your recommendation still completes."
             )
             fallback_words = fallback_text.split()
             for idx, word in enumerate(fallback_words):
@@ -779,23 +926,18 @@ async def analyze_stream_generator(
         )
         renaissance_result, wm_result = context_results
 
-        if isinstance(renaissance_result, Exception):
+        renaissance_lookup_error: Exception | None = (
+            renaissance_result if isinstance(renaissance_result, Exception) else None
+        )
+        if renaissance_lookup_error is not None:
             logger.warning(
                 "[Kai Stream] Renaissance context lookup failed for %s: %s",
                 ticker,
-                renaissance_result,
+                renaissance_lookup_error,
             )
-            renaissance_context: Dict[str, Any] = {
-                "is_investable": False,
-                "tier": None,
-                "tier_description": "Unavailable",
-                "conviction_weight": 0.0,
-                "investment_thesis": "",
-                "sector_peers": [],
-                "recommendation_bias": "NEUTRAL",
-            }
+            renaissance_context: Dict[str, Any] = {}
         else:
-            renaissance_context = renaissance_result or {}
+            renaissance_context = renaissance_result if isinstance(renaissance_result, dict) else {}
 
         if isinstance(wm_result, Exception):
             logger.warning("[Kai Stream] World model fetch failed for %s: %s", user_id, wm_result)
@@ -937,6 +1079,42 @@ async def analyze_stream_generator(
             key: value for key, value in preference_container.items() if value not in (None, "")
         }
 
+        missing_requirements = sorted(
+            set(
+                _validate_world_model_context_requirements(full_user_context)
+                + _validate_renaissance_context_requirements(
+                    renaissance_context,
+                    renaissance_lookup_error,
+                )
+            )
+        )
+        context_integrity = {
+            "world_model_context_present": not any(
+                item.startswith("world_model_") for item in missing_requirements
+            ),
+            "renaissance_context_present": not any(
+                item.startswith("renaissance_") for item in missing_requirements
+            ),
+            "missing_requirements": missing_requirements,
+        }
+        if missing_requirements:
+            yield create_event(
+                "error",
+                {
+                    "code": "ANALYZE_CONTEXT_REQUIRED",
+                    "message": (
+                        "Analysis requires both world-model portfolio context "
+                        "and Renaissance screening context."
+                    ),
+                    "ticker": ticker,
+                    "missing_requirements": missing_requirements,
+                    "context_integrity": context_integrity,
+                },
+                terminal=True,
+            )
+            return
+        renaissance_comparison = _build_renaissance_comparison(renaissance_context)
+
         # Yield thinking event about context retrieval
         yield create_event(
             "kai_thinking",
@@ -981,7 +1159,7 @@ async def analyze_stream_generator(
             {
                 "phase": "analysis",
                 "round": 1,
-                "message": f"🧠 Initializing analysis pipeline for {ticker}...",
+                "message": f"🧠 Starting analysis pipeline for {ticker}...",
                 "tokens": [
                     "Activating",
                     "three",
@@ -1723,6 +1901,11 @@ async def analyze_stream_generator(
             market_trend_score=market_trend_score,
         )
         analysis_updated_at = _now_utc_iso()
+        market_snapshot = _derive_market_snapshot(
+            valuation_metrics=valuation_insight.valuation_metrics,
+            price_targets=valuation_insight.price_targets,
+            analysis_updated_at=analysis_updated_at,
+        )
 
         world_model_context = {
             "risk_profile": full_user_context.get("risk_profile"),
@@ -1770,6 +1953,8 @@ async def analyze_stream_generator(
             "dissenting_opinions": debate_result.dissenting_opinions,
             "debate_highlights": debate_highlights[:20],
             "world_model_context": world_model_context,
+            "context_integrity": context_integrity,
+            "renaissance_comparison": renaissance_comparison,
             "renaissance_tier": renaissance_context.get("tier"),
             "renaissance_score": float(renaissance_context.get("conviction_weight", 0.0) or 0.0)
             * 100.0,
@@ -1804,6 +1989,7 @@ async def analyze_stream_generator(
             "fair_value_score": fair_value_score,
             "fair_value_gap_pct": fair_value_gap_pct,
             "analysis_updated_at": analysis_updated_at,
+            "market_snapshot": market_snapshot,
             "short_recommendation": short_recommendation,
             "analysis_degraded": analysis_degraded,
             "degraded_agents": sorted(set(degraded_agents)),
@@ -1839,6 +2025,7 @@ async def analyze_stream_generator(
                 "fair_value_score": fair_value_score,
                 "fair_value_gap_pct": fair_value_gap_pct,
                 "analysis_updated_at": analysis_updated_at,
+                "market_snapshot": market_snapshot,
                 "short_recommendation": short_recommendation,
                 "analysis_degraded": analysis_degraded,
                 "degraded_agents": sorted(set(degraded_agents)),
@@ -1850,6 +2037,8 @@ async def analyze_stream_generator(
                 "symbol_eligibility": symbol_eligibility,
                 "eligibility_reason": eligibility_reason,
                 "eligibility_source": eligibility_source,
+                "context_integrity": context_integrity,
+                "renaissance_comparison": renaissance_comparison,
                 "raw_card": raw_card,
                 "round": 2,
                 "phase": "decision",
@@ -1885,6 +2074,75 @@ async def analyze_stream_generator(
         _stream_ctx.reset(stream_token)
 
 
+def _create_sse_response(generator: AsyncGenerator[dict, None]) -> EventSourceResponse:
+    async def _instrumented() -> AsyncGenerator[dict, None]:
+        started = time.perf_counter()
+        event_count = 0
+        saw_terminal = False
+        request_id = get_request_id() or "unknown"
+        logger.info(
+            "stream.lifecycle_start stream=kai_analyze request_id=%s",
+            request_id,
+        )
+        try:
+            async for frame in generator:
+                event_count += 1
+                data = frame.get("data") if isinstance(frame, dict) else None
+                if isinstance(data, str) and '"terminal":true' in data.replace(" ", "").lower():
+                    saw_terminal = True
+                yield frame
+        finally:
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            logger.info(
+                "stream.lifecycle_end stream=kai_analyze request_id=%s duration_ms=%s event_count=%s terminal=%s",
+                request_id,
+                duration_ms,
+                event_count,
+                saw_terminal,
+            )
+
+    return EventSourceResponse(
+        _instrumented(),
+        ping=15,
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
+
+
+def _parse_cursor(cursor: Optional[int]) -> int:
+    if cursor is None:
+        return 0
+    try:
+        parsed = int(cursor)
+    except Exception as exc:  # pragma: no cover - guard
+        raise HTTPException(status_code=422, detail="cursor must be an integer") from exc
+    if parsed < 0:
+        raise HTTPException(status_code=422, detail="cursor must be >= 0")
+    return parsed
+
+
+def _stream_factory(
+    ticker: str,
+    user_id: str,
+    consent_token: str,
+    risk_profile: str,
+    context: Optional[Dict[str, Any]],
+    request: Request,
+) -> AsyncGenerator[dict, None]:
+    return analyze_stream_generator(
+        ticker=ticker,
+        user_id=user_id,
+        consent_token=consent_token,
+        risk_profile=risk_profile,
+        context=context,
+        request=request,
+    )
+
+
 # ============================================================================
 # SSE ENDPOINTS
 # ============================================================================
@@ -1913,21 +2171,8 @@ async def analyze_stream(
     - decision: Final decision card
     - error: Fatal error
     """
-
-    # Validate consent token
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401, detail="Missing consent token. Call /api/consent/owner-token first."
-        )
-
-    consent_token = authorization.replace("Bearer ", "")
-    valid, reason, payload = validate_token(consent_token, ConsentScope.VAULT_OWNER)
-
-    if not valid or not payload:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {reason}")
-
-    if payload.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Token user mismatch")
+    # Auth path includes validate_token() inside _require_vault_owner_token().
+    consent_token = await _require_vault_owner_token(user_id=user_id, authorization=authorization)
 
     # Log operation for audit trail (shows what vault.owner token was used for)
     consent_service = ConsentDBService()
@@ -1940,7 +2185,7 @@ async def analyze_stream(
 
     logger.info(f"[Kai Stream] SSE connection opened for {ticker} - user {user_id}")
 
-    return EventSourceResponse(
+    return _create_sse_response(
         analyze_stream_generator(
             ticker=ticker,
             user_id=user_id,
@@ -1948,14 +2193,7 @@ async def analyze_stream(
             risk_profile=risk_profile,
             context=None,
             request=request,
-        ),
-        ping=15,
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-            "Access-Control-Allow-Origin": "*",
-        },
+        )
     )
 
 
@@ -1967,22 +2205,46 @@ async def analyze_stream_post(
 ):
     """
     POST version of streaming analysis (allows context in body).
+    Also supports streaming an existing resumable run via run_id.
     """
+    # Auth path includes validate_token() inside _require_vault_owner_token().
+    consent_token = await _require_vault_owner_token(
+        user_id=body.user_id,
+        authorization=authorization,
+    )
 
-    # Validate consent token
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401, detail="Missing consent token. Call /api/consent/owner-token first."
+    if body.run_id:
+        run = await _RUN_MANAGER.get_run(body.run_id)
+        if run is None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "ANALYZE_RUN_NOT_FOUND",
+                    "message": "No run found for requested run_id.",
+                    "run_id": body.run_id,
+                },
+            )
+        if run.user_id != body.user_id:
+            raise HTTPException(status_code=403, detail="Token user mismatch")
+
+        start_cursor = _parse_cursor(body.resume_cursor)
+        if start_cursor > run.latest_cursor:
+            raise HTTPException(
+                status_code=410,
+                detail={
+                    "code": "ANALYZE_RUN_RESUME_EXPIRED",
+                    "message": "Requested cursor is beyond buffered events.",
+                    "run_id": run.run_id,
+                    "latest_cursor": run.latest_cursor,
+                },
+            )
+        return _create_sse_response(
+            _RUN_MANAGER.stream_run_events(
+                run=run,
+                start_cursor=start_cursor,
+                request=request,
+            )
         )
-
-    consent_token = authorization.replace("Bearer ", "")
-    valid, reason, payload = validate_token(consent_token, ConsentScope.VAULT_OWNER)
-
-    if not valid or not payload:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {reason}")
-
-    if payload.user_id != body.user_id:
-        raise HTTPException(status_code=403, detail="Token user mismatch")
 
     # Log operation for audit trail (shows what vault.owner token was used for)
     consent_service = ConsentDBService()
@@ -1997,7 +2259,7 @@ async def analyze_stream_post(
         },
     )
 
-    return EventSourceResponse(
+    return _create_sse_response(
         analyze_stream_generator(
             ticker=body.ticker,
             user_id=body.user_id,
@@ -2005,12 +2267,125 @@ async def analyze_stream_post(
             risk_profile=body.risk_profile,
             context=body.context,
             request=request,
-        ),
-        ping=15,
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-            "Access-Control-Allow-Origin": "*",
+        )
+    )
+
+
+@router.post("/analyze/run/start")
+async def analyze_run_start(
+    body: StartAnalyzeRunRequest,
+    authorization: Optional[str] = Header(None, description="Bearer VAULT_OWNER consent token"),
+):
+    """Start or attach to a session-locked background analyze run."""
+    consent_token = await _require_vault_owner_token(
+        user_id=body.user_id,
+        authorization=authorization,
+    )
+    consent_service = ConsentDBService()
+    await consent_service.log_operation(
+        user_id=body.user_id,
+        operation="kai.analyze.run.start",
+        target=body.ticker,
+        metadata={
+            "risk_profile": body.risk_profile,
+            "debate_session_id": body.debate_session_id,
+            "has_context": body.context is not None,
         },
     )
+    state, run = await _RUN_MANAGER.start_or_get_active(
+        user_id=body.user_id,
+        debate_session_id=body.debate_session_id,
+        ticker=body.ticker,
+        risk_profile=body.risk_profile,
+        context=body.context,
+        consent_token=consent_token,
+        generator_factory=_stream_factory,
+    )
+    if state == "active":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "ANALYZE_RUN_ALREADY_ACTIVE",
+                "message": "A debate run is already active for this client session.",
+                "active_run": run.to_public_dict(),
+            },
+        )
+    return {"run": run.to_public_dict()}
+
+
+@router.get("/analyze/run/active")
+async def analyze_run_active(
+    user_id: str,
+    debate_session_id: str,
+    authorization: Optional[str] = Header(None, description="Bearer VAULT_OWNER consent token"),
+):
+    """Get active run for a given user/session.
+
+    Returns HTTP 200 with ``{"run": null}`` when no active run exists.
+    """
+    await _require_vault_owner_token(user_id=user_id, authorization=authorization)
+    run = await _RUN_MANAGER.get_active(user_id=user_id, debate_session_id=debate_session_id)
+    return {"run": run.to_public_dict() if run else None}
+
+
+@router.get("/analyze/run/{run_id}/stream")
+async def analyze_run_stream(
+    request: Request,
+    run_id: str,
+    user_id: str,
+    cursor: Optional[int] = 0,
+    authorization: Optional[str] = Header(None, description="Bearer VAULT_OWNER consent token"),
+):
+    """Replay buffered events (from cursor) and continue streaming live."""
+    await _require_vault_owner_token(user_id=user_id, authorization=authorization)
+    run = await _RUN_MANAGER.get_run(run_id)
+    if run is None or run.user_id != user_id:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ANALYZE_RUN_NOT_FOUND",
+                "message": "No run found for requested run_id.",
+                "run_id": run_id,
+            },
+        )
+
+    start_cursor = _parse_cursor(cursor)
+    if start_cursor > run.latest_cursor:
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "code": "ANALYZE_RUN_RESUME_EXPIRED",
+                "message": "Requested cursor is beyond buffered events.",
+                "run_id": run.run_id,
+                "latest_cursor": run.latest_cursor,
+            },
+        )
+
+    return _create_sse_response(
+        _RUN_MANAGER.stream_run_events(
+            run=run,
+            start_cursor=start_cursor,
+            request=request,
+        )
+    )
+
+
+@router.post("/analyze/run/{run_id}/cancel")
+async def analyze_run_cancel(
+    run_id: str,
+    user_id: str,
+    authorization: Optional[str] = Header(None, description="Bearer VAULT_OWNER consent token"),
+):
+    """Cancel an active run."""
+    await _require_vault_owner_token(user_id=user_id, authorization=authorization)
+    run = await _RUN_MANAGER.cancel_run(run_id=run_id, user_id=user_id)
+    if run is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "ANALYZE_RUN_NOT_FOUND",
+                "message": "No run found for requested run_id.",
+                "run_id": run_id,
+            },
+        )
+    return {"run": run.to_public_dict()}

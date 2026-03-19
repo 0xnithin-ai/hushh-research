@@ -33,9 +33,9 @@ Usage:
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from db.db_client import get_db
+from db.db_client import DatabaseExecutionError, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,93 @@ class ConsentDBService:
         if self._supabase is None:
             self._supabase = get_db()
         return self._supabase
+
+    @staticmethod
+    def _normalize_agent_id(agent_id: Optional[str]) -> str:
+        return str(agent_id or "").strip().lower()
+
+    @classmethod
+    def _is_internal_event(
+        cls,
+        *,
+        agent_id: Optional[str],
+        action: Optional[str],
+        scope: Optional[str],
+    ) -> bool:
+        normalized_agent = cls._normalize_agent_id(agent_id)
+        normalized_action = str(action or "").strip().upper()
+        normalized_scope = str(scope or "").strip().lower()
+
+        if normalized_action == "OPERATION_PERFORMED":
+            return True
+        if normalized_agent in {"self", "agent_kai", "kai"}:
+            return True
+        if normalized_scope == "vault.owner" and normalized_agent in {"", "system"}:
+            return True
+        return False
+
+    @classmethod
+    def _is_external_audit_row(cls, row: Dict[str, Any]) -> bool:
+        return not cls._is_internal_event(
+            agent_id=row.get("agent_id"),
+            action=row.get("action"),
+            scope=row.get("scope"),
+        )
+
+    @staticmethod
+    def _parse_metadata(metadata: Any) -> Dict[str, Any]:
+        if isinstance(metadata, dict):
+            return metadata
+        if isinstance(metadata, str):
+            try:
+                parsed = json.loads(metadata)
+                return parsed if isinstance(parsed, dict) else {}
+            except json.JSONDecodeError:
+                return {}
+        return {}
+
+    @staticmethod
+    def _is_missing_internal_access_events_error(exc: Exception) -> bool:
+        message = str(exc)
+        return "internal_access_events" in message and (
+            "does not exist" in message or "UndefinedTable" in message
+        )
+
+    async def _get_legacy_internal_rows(
+        self,
+        user_id: str,
+        *,
+        agent_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        actions: Optional[List[str]] = None,
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Fallback for older databases that still store self activity in consent_audit."""
+        supabase = self._get_supabase()
+        query = supabase.table("consent_audit").select("*").eq("user_id", user_id)
+        if actions:
+            query = query.in_("action", actions)
+        query = query.order("issued_at", desc=True)
+        if limit:
+            query = query.limit(limit)
+
+        response = query.execute()
+        rows: List[Dict[str, Any]] = []
+        for row in response.data or []:
+            row_scope = row.get("scope")
+            row_agent_id = row.get("agent_id") or ""
+            if not self._is_internal_event(
+                agent_id=row_agent_id,
+                action=row.get("action"),
+                scope=row_scope,
+            ):
+                continue
+            if agent_id and row_agent_id != agent_id:
+                continue
+            if scope and row_scope != scope:
+                continue
+            rows.append(row)
+        return rows
 
     # =========================================================================
     # Pending Requests
@@ -85,6 +172,8 @@ class ConsentDBService:
         # Post-process to get latest per request_id (DISTINCT ON equivalent)
         latest_per_request = {}
         for row in response.data:
+            if not self._is_external_audit_row(row):
+                continue
             request_id = row.get("request_id")
             if not request_id:
                 continue
@@ -118,11 +207,16 @@ class ConsentDBService:
                         {
                             "id": row.get("request_id"),
                             "developer": row.get("agent_id"),
+                            "agent_id": row.get("agent_id"),
                             "scope": row.get("scope"),
                             "scopeDescription": row.get("scope_description"),
                             "requestedAt": row.get("issued_at"),
                             "pollTimeoutAt": poll_timeout_at,
                             "expiryHours": expiry_hours,
+                            "metadata": metadata,
+                            "bundleId": metadata.get("bundle_id"),
+                            "bundleLabel": metadata.get("bundle_label"),
+                            "bundleScopeCount": metadata.get("bundle_scope_count"),
                         }
                     )
 
@@ -147,21 +241,22 @@ class ConsentDBService:
 
         if response.data and len(response.data) > 0:
             row = response.data[0]
+            if not self._is_external_audit_row(row):
+                return None
             if row.get("action") == "REQUESTED":
-                metadata = row.get("metadata") or {}
-                if isinstance(metadata, str):
-                    try:
-                        metadata = json.loads(metadata) if metadata else {}
-                    except json.JSONDecodeError:
-                        metadata = {}
+                metadata = self._parse_metadata(row.get("metadata"))
                 return {
                     "request_id": row.get("request_id"),
                     "developer": row.get("agent_id"),
+                    "agent_id": row.get("agent_id"),
                     "scope": row.get("scope"),
                     "scope_description": row.get("scope_description"),
                     "poll_timeout_at": row.get("poll_timeout_at"),
                     "issued_at": row.get("issued_at"),
                     "metadata": metadata,
+                    "bundle_id": metadata.get("bundle_id"),
+                    "bundle_label": metadata.get("bundle_label"),
+                    "bundle_scope_count": metadata.get("bundle_scope_count"),
                 }
         return None
 
@@ -198,6 +293,8 @@ class ConsentDBService:
         # Post-process to get latest per (agent_id, scope) (DISTINCT ON equivalent)
         latest_per_agent_scope = {}
         for row in response.data:
+            if not self._is_external_audit_row(row):
+                continue
             row_scope = row.get("scope")
             row_agent_id = row.get("agent_id") or ""
             if not row_scope:
@@ -238,8 +335,83 @@ class ConsentDBService:
                             "time_remaining_ms": (expires_at - now_ms) if expires_at else 0,
                             "request_id": row.get("request_id"),
                             "token_id": token_id,
+                            "metadata": self._parse_metadata(row.get("metadata")) or None,
                         }
                     )
+
+        return results
+
+    async def get_active_internal_tokens(
+        self,
+        user_id: str,
+        agent_id: Optional[str] = None,
+        scope: Optional[str] = None,
+    ) -> List[Dict]:
+        """Get active internal/self tokens without exposing them to the external consent ledger."""
+        now_ms = int(datetime.now().timestamp() * 1000)
+        try:
+            supabase = self._get_supabase()
+            response_data = (
+                supabase.table("internal_access_events")
+                .select("*")
+                .eq("user_id", user_id)
+                .in_("action", ["CONSENT_GRANTED", "REVOKED"])
+                .order("issued_at", desc=True)
+                .execute()
+            ).data or []
+        except DatabaseExecutionError as exc:
+            if not self._is_missing_internal_access_events_error(exc):
+                raise
+            logger.warning(
+                "internal_access_events_missing fallback=consent_audit action=get_active_internal_tokens"
+            )
+            response_data = await self._get_legacy_internal_rows(
+                user_id,
+                agent_id=agent_id,
+                scope=scope,
+                actions=["CONSENT_GRANTED", "REVOKED"],
+            )
+
+        latest_per_agent_scope = {}
+        for row in response_data:
+            row_scope = row.get("scope")
+            row_agent_id = row.get("agent_id") or ""
+            if not row_scope:
+                continue
+            if agent_id and row_agent_id != agent_id:
+                continue
+            if scope and row_scope != scope:
+                continue
+
+            key = (row_agent_id, row_scope)
+            current = latest_per_agent_scope.get(key)
+            if current is None or (row.get("issued_at") or 0) > (current.get("issued_at") or 0):
+                latest_per_agent_scope[key] = row
+
+        results = []
+        for row in latest_per_agent_scope.values():
+            if row.get("action") != "CONSENT_GRANTED":
+                continue
+            expires_at = row.get("expires_at")
+            if expires_at is not None and expires_at <= now_ms:
+                continue
+            token_id = row.get("token_id")
+            results.append(
+                {
+                    "id": token_id[:20] + "..."
+                    if token_id and len(token_id) > 20
+                    else str(row.get("id")),
+                    "scope": row.get("scope"),
+                    "developer": row.get("agent_id"),
+                    "agent_id": row.get("agent_id"),
+                    "issued_at": row.get("issued_at"),
+                    "expires_at": expires_at,
+                    "time_remaining_ms": (expires_at - now_ms) if expires_at else 0,
+                    "request_id": row.get("request_id"),
+                    "token_id": token_id,
+                    "scope_description": row.get("scope_description"),
+                }
+            )
 
         return results
 
@@ -247,31 +419,72 @@ class ConsentDBService:
         self, user_id: str, scope: str, agent_id: Optional[str] = None
     ) -> bool:
         """Check if there's an active token for user+scope (+agent_id when provided)."""
-        supabase = self._get_supabase()
         now_ms = int(datetime.now().timestamp() * 1000)
-
-        query = (
-            supabase.table("consent_audit")
-            .select("action,expires_at")
-            .eq("user_id", user_id)
-            .eq("scope", scope)
-            .in_("action", ["CONSENT_GRANTED", "REVOKED"])
+        normalized_scope = str(scope or "").strip()
+        normalized_agent_id = agent_id or None
+        is_internal_lookup = self._is_internal_event(
+            agent_id=normalized_agent_id,
+            action="CONSENT_GRANTED",
+            scope=normalized_scope,
         )
-        if agent_id:
-            query = query.eq("agent_id", agent_id)
 
-        response = query.order("issued_at", desc=True).limit(1).execute()
+        rows: List[Dict[str, Any]]
 
-        if response.data and len(response.data) > 0:
-            row = response.data[0]
-            if row.get("action") == "CONSENT_GRANTED":
-                expires_at = row.get("expires_at")
-                return expires_at is None or expires_at > now_ms
+        if is_internal_lookup:
+            try:
+                supabase = self._get_supabase()
+                query = (
+                    supabase.table("internal_access_events")
+                    .select("action,expires_at,issued_at")
+                    .eq("user_id", user_id)
+                    .eq("scope", normalized_scope)
+                    .in_("action", ["CONSENT_GRANTED", "REVOKED"])
+                )
+                if normalized_agent_id:
+                    query = query.eq("agent_id", normalized_agent_id)
+                rows = query.order("issued_at", desc=True).limit(1).execute().data or []
+            except DatabaseExecutionError as exc:
+                if not self._is_missing_internal_access_events_error(exc):
+                    raise
+                logger.warning(
+                    "internal_access_events_missing fallback=consent_audit action=is_token_active"
+                )
+                rows = await self._get_legacy_internal_rows(
+                    user_id,
+                    agent_id=normalized_agent_id,
+                    scope=normalized_scope,
+                    actions=["CONSENT_GRANTED", "REVOKED"],
+                    limit=1,
+                )
+        else:
+            supabase = self._get_supabase()
+            query = (
+                supabase.table("consent_audit")
+                .select("action,expires_at,issued_at")
+                .eq("user_id", user_id)
+                .eq("scope", normalized_scope)
+                .in_("action", ["CONSENT_GRANTED", "REVOKED"])
+            )
+            if normalized_agent_id:
+                query = query.eq("agent_id", normalized_agent_id)
+            rows = query.order("issued_at", desc=True).limit(1).execute().data or []
 
-        return False
+        if not rows:
+            return False
+
+        row = rows[0]
+        if row.get("action") != "CONSENT_GRANTED":
+            return False
+
+        expires_at = row.get("expires_at")
+        return expires_at is None or expires_at > now_ms
 
     async def was_recently_denied(
-        self, user_id: str, scope: str, cooldown_seconds: int = 60
+        self,
+        user_id: str,
+        scope: str,
+        cooldown_seconds: int = 60,
+        agent_id: Optional[str] = None,
     ) -> bool:
         """
         Check if consent was recently denied for user+scope.
@@ -291,10 +504,11 @@ class ConsentDBService:
             .eq("scope", scope)
             .eq("action", "CONSENT_DENIED")
             .gt("issued_at", cutoff_ms)
-            .order("issued_at", desc=True)
-            .limit(1)
-            .execute()
         )
+        if agent_id:
+            response = response.eq("agent_id", agent_id)
+
+        response = response.order("issued_at", desc=True).limit(1).execute()
 
         return len(response.data) > 0 if response.data else False
 
@@ -327,21 +541,15 @@ class ConsentDBService:
             .limit(5000)
             .execute()
         )
-        total = len(count_response.data or [])
+        filtered_rows = [row for row in (response.data or []) if self._is_external_audit_row(row)]
+        total = len(
+            [row for row in (count_response.data or []) if self._is_external_audit_row(row)]
+        )
 
         items = []
-        for row in response.data or []:
+        for row in filtered_rows:
             # Parse metadata JSON if present
-            metadata = None
-            if row.get("metadata"):
-                try:
-                    metadata_str = row.get("metadata")
-                    if isinstance(metadata_str, str):
-                        metadata = json.loads(metadata_str)
-                    else:
-                        metadata = metadata_str
-                except (json.JSONDecodeError, TypeError):
-                    metadata = None
+            metadata = self._parse_metadata(row.get("metadata")) or None
 
             token_id = row.get("token_id")
             items.append(
@@ -370,6 +578,66 @@ class ConsentDBService:
             "total": total,
             "page": page,
             "limit": limit,
+        }
+
+    async def get_internal_activity_summary(self, user_id: str, limit: int = 8) -> Dict[str, Any]:
+        """Return a small self/internal activity summary for a separate investor-facing surface."""
+        now_ms = int(datetime.now().timestamp() * 1000)
+        day_cutoff_ms = now_ms - (24 * 60 * 60 * 1000)
+        try:
+            supabase = self._get_supabase()
+            recent_rows = (
+                supabase.table("internal_access_events")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("issued_at", desc=True)
+                .limit(limit)
+                .execute()
+            ).data or []
+            daily_rows = (
+                supabase.table("internal_access_events")
+                .select("id")
+                .eq("user_id", user_id)
+                .gt("issued_at", day_cutoff_ms)
+                .limit(5000)
+                .execute()
+            ).data or []
+        except DatabaseExecutionError as exc:
+            if not self._is_missing_internal_access_events_error(exc):
+                raise
+            logger.warning(
+                "internal_access_events_missing fallback=consent_audit action=get_internal_activity_summary"
+            )
+            legacy_rows = await self._get_legacy_internal_rows(user_id, limit=5000)
+            recent_rows = legacy_rows[:limit]
+            daily_rows = [row for row in legacy_rows if (row.get("issued_at") or 0) > day_cutoff_ms]
+        active_sessions = await self.get_active_internal_tokens(
+            user_id,
+            agent_id="self",
+            scope="vault.owner",
+        )
+
+        recent_items = []
+        for row in recent_rows:
+            metadata = self._parse_metadata(row.get("metadata")) or None
+            recent_items.append(
+                {
+                    "id": str(row.get("id") or row.get("token_id") or ""),
+                    "agent_id": row.get("agent_id"),
+                    "scope": row.get("scope"),
+                    "action": row.get("action"),
+                    "scope_description": row.get("scope_description"),
+                    "issued_at": row.get("issued_at"),
+                    "expires_at": row.get("expires_at"),
+                    "metadata": metadata,
+                }
+            )
+
+        return {
+            "active_sessions": len(active_sessions),
+            "recent_operations_24h": len(daily_rows),
+            "last_activity_at": recent_items[0].get("issued_at") if recent_items else None,
+            "recent": recent_items,
         }
 
     async def delete_audit_log(
@@ -468,6 +736,19 @@ class ConsentDBService:
 
         Returns the event ID.
         """
+        if self._is_internal_event(agent_id=agent_id, action=action, scope=scope):
+            return await self.insert_internal_event(
+                user_id=user_id,
+                agent_id=agent_id,
+                scope=scope,
+                action=action,
+                token_id=token_id,
+                request_id=request_id,
+                scope_description=scope_description,
+                expires_at=expires_at,
+                metadata=metadata,
+            )
+
         supabase = self._get_supabase()
 
         issued_at = int(datetime.now().timestamp() * 1000)
@@ -506,6 +787,59 @@ class ConsentDBService:
                 f"Inserted {action} event but no ID returned, using issued_at: {issued_at}"
             )
             return issued_at
+
+    async def insert_internal_event(
+        self,
+        user_id: str,
+        agent_id: str,
+        scope: str,
+        action: str,
+        token_id: Optional[str] = None,
+        request_id: Optional[str] = None,
+        scope_description: Optional[str] = None,
+        expires_at: Optional[int] = None,
+        metadata: Optional[Dict] = None,
+    ) -> int:
+        """Insert an internal/self activity event into the internal ledger."""
+        supabase = self._get_supabase()
+        issued_at = int(datetime.now().timestamp() * 1000)
+        token_id = token_id or f"evt_{issued_at}"
+        metadata_json = json.dumps(metadata) if metadata else None
+
+        data = {
+            "token_id": token_id,
+            "user_id": user_id,
+            "agent_id": agent_id,
+            "scope": scope,
+            "action": action,
+            "request_id": request_id,
+            "scope_description": scope_description,
+            "issued_at": issued_at,
+            "expires_at": expires_at,
+            "metadata": metadata_json,
+        }
+        data = {k: v for k, v in data.items() if v is not None}
+
+        try:
+            response = supabase.table("internal_access_events").insert(data).execute()
+        except DatabaseExecutionError as exc:
+            if not self._is_missing_internal_access_events_error(exc):
+                raise
+            logger.warning(
+                "internal_access_events_missing fallback=consent_audit action=insert_internal_event"
+            )
+            response = supabase.table("consent_audit").insert(data).execute()
+        if response.data and len(response.data) > 0:
+            event_id = response.data[0].get("id")
+            logger.info("Inserted internal %s event: %s", action, event_id)
+            return event_id
+
+        logger.warning(
+            "Inserted internal %s event but no ID returned, using issued_at: %s",
+            action,
+            issued_at,
+        )
+        return issued_at
 
     async def get_timed_out_requests(self) -> List[Dict]:
         """
@@ -553,6 +887,8 @@ class ConsentDBService:
         Find REQUESTED rows that have timed out, insert TIMEOUT events (triggers NOTIFY → SSE).
         Returns the number of TIMEOUT events inserted.
         """
+        from hushh_mcp.services.ria_iam_service import RIAIAMService
+
         rows = await self.get_timed_out_requests()
         count = 0
         for row in rows:
@@ -565,6 +901,20 @@ class ConsentDBService:
                     request_id=row.get("request_id"),
                     scope_description=row.get("scope_description"),
                 )
+                try:
+                    await RIAIAMService().sync_relationship_from_consent_action(
+                        user_id=row["user_id"],
+                        request_id=row.get("request_id"),
+                        action="TIMEOUT",
+                        agent_id=row.get("agent_id"),
+                        scope=row.get("scope"),
+                    )
+                except Exception as sync_error:
+                    logger.warning(
+                        "Emit TIMEOUT relationship sync failed for request_id=%s: %s",
+                        row.get("request_id"),
+                        sync_error,
+                    )
                 count += 1
             except Exception as e:
                 logger.warning(
@@ -601,7 +951,7 @@ class ConsentDBService:
             **(metadata or {}),
         }
 
-        return await self.insert_event(
+        return await self.insert_internal_event(
             user_id=user_id,
             agent_id="self",
             scope="vault.owner",
@@ -632,16 +982,41 @@ class ConsentDBService:
 
         response = (
             supabase.table("consent_audit")
-            .select("token_id,request_id,action,scope,agent_id,issued_at")
+            .select(
+                "token_id,request_id,action,scope,agent_id,issued_at,scope_description,metadata,expires_at"
+            )
             .eq("user_id", user_id)
-            .in_("action", ["REQUESTED", "CONSENT_GRANTED", "CONSENT_DENIED", "REVOKED"])
+            .in_(
+                "action",
+                [
+                    "REQUESTED",
+                    "CONSENT_GRANTED",
+                    "CONSENT_DENIED",
+                    "REVOKED",
+                    "CANCELLED",
+                    "TIMEOUT",
+                ],
+            )
             .gt("issued_at", after_timestamp_ms)
             .order("issued_at", desc=True)
             .limit(limit)
             .execute()
         )
-
-        return response.data or []
+        events = []
+        for row in response.data or []:
+            if not self._is_external_audit_row(row):
+                continue
+            metadata = self._parse_metadata(row.get("metadata"))
+            events.append(
+                {
+                    **row,
+                    "metadata": metadata,
+                    "bundle_id": metadata.get("bundle_id"),
+                    "bundle_label": metadata.get("bundle_label"),
+                    "bundle_scope_count": metadata.get("bundle_scope_count"),
+                }
+            )
+        return events
 
     async def get_resolved_request(self, user_id: str, request_id: str) -> Optional[Dict]:
         """
@@ -668,7 +1043,40 @@ class ConsentDBService:
         )
 
         if response.data and len(response.data) > 0:
-            return response.data[0]
+            row = response.data[0]
+            if not self._is_external_audit_row(row):
+                return None
+            return row
+        return None
+
+    async def get_request_status(self, user_id: str, request_id: str) -> Optional[Dict]:
+        """Return the latest external consent event for one request_id."""
+        supabase = self._get_supabase()
+
+        response = (
+            supabase.table("consent_audit")
+            .select(
+                "id,token_id,request_id,action,scope,agent_id,issued_at,scope_description,metadata,expires_at,poll_timeout_at"
+            )
+            .eq("user_id", user_id)
+            .eq("request_id", request_id)
+            .order("issued_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if response.data and len(response.data) > 0:
+            row = response.data[0]
+            if not self._is_external_audit_row(row):
+                return None
+            metadata = self._parse_metadata(row.get("metadata"))
+            return {
+                **row,
+                "metadata": metadata,
+                "bundle_id": metadata.get("bundle_id"),
+                "bundle_label": metadata.get("bundle_label"),
+                "bundle_scope_count": metadata.get("bundle_scope_count"),
+            }
         return None
 
     # =========================================================================

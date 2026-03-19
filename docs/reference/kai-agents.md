@@ -101,7 +101,7 @@ The analysis endpoint (`GET /api/kai/analyze/stream`) streams real-time debate p
 Kai streaming now uses one strict canonical contract shared with Import/Optimize.
 
 Contract source of truth:
-- `docs/reference/streaming-contract.md`
+- `docs/reference/streaming/streaming-contract.md`
 
 ### Canonical Envelope
 
@@ -137,6 +137,19 @@ Rules:
 - `event:` line must match envelope `event`.
 - `round`/`phase` are explicit producer metadata; frontend must not infer them.
 - Every stream ends with exactly one terminal `decision` or `error`.
+
+### Portfolio Import Quality Gate Semantics
+
+Portfolio import quality checks now use severity semantics instead of hard-failing all strict mismatches:
+
+- `severity=pass`: import is fully accepted.
+- `severity=warn`: import continues, and `quality_gate.reasons` explains partial coverage.
+- `severity=fail`: import is blocked (used for unusable parses like missing required keys or zero holdings).
+
+Strict terminal codes for import extraction:
+- `IMPORT_JSON_INVALID`
+- `IMPORT_SCHEMA_INVALID`
+- `IMPORT_NO_HOLDINGS`
 
 ### Agent Execution Order
 

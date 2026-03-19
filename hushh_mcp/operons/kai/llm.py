@@ -464,7 +464,7 @@ Your mission is to perform a high-conviction, data-driven "Earnings Quality & Mo
 
 ### OPERATIONAL RULES
 - Use Billions ($B) for all monetary values.
-- Maintain a cold, analytical tone.
+- Keep language clear for everyday investors while preserving institutional rigor.
 - If data is missing (N/A), use your knowledge of the sector to explain what that missing piece usually signifies for a company like this.
 - DO NOT use markdown formatting inside the JSON strings.
 """
@@ -504,6 +504,7 @@ async def analyze_sentiment_with_gemini(
     user_id: UserID,
     consent_token: str,
     news_articles: List[Dict[str, Any]],
+    market_data: Optional[Dict[str, Any]] = None,
     user_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -542,6 +543,13 @@ async def analyze_sentiment_with_gemini(
     
     [Recent News Articles]
     {news_context}
+
+    [Market Snapshot]
+    Current Price: {market_data.get("price", "N/A") if market_data else "N/A"}
+    Day Change %: {market_data.get("change_percent", market_data.get("change_pct", "N/A")) if market_data else "N/A"}
+    Volume: {market_data.get("volume", "N/A") if market_data else "N/A"}
+    Market Cap: {market_data.get("market_cap", "N/A") if market_data else "N/A"}
+    Sector: {market_data.get("sector", "Unknown") if market_data else "Unknown"}
     
     [Investor Profile]
     Risk Tolerance: {user_risk}
@@ -564,6 +572,7 @@ Analyze the provided news articles and assess market sentiment for this stock.
 - Focus on actionable insights, not generic observations
 - Weight recent news more heavily
 - Identify both positive and negative signals
+- Use plain investor language and avoid internal system jargon
 - DO NOT use markdown inside JSON strings
 """
 
@@ -671,6 +680,7 @@ Perform a comprehensive valuation analysis with focus on relative and intrinsic 
 - Use multiple valuation methods (P/E, EV/EBITDA, DCF if possible)
 - Compare to sector averages
 - Consider growth rates when evaluating multiples
+- Keep wording concise and investor-friendly
 - DO NOT use markdown inside JSON strings
 """
 
@@ -723,8 +733,10 @@ async def synthesize_debate_recommendation_card(
 You are Kai Chief Investment Strategist.
 You are given finalized multi-agent debate artifacts for {ticker}.
 
-Your task: produce a concise, institution-grade synthesis that unifies
-fundamental/sentiment/valuation, user context, and Renaissance screening.
+Your task: produce a concise, institution-grade synthesis that explicitly fuses:
+1) AlphaAgents debate outputs,
+2) world-model portfolio/user context,
+3) Renaissance screening signals.
 
 Return STRICT JSON with keys:
 - thesis: string (1 short paragraph)
@@ -737,7 +749,11 @@ Return STRICT JSON with keys:
 Constraints:
 - No markdown.
 - No generic filler.
-- Mention Renaissance tier and at least one user-context personalization.
+- Use investor-friendly language suitable for portfolio owners.
+- Must mention Renaissance tier/screening signal explicitly.
+- Must include at least one concrete user-context personalization (holdings/risk/horizon/style).
+- Must include at least one portfolio impact statement (concentration, diversification, drawdown, or risk tradeoff).
+- If Renaissance signal conflicts with debate recommendation, state the conflict and risk-control framing.
 - Keep each bullet <= 140 chars.
 
 INPUT:

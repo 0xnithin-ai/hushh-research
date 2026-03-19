@@ -32,7 +32,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from db.db_client import get_db
 from hushh_mcp.services.domain_contracts import (
@@ -135,6 +135,7 @@ class WorldModelService:
         self._domain_registry = None
         self._domain_inferrer = None
         self._scope_generator = None
+        self._blob_upsert_rpc_supported: Optional[bool] = None
 
     _SUMMARY_BLOCKLIST = {"holdings", "total_value", "vault_key", "password"}
     _RETIRED_DOMAIN_KEYS = {str(key).strip().lower() for key in RETIRED_DOMAIN_REGISTRY_KEYS}
@@ -177,6 +178,46 @@ class WorldModelService:
     def _run_rpc(self, function_name: str, params: Optional[dict] = None):
         call = self.supabase.rpc(function_name, params or {})
         return call.execute() if hasattr(call, "execute") else call
+
+    def _supports_blob_upsert_rpc(self) -> bool:
+        if self._blob_upsert_rpc_supported is not None:
+            return self._blob_upsert_rpc_supported
+
+        client = self.supabase
+        if not hasattr(client, "execute_raw"):
+            # Non-SQLAlchemy clients may still support rpc(); keep optimistic.
+            self._blob_upsert_rpc_supported = True
+            return True
+
+        try:
+            result = client.execute_raw(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM pg_proc
+                    WHERE proname = :function_name
+                ) AS exists
+                """,
+                {"function_name": "upsert_world_model_data_blob"},
+            )
+            exists = bool(result.data and bool(result.data[0].get("exists")))
+            self._blob_upsert_rpc_supported = exists
+            if not exists:
+                logger.info(
+                    "upsert_world_model_data_blob RPC is not installed; using fallback write path."
+                )
+            return exists
+        except Exception as probe_error:
+            logger.debug("RPC probe failed, attempting RPC path directly: %s", probe_error)
+            self._blob_upsert_rpc_supported = True
+            return True
+
+    @staticmethod
+    def _is_missing_rpc_function_error(error: Exception, function_name: str) -> bool:
+        text = str(error).lower()
+        return (
+            "undefinedfunction" in text or "does not exist" in text
+        ) and function_name.lower() in text
 
     @staticmethod
     def _to_non_negative_int(value: object) -> Optional[int]:
@@ -753,7 +794,9 @@ class WorldModelService:
         domain: str,
         encrypted_blob: dict,
         summary: dict,
-    ) -> bool:
+        expected_data_version: Optional[int] = None,
+        return_result: bool = False,
+    ) -> bool | dict[str, Any]:
         """
         Store encrypted domain data and update index.
 
@@ -777,12 +820,19 @@ class WorldModelService:
                 }
 
         Returns:
-            bool: Success status
+            bool: Success status by default.
+            dict: Detailed result when return_result=True.
         """
+        result: dict[str, Any] = {
+            "success": False,
+            "conflict": False,
+            "data_version": None,
+            "updated_at": None,
+        }
         domain = self._canonicalize_domain_key(domain)
         if not domain:
             logger.error("store_domain_data called with empty domain for user %s", user_id)
-            return False
+            return result if return_result else False
 
         try:
             try:
@@ -802,46 +852,139 @@ class WorldModelService:
                     domain,
                 )
 
-            normalized_summary = self._normalize_domain_summary(domain, summary)
+            ciphertext = self._clean_base64ish(encrypted_blob["ciphertext"])
+            iv = self._clean_base64ish(encrypted_blob["iv"])
+            tag = self._clean_base64ish(encrypted_blob["tag"])
+            algorithm = self._clean_text(
+                encrypted_blob.get("algorithm", "aes-256-gcm"),
+                default="aes-256-gcm",
+            ).lower()
 
-            # 1. Get current encrypted data
-            current_data = await self.get_encrypted_data(user_id)
-
-            # 2. Store updated encrypted blob
-            # Note: Merging happens on client-side. Backend just stores the new blob.
+            current_data: Optional[dict] = None
             current_version = 0
-            if current_data is not None:
-                current_version = current_data.get("data_version", 0) or 0
+            if expected_data_version is not None:
+                current_data = await self.get_encrypted_data(user_id)
+                if current_data is not None:
+                    current_version = int(current_data.get("data_version", 0) or 0)
+                if current_version != expected_data_version:
+                    result["conflict"] = True
+                    result["data_version"] = current_version
+                    result["updated_at"] = current_data.get("updated_at") if current_data else None
+                    return result if return_result else False
 
-            data = {
-                "user_id": user_id,
-                "encrypted_data_ciphertext": self._clean_base64ish(encrypted_blob["ciphertext"]),
-                "encrypted_data_iv": self._clean_base64ish(encrypted_blob["iv"]),
-                "encrypted_data_tag": self._clean_base64ish(encrypted_blob["tag"]),
-                "algorithm": self._clean_text(
-                    encrypted_blob.get("algorithm", "aes-256-gcm"),
-                    default="aes-256-gcm",
-                ).lower(),
-                "data_version": current_version + 1,
-                "updated_at": datetime.utcnow().isoformat(),
-            }
+            blob_stored = False
+            resolved_data_version: Optional[int] = None
+            resolved_updated_at: Optional[str] = None
+            if self._supports_blob_upsert_rpc():
+                try:
+                    rpc_result = self._run_rpc(
+                        "upsert_world_model_data_blob",
+                        {
+                            "p_user_id": user_id,
+                            "p_ciphertext": ciphertext,
+                            "p_iv": iv,
+                            "p_tag": tag,
+                            "p_algorithm": algorithm,
+                        },
+                    )
+                    if hasattr(rpc_result, "error") and rpc_result.error:
+                        logger.warning(
+                            "upsert_world_model_data_blob RPC returned error for %s/%s: %s",
+                            user_id,
+                            domain,
+                            rpc_result.error,
+                        )
+                    else:
+                        self._blob_upsert_rpc_supported = True
+                        blob_stored = True
+                        rpc_payload = getattr(rpc_result, "data", None)
+                        raw_version: object | None = None
+                        if isinstance(rpc_payload, list) and rpc_payload:
+                            first = rpc_payload[0]
+                            if isinstance(first, dict):
+                                raw_version = first.get(
+                                    "upsert_world_model_data_blob",
+                                    first.get("data_version"),
+                                )
+                                if isinstance(first.get("updated_at"), str):
+                                    resolved_updated_at = first.get("updated_at")
+                            else:
+                                raw_version = first
+                        elif isinstance(rpc_payload, dict):
+                            raw_version = rpc_payload.get(
+                                "upsert_world_model_data_blob",
+                                rpc_payload.get("data_version"),
+                            )
+                            if isinstance(rpc_payload.get("updated_at"), str):
+                                resolved_updated_at = rpc_payload.get("updated_at")
+                        elif rpc_payload is not None:
+                            raw_version = rpc_payload
 
-            if current_data is None:
-                data["created_at"] = datetime.utcnow().isoformat()
+                        parsed_version = self._to_non_negative_int(raw_version)
+                        if parsed_version is not None:
+                            resolved_data_version = parsed_version
+                except Exception as rpc_error:
+                    if self._is_missing_rpc_function_error(
+                        rpc_error, "upsert_world_model_data_blob"
+                    ):
+                        self._blob_upsert_rpc_supported = False
+                        logger.info(
+                            "upsert_world_model_data_blob RPC is not installed; disabling RPC path for process."
+                        )
+                    else:
+                        logger.info(
+                            "upsert_world_model_data_blob RPC unavailable for %s/%s, using fallback: %s",
+                            user_id,
+                            domain,
+                            rpc_error,
+                        )
 
-            self.supabase.table("world_model_data").upsert(data, on_conflict="user_id").execute()
+            if not blob_stored:
+                # Fallback: existing read-modify-write path for data_version increment.
+                if current_data is not None:
+                    current_version = current_data.get("data_version", 0) or 0
+                else:
+                    current_data = await self.get_encrypted_data(user_id)
+                    if current_data is not None:
+                        current_version = current_data.get("data_version", 0) or 0
+
+                resolved_data_version = int(current_version) + 1
+                resolved_updated_at = datetime.utcnow().isoformat()
+                data = {
+                    "user_id": user_id,
+                    "encrypted_data_ciphertext": ciphertext,
+                    "encrypted_data_iv": iv,
+                    "encrypted_data_tag": tag,
+                    "algorithm": algorithm,
+                    "data_version": resolved_data_version,
+                    "updated_at": resolved_updated_at,
+                }
+
+                if current_data is None:
+                    data["created_at"] = datetime.utcnow().isoformat()
+
+                self.supabase.table("world_model_data").upsert(
+                    data, on_conflict="user_id"
+                ).execute()
 
             # 3. Update world_model_index_v2
-            summary_ok = await self.update_domain_summary(user_id, domain, normalized_summary)
+            summary_ok = await self.update_domain_summary(user_id, domain, summary)
             if not summary_ok:
-                return False
+                return result if return_result else False
 
-            await self.reconcile_user_index_domains(user_id, register_missing_registry=False)
+            if resolved_data_version is None:
+                post_write = await self.get_encrypted_data(user_id)
+                if post_write is not None:
+                    resolved_data_version = int(post_write.get("data_version", 0) or 0)
+                    resolved_updated_at = post_write.get("updated_at")
 
-            return True
+            result["success"] = True
+            result["data_version"] = resolved_data_version
+            result["updated_at"] = resolved_updated_at
+            return result if return_result else True
         except Exception as e:
             logger.error(f"Error storing domain data: {e}")
-            return False
+            return result if return_result else False
 
     async def get_encrypted_data(self, user_id: str) -> Optional[dict]:
         """

@@ -61,7 +61,7 @@ gcloud is used for **GCP resources** that support the FCM-based flow:
 | Task | gcloud usage |
 |------|--------------|
 | **Enable APIs** | `gcloud services enable fcm.googleapis.com` (optional; Firebase/Cloud Messaging may already be enabled with Firebase). |
-| **Store service account secret** | Store `FIREBASE_SERVICE_ACCOUNT_JSON` in Secret Manager so the backend can send FCM: `gcloud secrets create FIREBASE_SERVICE_ACCOUNT_JSON --data-file=sa.json` (see [env-vars.md](./reference/env-vars.md)). |
+| **Store service account secret** | Store `FIREBASE_SERVICE_ACCOUNT_JSON` in Secret Manager so the backend can send FCM: `gcloud secrets create FIREBASE_SERVICE_ACCOUNT_JSON --data-file=sa.json` (see [env-vars.md](./env-vars.md)). |
 | **Deploy backend/frontend** | Deploy consent-protocol to Cloud Run via `gcloud run deploy` (see [Deployment](#deployment) in the root README). |
 | **Get an OAuth token for FCM HTTP v1 (testing)** | You can obtain an access token (e.g. Application Default Credentials after `gcloud auth application-default login`) and send a **test** message via the FCM HTTP v1 API with `curl`. This does not replace the Firebase Console or the app for normal operation. |
 
@@ -75,7 +75,7 @@ gcloud is used for **GCP resources** that support the FCM-based flow:
    - Pushes the event into a per-user in-app queue for SSE.
 3. **Web client**: Requests permission, gets FCM token (`getToken` with VAPID key), registers token via `POST /api/notifications/register`; handles **onMessage** (foreground) and **notificationclick** (service worker) to open `/consents?tab=pending`.
 
-See the plan in `.cursor/plans/` and [consent-protocol.md](consent-protocol.md) for full flow.
+See the plan in `.cursor/plans/` and [consent-protocol.md](./consent-protocol.md) for full flow.
 
 ---
 
@@ -87,7 +87,7 @@ Consent requests reach the user only when the following chain is in place:
 
 2. **Listener** – The consent-protocol backend starts a background task that **LISTEN**s to `consent_audit_new` on an asyncpg connection to the same DB. When NOTIFY is received, it (a) optionally pushes the event into a per-user queue for non-production SSE debugging, and (b) calls the FCM path to send push to the user’s registered tokens. If the DB pool is unavailable at startup (e.g. missing `DB_*` env), the listener does not start and no NOTIFY is ever handled; check logs for `Consent listener: DB pool not available` and (in development only) verify `GET /debug/consent-listener` shows `listener_active: true` after startup.
 
-3. **Queue → SSE (non-production only)** – The in-app SSE generator creates a queue per user when the first SSE connection for that user is opened. In production, consent SSE is disabled by default (`CONSENT_SSE_ENABLED=false`) and `/api/consent/events/{user_id}/poll/{request_id}` is hard-disabled.
+3. **Queue → SSE fallback** – The in-app SSE generator creates a queue per user when the first SSE connection for that user is opened. Local development and UAT are expected to keep `CONSENT_SSE_ENABLED=true` so web fallback delivery can be validated when FCM is blocked or misconfigured. Production stays FCM-first by default with `CONSENT_SSE_ENABLED=false`, and `/api/consent/events/{user_id}/poll/{request_id}` remains hard-disabled there.
 
 4. **UI** – The frontend (ConsentSSEProvider, ConsentNotificationProvider) subscribes to SSE and shows toasts / refreshes the pending list when it receives a consent event.
 
@@ -101,6 +101,7 @@ Consent requests reach the user only when the following chain is in place:
    - Same Firebase project as auth.  
    - **Cloud Messaging**: Ensure Cloud Messaging is enabled.  
    - **Web Push**: Under Project Settings → Cloud Messaging → “Web configuration”, generate a **Key pair** (VAPID key). Use the **Key pair** value as `NEXT_PUBLIC_FIREBASE_VAPID_KEY` in the frontend.
+   - **Environment model**: If the app uses one Firebase identity plane across dev/UAT/prod and only the databases differ, keep the same Firebase project/web config aligned across those environments. Do not point auth at one Firebase project and web messaging at another.
 
 2. **Backend**  
    - **FIREBASE_SERVICE_ACCOUNT_JSON**: Service account JSON (Firebase Console → Project Settings → Service accounts → Generate new private key). Stored in GCP Secret Manager and injected into consent-protocol (see [env-vars.md](./env-vars.md)).
@@ -113,6 +114,56 @@ Consent requests reach the user only when the following chain is in place:
      `gcloud secrets create FIREBASE_SERVICE_ACCOUNT_JSON --data-file=path/to/sa.json`  
      (or use Secret Manager in Cloud Console.)  
    - Deploy backend so it has access to this secret (e.g. Cloud Run with `--set-secrets`).
+
+---
+
+## Web fallback delivery
+
+Web consent delivery now uses two lanes:
+
+1. **Primary**: Browser FCM push
+2. **Fallback**: Authenticated SSE + inbox while the tab is open
+
+The client exposes these delivery states:
+
+| State | Meaning |
+|------|---------|
+| `push_active` | Browser FCM is healthy and token registration succeeded. |
+| `push_blocked` | Browser permission is blocked, so the app falls back to live SSE alerts while the tab is open. |
+| `push_failed_fallback_active` | Push registration failed or is misconfigured, but SSE fallback is active. |
+| `inbox_only` | Neither push nor live SSE is currently active. Requests still appear in the consent center on next load. |
+
+If web push fails, the app:
+
+- clears stale browser push subscriptions,
+- clears cached Firebase web push IndexedDB state,
+- retries the SDK path,
+- attempts a manual FCM registration path,
+- then activates authenticated SSE fallback if push still fails.
+
+Closed-tab behavior remains limited by browser push availability: if push is disabled or misconfigured and the tab is closed, the durable fallback is the consent inbox on next app open.
+
+---
+
+## Operator runbook for web push failures
+
+When web consent notifications fail:
+
+1. Confirm browser permission is allowed for the active origin.
+2. Open the consent center and check the reported delivery mode.
+3. Use `Retry push registration` in the consent center after any config changes.
+4. Verify a successful registration creates a row in `user_push_tokens`.
+5. In Firebase Console, open the active project:
+   - **Project Settings → Cloud Messaging → Web configuration**
+   - confirm the Web Push key pair matches the Firebase project used for login and token verification
+   - update `NEXT_PUBLIC_FIREBASE_VAPID_KEY` to the public key from that same project
+6. If the browser still returns `401 Unauthorized` from `fcmregistrations.googleapis.com`, first check for a Firebase project mismatch between auth verification and web messaging before assuming the VAPID key itself is wrong.
+
+Remember:
+
+- `gcloud` can enable APIs and manage secrets.
+- `gcloud` cannot create or rotate the Firebase Console Web Push key pair.
+- A healthy fallback path on web is **SSE + inbox**, not repeated FCM retry loops.
 
 ---
 
@@ -159,4 +210,4 @@ The **device registration token** must come from the client (web app’s `getTok
 | Where is the VAPID key set? | **Firebase Console** → Project Settings → Cloud Messaging → Web configuration → Key pair. Set in frontend as `NEXT_PUBLIC_FIREBASE_VAPID_KEY`. |
 | Where is the service account JSON set? | **Firebase Console** → Project Settings → Service accounts → Generate key. Store in **GCP Secret Manager** and inject into the backend (see [env-vars.md](./env-vars.md)). |
 
-See also: [env-vars.md](./env-vars.md), [consent-protocol.md](consent-protocol.md).
+See also: [env-vars.md](./env-vars.md), [consent-protocol.md](./consent-protocol.md).
