@@ -38,6 +38,16 @@ export class PostAuthRouteService {
     }
 
     if (remoteState.hasVault) {
+      const onboardingResolved = PreVaultUserStateService.isOnboardingResolved(remoteState);
+      if (
+        remoteState.preOnboardingCompleted === false &&
+        !onboardingResolved
+      ) {
+        return PRE_VAULT_ROUTE;
+      }
+      if (fallbackRoute === ROUTES.KAI_ONBOARDING && onboardingResolved) {
+        return ROUTES.KAI_HOME;
+      }
       return fallbackRoute;
     }
 

@@ -42,6 +42,12 @@ This repo runs on three branch lanes:
 2. Require the `CI Status Gate` status check.
 3. Block force-pushes.
 4. Block branch deletion.
+5. Decide explicitly whether admins can bypass branch protection.
+
+Current operating note:
+
+- if `enforce_admins=false`, admins can still push directly even when `main` is protected
+- verify the live setting with `./scripts/ci/verify-main-branch-protection.sh`
 
 ### `deploy`
 

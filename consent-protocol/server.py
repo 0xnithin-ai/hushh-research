@@ -36,6 +36,18 @@ def _is_production() -> bool:
     return _environment() == "production"
 
 
+REQUIRED_RUNTIME_TABLES = (
+    "vault_keys",
+    "vault_key_wrappers",
+    "consent_audit",
+    "user_push_tokens",
+    "internal_access_events",
+    "runtime_persona_state",
+    "ria_pick_uploads",
+    "ria_pick_upload_rows",
+)
+
+
 def _is_app_review_mode_enabled() -> bool:
     return _env_truthy("APP_REVIEW_MODE") or _env_truthy("HUSHH_APP_REVIEW_MODE")
 
@@ -116,6 +128,10 @@ app.add_middleware(
 )
 
 configure_opentelemetry(app)
+
+from mcp_remote import remote_mcp_app, shutdown_remote_mcp, startup_remote_mcp  # noqa: E402
+
+app.mount("/mcp", remote_mcp_app)
 
 
 # ============================================================================
@@ -242,6 +258,47 @@ async def startup_regulated_runtime_guards():
 
 
 @app.on_event("startup")
+async def startup_required_schema_guard():
+    """Fail fast when the runtime database is missing core contract tables."""
+    from db.connection import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = ANY($1::text[])
+            """,
+            list(REQUIRED_RUNTIME_TABLES),
+        )
+
+    existing = {row["table_name"] for row in rows}
+    missing = [table for table in REQUIRED_RUNTIME_TABLES if table not in existing]
+    if missing:
+        logger.critical("startup.required_schema_guard_failed missing=%s", missing)
+        raise RuntimeError(
+            "Required runtime tables are missing: "
+            + ", ".join(missing)
+            + ". Run `python db/migrate.py --consent`, `python db/migrate.py --iam`, "
+            + "or `python db/migrate.py --init` against the active database before starting the server."
+        )
+
+
+@app.on_event("startup")
+async def startup_remote_mcp_transport():
+    """Start the hosted remote MCP session manager."""
+    await startup_remote_mcp()
+
+
+@app.on_event("shutdown")
+async def shutdown_remote_mcp_transport():
+    """Stop the hosted remote MCP session manager."""
+    await shutdown_remote_mcp()
+
+
+@app.on_event("startup")
 async def startup_market_insights_refresh():
     """Start background market cache refresh loop for public modules."""
     start_market_insights_background_refresh()
@@ -293,4 +350,4 @@ async def debug_consent_listener():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # noqa: S104
+    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=False)  # noqa: S104

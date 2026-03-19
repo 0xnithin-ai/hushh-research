@@ -28,7 +28,10 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { Card, CardContent } from "@/lib/morphy-ux/card";
+import {
+  ChartSurfaceCard,
+  SurfaceInset,
+} from "@/components/app-ui/surfaces";
 import { Icon } from "@/lib/morphy-ux/ui";
 
 // =============================================================================
@@ -47,6 +50,7 @@ interface PortfolioHistoryChartProps {
   statementPeriod?: string;
   height?: number;
   className?: string;
+  title?: string;
   /** When true, renders without card wrapper for embedding */
   inline?: boolean;
 }
@@ -161,6 +165,7 @@ export function PortfolioHistoryChart({
   statementPeriod,
   height = 200,
   className,
+  title = "Portfolio History",
   inline = false,
 }: PortfolioHistoryChartProps) {
   // Determine if we have enough data for a chart
@@ -193,15 +198,19 @@ export function PortfolioHistoryChart({
   if (!hasChartData) {
     if (!inline && (beginningValue > 0 || endingValue > 0)) {
       return (
-        <Card variant="none" effect="glass" showRipple={false} className={className}>
-          <CardContent className="p-4">
+        <ChartSurfaceCard
+          title={title}
+          className={className}
+          contentClassName="space-y-0"
+        >
+          <SurfaceInset>
             <PeriodSummaryFallback
               beginningValue={beginningValue}
               endingValue={endingValue}
               statementPeriod={statementPeriod}
             />
-          </CardContent>
-        </Card>
+          </SurfaceInset>
+        </ChartSurfaceCard>
       );
     }
     return null;
@@ -294,11 +303,11 @@ export function PortfolioHistoryChart({
 
   // Card mode: wrap in card
   return (
-    <Card variant="none" effect="glass" showRipple={false} className={className}>
-      <CardContent className="p-4">
+    <ChartSurfaceCard title={title} className={className} contentClassName="space-y-0">
+      <SurfaceInset>
         {chartContent}
-      </CardContent>
-    </Card>
+      </SurfaceInset>
+    </ChartSurfaceCard>
   );
 }
 

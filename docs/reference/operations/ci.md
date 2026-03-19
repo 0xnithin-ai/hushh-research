@@ -17,7 +17,7 @@ To prevent CI check-sprawl, only these checks are hard-blocking by default:
 3. `scripts/ci/protocol-check.sh`
 4. `scripts/ci/integration-check.sh`
 
-The `CI Status Gate` remains the single required status for branch protection and only aggregates the blocking checks above.
+The local parity script mirrors those same blocking stages. On GitHub, `main` should require the single aggregated `CI Status Gate` check so the remote gate matches the local one-command gate.
 
 ## When CI Runs
 
@@ -40,9 +40,29 @@ The `CI Status Gate` remains the single required status for branch protection an
 
 | Gate | Purpose | Behavior |
 |------|---------|----------|
-| Secret Scan | Detect leaked credentials/tokens early | `gitleaks` OSS CLI (license-free) scans commit range for each event |
+| Secret Scan | Detect leaked credentials/tokens early | `gitleaks` OSS CLI (license-free) scans the event commit range, not full repo history |
 | Upstream Sync | Detect monorepo/subtree drift | Advisory only; warnings are non-blocking |
 | CI Status Gate | Single required check for branch protection | Fails if any required job fails/cancels/times out; allows intentional `skipped` jobs |
+
+## Live GitHub Enforcement
+
+`main` is expected to enforce the same CI contract documented here:
+
+- at least `1` approving review
+- required status check: `CI Status Gate`
+- force-pushes disabled
+- branch deletion disabled
+
+The live GitHub setting can drift from the docs, so verify it directly:
+
+```bash
+./scripts/ci/verify-main-branch-protection.sh
+```
+
+Current live nuance:
+
+- admin enforcement is currently off, so admins/bypass users can still push directly if they have that level of access
+- there is no extra ruleset layered on top of `main` unless GitHub shows one in the verification output
 
 ## Advisory Checks (Non-Blocking By Default)
 
@@ -190,9 +210,9 @@ This script:
 
 1. Validates required files (e.g. `package-lock.json`, `next.config.ts`, `requirements.txt`, test files).
 2. Checks Node (20+) and Python (3.13) and upgrades npm/pip.
-3. Runs **frontend** checks: install, `tsc`, lint, Next build, Capacitor build.
-4. Runs **backend** checks: install, Ruff, mypy, pytest.
-5. Runs **integration**: route contract verification.
+3. Runs **frontend** checks: install, `tsc`, lint, Next build, audit-budget gate, curated test suite.
+4. Runs **backend** checks: shared parity verification, install, Ruff, mypy, Bandit, curated test suite.
+5. Runs **integration**: route/runtime contract verification.
 
 To include advisory checks locally:
 
@@ -200,7 +220,18 @@ To include advisory checks locally:
 INCLUDE_ADVISORY_CHECKS=1 ./scripts/test-ci-local.sh
 ```
 
+To verify the live GitHub branch gate matches the documented minimum contract:
+
+```bash
+./scripts/ci/verify-main-branch-protection.sh
+```
+
 If it exits 0, CI should pass. If it fails, fix the reported step before committing.
+
+Secret-scan note:
+
+- local and remote CI now both scan the relevant commit range by default
+- use `GITLEAKS_LOG_OPTS=--all` only when you intentionally want a full-history audit
 
 ---
 

@@ -14,6 +14,14 @@ import { resolveAppEnvironment } from "./app-env";
 
 const getEnvironmentMode = () => resolveAppEnvironment();
 
+function normalizeUrl(value: string | undefined | null): string {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function resolveBrowserDefaultBackendUrl(): string {
+  return getEnvironmentMode() === "development" ? "http://127.0.0.1:8000" : "";
+}
+
 export const ENVIRONMENT_MODE = getEnvironmentMode();
 
 export const isDevelopment = () => getEnvironmentMode() === "development";
@@ -21,13 +29,14 @@ export const isProduction = () => getEnvironmentMode() === "production";
 
 // Backend URL for Python consent-protocol server
 export const BACKEND_URL =
-  process.env.BACKEND_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "http://127.0.0.1:8000";
+  normalizeUrl(process.env.BACKEND_URL) ||
+  normalizeUrl(process.env.NEXT_PUBLIC_BACKEND_URL) ||
+  resolveBrowserDefaultBackendUrl();
 
 // Frontend URL
 export const FRONTEND_URL =
-  process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
+  normalizeUrl(process.env.NEXT_PUBLIC_FRONTEND_URL) ||
+  (getEnvironmentMode() === "development" ? "http://localhost:3000" : "");
 
 // ============================================================================
 // SECURITY EVENT TYPES

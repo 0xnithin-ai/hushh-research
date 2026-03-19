@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getRedirectResult } from "firebase/auth";
 import { Phone, Shield } from "lucide-react";
@@ -35,6 +35,7 @@ export function AuthStep({
   const router = useRouter();
   const { user, loading: authLoading, setNativeUser } = useAuth();
   const { registerSteps, completeStep, reset } = useStepProgress();
+  const lastNavigationKeyRef = useRef<string | null>(null);
 
   const [reviewModeConfig, setReviewModeConfig] = useState<{ enabled: boolean }>(
     { enabled: false }
@@ -49,6 +50,12 @@ export function AuthStep({
 
   const resolveAndNavigate = useCallback(
     async (userId: string, idToken?: string) => {
+      const navigationKey = `${userId}:${redirectPath || ROUTES.KAI_HOME}`;
+      if (lastNavigationKeyRef.current === navigationKey) {
+        return;
+      }
+      lastNavigationKeyRef.current = navigationKey;
+
       try {
         const resolvedIdToken =
           idToken || (user ? await user.getIdToken().catch(() => undefined) : undefined);
@@ -68,9 +75,13 @@ export function AuthStep({
       } catch (error) {
         console.warn("[AuthStep] Failed to resolve post-auth route:", error);
         const fallbackPath = redirectPath || ROUTES.KAI_HOME;
-        setOnboardingRequiredCookie(fallbackPath === ROUTES.KAI_ONBOARDING);
-        setOnboardingFlowActiveCookie(fallbackPath === ROUTES.KAI_IMPORT);
-        router.push(fallbackPath);
+        const safeFallbackPath =
+          fallbackPath === ROUTES.KAI_ONBOARDING || fallbackPath === ROUTES.KAI_IMPORT
+            ? ROUTES.KAI_HOME
+            : fallbackPath;
+        setOnboardingRequiredCookie(safeFallbackPath === ROUTES.KAI_ONBOARDING);
+        setOnboardingFlowActiveCookie(safeFallbackPath === ROUTES.KAI_IMPORT);
+        router.push(safeFallbackPath);
       }
     },
     [redirectPath, router, user]

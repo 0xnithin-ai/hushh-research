@@ -33,6 +33,15 @@ export interface FCMInitResult {
 let nativeListenersConfigured = false;
 let webListenerConfigured = false;
 let lastKnownSession: { userId: string; idToken: string } | null = null;
+const FIREBASE_WEB_PUSH_DATABASES = [
+  "firebase-messaging-database",
+  "firebase-installations-database",
+  "fcm_token_details_db",
+  "fcm_vapid_details_db",
+  "undefined",
+] as const;
+const FIREBASE_DEFAULT_WEB_PUSH_PUBLIC_KEY =
+  "BDOU99-h67HcA6JeFXHbSNMu7e2yNNu3RzoMj8TM4W88jITfq7ZmPvIM1Iv-4_l2LxQcYwhqby2xGpWwzjfAnG4";
 
 function hasValidWebMessagingConfig(app: {
   options?: {
@@ -46,6 +55,270 @@ function hasValidWebMessagingConfig(app: {
       app.options?.apiKey &&
       app.options?.messagingSenderId
   );
+}
+
+function arrayBufferToBase64Url(buffer: ArrayBuffer | null): string {
+  if (!buffer) {
+    return "";
+  }
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function base64UrlToArrayBuffer(value: string): ArrayBuffer {
+  const normalized = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(normalized);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
+}
+
+function generateBrowserFid(): string {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const bytes = new Uint8Array(17);
+  window.crypto.getRandomValues(bytes);
+  const firstByte = bytes[0] ?? 0;
+  bytes[0] = 112 + (firstByte % 16);
+
+  let output = "";
+  for (let index = 0; index < bytes.length; index += 1) {
+    const nextByte = bytes[index] ?? 0;
+    output += alphabet.charAt(nextByte % alphabet.length);
+  }
+  return output.slice(0, 22);
+}
+
+function browserFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  return window.fetch(input, init);
+}
+
+function formatManualRegistrationErrorBody(body: unknown): string {
+  if (typeof body === "string") {
+    return body;
+  }
+  if (body && typeof body === "object") {
+    try {
+      return JSON.stringify(body);
+    } catch {
+      return "[unserializable_error_body]";
+    }
+  }
+  return "unknown";
+}
+
+async function ensureBrowserPushSubscription(
+  registration: ServiceWorkerRegistration,
+  publicKey: string
+): Promise<PushSubscription> {
+  const existingSubscription = await registration.pushManager.getSubscription();
+  if (existingSubscription) {
+    return existingSubscription;
+  }
+
+  return registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: base64UrlToArrayBuffer(publicKey),
+  });
+}
+
+type ManualInstallationsAuth = {
+  authToken: string;
+};
+
+async function createInstallationsAuthToken(app: {
+  options?: {
+    appId?: string;
+    apiKey?: string;
+    projectId?: string;
+  };
+}): Promise<ManualInstallationsAuth> {
+  const projectId = app.options?.projectId;
+  const appId = app.options?.appId;
+  const apiKey = app.options?.apiKey;
+
+  if (!projectId || !appId || !apiKey) {
+    throw new Error("missing_installations_app_config");
+  }
+
+  const response = await browserFetch(
+    `https://firebaseinstallations.googleapis.com/v1/projects/${projectId}/installations`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        fid: generateBrowserFid(),
+        appId,
+        authVersion: "FIS_v2",
+        sdkVersion: "w:0.6.19",
+      }),
+    }
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.authToken?.token) {
+    throw new Error(
+      `installations_create_failed:${response.status}:${payload?.error?.message ?? "unknown"}`
+    );
+  }
+
+  return {
+    authToken: String(payload.authToken.token),
+  };
+}
+
+async function registerWebPushTokenManually(
+  app: {
+    options?: {
+      appId?: string;
+      apiKey?: string;
+      projectId?: string;
+      messagingSenderId?: string;
+    };
+  },
+  registration: ServiceWorkerRegistration,
+  publicKey: string,
+  usesDefaultWebPushKey: boolean
+): Promise<string> {
+  console.info("[FCM] Starting manual web push registration.", {
+    usesDefaultWebPushKey,
+    projectId: app.options?.projectId,
+    projectNumber: app.options?.messagingSenderId,
+  });
+  const subscription = await ensureBrowserPushSubscription(registration, publicKey);
+  const auth = await createInstallationsAuthToken(app);
+  const projectId = app.options?.projectId;
+  const projectNumber = app.options?.messagingSenderId;
+  const apiKey = app.options?.apiKey;
+
+  if (!projectId || !projectNumber || !apiKey) {
+    throw new Error("missing_messaging_registration_config");
+  }
+
+  const payload = {
+    web: {
+      endpoint: subscription.endpoint,
+      auth: arrayBufferToBase64Url(subscription.getKey("auth")),
+      p256dh: arrayBufferToBase64Url(subscription.getKey("p256dh")),
+      ...(usesDefaultWebPushKey
+        ? {}
+        : { applicationPubKey: publicKey }),
+    },
+  };
+
+  const registrationTargets = [
+    `https://fcmregistrations.googleapis.com/v1/projects/${projectId}/registrations`,
+    `https://fcmregistrations.googleapis.com/v1/projects/${projectNumber}/registrations`,
+  ];
+
+  let lastError = "unknown_manual_registration_error";
+  for (const endpoint of registrationTargets) {
+    console.info("[FCM] Manual registration attempt:", {
+      endpoint,
+      mode: usesDefaultWebPushKey ? "default_web_push_key" : "custom_vapid",
+    });
+    const response = await browserFetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "x-goog-api-key": apiKey,
+        "x-goog-firebase-installations-auth": `FIS ${auth.authToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseText = await response.text().catch(() => "");
+    let body: unknown = responseText;
+    try {
+      body = responseText ? (JSON.parse(responseText) as unknown) : {};
+    } catch {
+      body = responseText;
+    }
+    const manualToken =
+      body &&
+      typeof body === "object" &&
+      "token" in body &&
+      typeof (body as { token?: unknown }).token === "string"
+        ? String((body as { token: string }).token)
+        : null;
+
+    if (response.ok && manualToken) {
+      console.log("[FCM] Manual registration succeeded:", endpoint);
+      return manualToken;
+    }
+
+    const errorMessage =
+      body && typeof body === "object" && "error" in body
+        ? typeof (body as { error?: { message?: unknown } }).error?.message === "string"
+          ? String((body as { error?: { message?: unknown } }).error?.message)
+          : formatManualRegistrationErrorBody(
+              (body as { error?: unknown }).error ?? body
+            )
+        : formatManualRegistrationErrorBody(body);
+
+    lastError = `manual_registration_failed:${response.status}:${endpoint}:${errorMessage}`;
+    console.warn("[FCM] Manual registration attempt failed:", {
+      endpoint,
+      status: response.status,
+      body,
+    });
+  }
+
+  throw new Error(lastError);
+}
+
+async function clearFirebaseWebPushState(
+  registration: ServiceWorkerRegistration
+): Promise<void> {
+  try {
+    const subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      const endpoint = subscription.endpoint;
+      await subscription.unsubscribe();
+      console.log("[FCM] Cleared stale web push subscription:", endpoint);
+    }
+  } catch (error) {
+    console.warn("[FCM] Failed to clear existing push subscription:", error);
+  }
+
+  if (!("indexedDB" in window)) {
+    return;
+  }
+
+  await Promise.all(
+    FIREBASE_WEB_PUSH_DATABASES.map(
+      (dbName) =>
+        new Promise<void>((resolve) => {
+          try {
+            const request = window.indexedDB.deleteDatabase(dbName);
+            request.onsuccess = () => resolve();
+            request.onerror = () => resolve();
+            request.onblocked = () => resolve();
+          } catch {
+            resolve();
+          }
+        })
+    )
+  );
+
+  console.log("[FCM] Cleared cached Firebase web push state.");
 }
 
 /**
@@ -198,10 +471,110 @@ async function initializeWebFCM(
     );
 
     const messaging = getMessaging(app);
-    const token = await getToken(messaging, {
-      vapidKey,
-      serviceWorkerRegistration: registration,
-    });
+    const resolveWebToken = async (useCustomVapid: boolean) => {
+      const options = useCustomVapid
+        ? {
+            vapidKey,
+            serviceWorkerRegistration: registration,
+          }
+        : {
+            serviceWorkerRegistration: registration,
+          };
+      return getToken(messaging, options);
+    };
+
+    let token: string | null = null;
+    let usedDefaultVapidFallback = false;
+    let recoveredStalePushState = false;
+
+    try {
+      token = await resolveWebToken(true);
+    } catch (primaryError) {
+      const primaryErrorCode =
+        typeof primaryError === "object" && primaryError && "code" in primaryError
+          ? String((primaryError as { code?: unknown }).code ?? "")
+          : "";
+      if (primaryErrorCode !== "messaging/token-subscribe-failed") {
+        throw primaryError;
+      }
+
+      console.warn(
+        "[FCM] Custom VAPID subscribe failed. Retrying with the project's default web push configuration.",
+        primaryError
+      );
+
+      try {
+        await clearFirebaseWebPushState(registration);
+        recoveredStalePushState = true;
+
+        try {
+          token = await resolveWebToken(true);
+          console.log(
+            "[FCM] Custom VAPID subscribe succeeded after clearing stale browser push state."
+          );
+        } catch (retryCustomError) {
+          console.warn(
+            "[FCM] Custom VAPID retry still failed after clearing browser push state. Falling back to the project's default web push configuration.",
+            retryCustomError
+          );
+          await clearFirebaseWebPushState(registration);
+          token = await resolveWebToken(false);
+          usedDefaultVapidFallback = true;
+          console.log(
+            "[FCM] Default web push configuration succeeded after clearing stale browser push state."
+          );
+        }
+      } catch (fallbackError) {
+        console.warn(
+          "[FCM] Default web push configuration also failed. Attempting manual FCM registration against the current project.",
+          fallbackError
+        );
+
+        try {
+          token = await registerWebPushTokenManually(
+            app,
+            registration,
+            vapidKey,
+            false
+          );
+          recoveredStalePushState = true;
+          console.log(
+            "[FCM] Manual web push registration succeeded after SDK subscribe failures using the configured VAPID key."
+          );
+        } catch (manualCustomError) {
+          console.warn(
+            "[FCM] Manual registration with the configured VAPID key failed. Retrying with the project's default web push configuration.",
+            manualCustomError
+          );
+          try {
+            token = await registerWebPushTokenManually(
+              app,
+              registration,
+              FIREBASE_DEFAULT_WEB_PUSH_PUBLIC_KEY,
+              true
+            );
+            usedDefaultVapidFallback = true;
+            recoveredStalePushState = true;
+            console.log(
+              "[FCM] Manual web push registration succeeded with the project's default web push configuration."
+            );
+          } catch (manualDefaultError) {
+            const detail =
+              manualDefaultError instanceof Error
+                ? manualDefaultError.message
+                : "manual_registration_failed";
+            console.warn(
+              "[FCM] Manual web push registration also failed. Check Firebase Console > Project Settings > Cloud Messaging > Web configuration for this project.",
+              manualDefaultError
+            );
+            return {
+              status: "push_failed",
+              detail,
+            };
+          }
+        }
+      }
+    }
 
     if (!token) {
       console.warn("[FCM] Failed to get token");
@@ -243,7 +616,14 @@ async function initializeWebFCM(
     }
 
     console.log("[FCM] ✅ Web initialization complete");
-    return { status: "push_active" };
+    return {
+      status: "push_active",
+      detail: usedDefaultVapidFallback
+        ? "default_vapid_fallback"
+        : recoveredStalePushState
+          ? "stale_push_state_recovered"
+          : undefined,
+    };
   } catch (error) {
     const errorCode =
       typeof error === "object" && error && "code" in error

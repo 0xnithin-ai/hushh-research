@@ -104,18 +104,34 @@ require_cmd() {
   fi
 }
 
-require_cmd gcloud
 require_cmd jq
 require_cmd python3
+
+declare -a SUMMARY
+declare -a WARNINGS
+declare -a MISSING_REQUIRED
+
+GCLOUD_AVAILABLE=false
+GCLOUD_ACCOUNT=""
+if command -v gcloud >/dev/null 2>&1; then
+  if gcloud config get-value account >/tmp/hushh-bootstrap-gcloud-account.txt 2>/dev/null; then
+    GCLOUD_ACCOUNT="$(tr -d '\r\n' </tmp/hushh-bootstrap-gcloud-account.txt)"
+    if [ -n "$GCLOUD_ACCOUNT" ] && [ "$GCLOUD_ACCOUNT" != "(unset)" ]; then
+      GCLOUD_AVAILABLE=true
+    else
+      WARNINGS+=("gcloud is installed but no active account/project context was available; using templates and cached profile values where possible")
+    fi
+  else
+    WARNINGS+=("gcloud is installed but no active account/project context was available; using templates and cached profile values where possible")
+  fi
+else
+  WARNINGS+=("gcloud is not installed; using templates and cached profile values where possible")
+fi
 
 BACKEND_DIR="$REPO_ROOT/consent-protocol"
 FRONTEND_DIR="$REPO_ROOT/hushh-webapp"
 CACHE_DIR="$(mktemp -d)"
 trap 'rm -rf "$CACHE_DIR"' EXIT
-
-declare -a SUMMARY
-declare -a WARNINGS
-declare -a MISSING_REQUIRED
 
 normalize_env_json_values() {
   local file="$1"
@@ -307,6 +323,9 @@ get_secret_value() {
   local project="$1"
   local secret="$2"
   local value=""
+  if [ "$GCLOUD_AVAILABLE" != "true" ]; then
+    return 1
+  fi
   if value="$(run_with_timeout "$GCLOUD_TIMEOUT_SECONDS" gcloud secrets versions access latest --secret="$secret" --project="$project" 2>/dev/null)"; then
     value="${value%$'\n'}"
     value="${value%$'\r'}"
@@ -321,12 +340,17 @@ service_json_path() {
   local service="$2"
   local out="$CACHE_DIR/${project}_${service}.json"
   if [ ! -f "$out" ]; then
-    if ! run_with_timeout "$GCLOUD_TIMEOUT_SECONDS" gcloud run services describe "$service" \
-      --project="$project" \
-      --region="$REGION" \
-      --format=json >"$out" 2>/dev/null; then
+    if [ "$GCLOUD_AVAILABLE" = "true" ] && \
+      run_with_timeout "$GCLOUD_TIMEOUT_SECONDS" gcloud run services describe "$service" \
+        --project="$project" \
+        --region="$REGION" \
+        --format=json >"$out" 2>/dev/null; then
+      :
+    else
       echo "{}" >"$out"
-      WARNINGS+=("cloud run describe failed for ${project}/${service}")
+      if [ "$GCLOUD_AVAILABLE" = "true" ]; then
+        WARNINGS+=("cloud run describe failed for ${project}/${service}; using cached profile/template values where possible")
+      fi
     fi
   fi
   echo "$out"
@@ -344,6 +368,9 @@ run_env_value() {
 run_service_url() {
   local project="$1"
   local service="$2"
+  if [ "$GCLOUD_AVAILABLE" != "true" ]; then
+    return 0
+  fi
   run_with_timeout "$GCLOUD_TIMEOUT_SECONDS" gcloud run services describe "$service" \
     --project="$project" \
     --region="$REGION" \
@@ -445,7 +472,7 @@ set_secret_key_or_cached() {
   if [ "$required" = "true" ]; then
     MISSING_REQUIRED+=("${profile}: missing secret ${key} in ${project} and no cached fallback in ${cache_file#$REPO_ROOT/}")
   else
-    WARNINGS+=("${profile}: optional secret ${key} missing in ${project} and cached fallback")
+    WARNINGS+=("${profile}: optional secret ${key} missing in ${project} and no cached fallback in ${cache_file#$REPO_ROOT/}")
   fi
 }
 
@@ -501,7 +528,7 @@ hydrate_backend_cloud_reference() {
   set_secret_key_or_cached "$file" "$profile" "$project" "DB_PASSWORD" "true" "$cache_file"
   set_secret_key_or_cached "$file" "$profile" "$project" "APP_REVIEW_MODE" "false" "$cache_file"
   set_secret_key_or_cached "$file" "$profile" "$project" "REVIEWER_UID" "false" "$cache_file"
-  set_secret_key_or_cached "$file" "$profile" "$project" "MCP_DEVELOPER_TOKEN" "true" "$cache_file"
+  set_secret_key_or_cached "$file" "$profile" "$project" "HUSHH_DEVELOPER_TOKEN" "false" "$cache_file"
   set_secret_key_or_cached "$file" "$profile" "$project" "FINNHUB_API_KEY" "false" "$cache_file"
   set_secret_key_or_cached "$file" "$profile" "$project" "PMP_API_KEY" "false" "$cache_file"
   set_secret_key_or_cached "$file" "$profile" "$project" "PLAID_CLIENT_ID" "false" "$cache_file"
@@ -736,6 +763,12 @@ if [ "${#MISSING_REQUIRED[@]}" -gt 0 ]; then
   fi
 fi
 
+echo ""
+if [ "$GCLOUD_AVAILABLE" = "true" ]; then
+  echo "Hydrated from gcloud account: ${GCLOUD_ACCOUNT:-"(unknown)"}"
+else
+  echo "Hydration source: templates and cached local profile files only"
+fi
 echo ""
 echo "Done. Use a runtime profile with:"
 echo "  bash scripts/env/use_profile.sh local-uatdb|uat-remote|prod-remote"

@@ -4,11 +4,18 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { BriefcaseBusiness, ShieldCheck, TriangleAlert } from "lucide-react";
 
+import { AppPageShell } from "@/components/app-ui/app-page-shell";
 import {
-  ContentSurface,
   PageHeader,
   SectionHeader,
 } from "@/components/app-ui/page-sections";
+import {
+  SurfaceCard,
+  SurfaceInset,
+  SurfaceStack,
+  type SurfaceAccent,
+  type SurfaceTone,
+} from "@/components/app-ui/surfaces";
 import { cn } from "@/lib/utils";
 
 export function RiaPageShell({
@@ -31,12 +38,7 @@ export function RiaPageShell({
   className?: string;
 }) {
   return (
-    <main
-      className={cn(
-        "mx-auto w-full max-w-5xl px-4 pb-28 pt-[var(--kai-view-top-gap,16px)] sm:px-6",
-        className
-      )}
-    >
+    <AppPageShell as="main" width="content" className={cn("pb-28", className)}>
       <PageHeader
         eyebrow={eyebrow}
         title={title}
@@ -45,21 +47,30 @@ export function RiaPageShell({
         icon={icon}
       />
 
-      {statusPanel ? <div className="mt-5">{statusPanel}</div> : null}
-
-      <div className="mt-5 space-y-5">{children}</div>
-    </main>
+      <SurfaceStack className="mt-6">
+        {statusPanel ? <div>{statusPanel}</div> : null}
+        {children}
+      </SurfaceStack>
+    </AppPageShell>
   );
 }
 
 export function RiaSurface({
   children,
   className,
+  accent = "none",
+  tone = "default",
 }: {
   children: ReactNode;
   className?: string;
+  accent?: SurfaceAccent;
+  tone?: SurfaceTone;
 }) {
-  return <ContentSurface className={className}>{children}</ContentSurface>;
+  return (
+    <SurfaceCard tone={tone} accent={accent} className={className}>
+      {children}
+    </SurfaceCard>
+  );
 }
 
 export function RiaCompatibilityState({
@@ -77,7 +88,7 @@ export function RiaCompatibilityState({
         description={description}
         icon={TriangleAlert}
       />
-      <RiaSurface className="border-dashed border-amber-500/40 bg-amber-500/5">
+      <RiaSurface tone="warning" className="border-dashed">
         <p className="text-sm leading-6 text-muted-foreground">
           This surface is running in degraded compatibility mode until the full IAM contract is
           available in the active environment.
@@ -97,11 +108,11 @@ export function MetricTile({
   helper?: string;
 }) {
   return (
-    <div className="rounded-[22px] border border-border/60 bg-background/75 p-4">
+    <SurfaceInset className="p-4">
       <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
       {helper ? <p className="mt-1 text-xs text-muted-foreground">{helper}</p> : null}
-    </div>
+    </SurfaceInset>
   );
 }
 
@@ -143,13 +154,13 @@ export function RiaStatusPanel({
         actions={actions}
         icon={ShieldCheck}
       />
-      <RiaSurface className="bg-gradient-to-br from-primary/8 via-card/95 to-card/88">
+      <RiaSurface accent="sky">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {items.map((item) => (
-            <div
+            <SurfaceInset
               key={`${item.label}-${item.value}`}
               className={cn(
-                "rounded-[22px] border p-4 shadow-sm",
+                "p-4",
                 STATUS_TONE_STYLES[item.tone || "neutral"]
               )}
             >
@@ -158,7 +169,7 @@ export function RiaStatusPanel({
               </p>
               <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">{item.value}</p>
               {item.helper ? <p className="mt-1 text-xs text-muted-foreground">{item.helper}</p> : null}
-            </div>
+            </SurfaceInset>
           ))}
         </div>
       </RiaSurface>

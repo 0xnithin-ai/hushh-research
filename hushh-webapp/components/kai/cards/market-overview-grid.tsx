@@ -2,7 +2,7 @@
 
 import { Activity, ChartColumnIncreasing, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 
-import { Card, CardContent } from "@/lib/morphy-ux/card";
+import { SurfaceCard, SurfaceCardContent } from "@/components/app-ui/surfaces";
 import { Icon } from "@/lib/morphy-ux/ui";
 import { cn } from "@/lib/utils";
 
@@ -25,24 +25,30 @@ const FALLBACK_ICON: Record<MarketOverviewMetric["tone"], LucideIcon> = {
 export function MarketOverviewGrid({ metrics = [] }: { metrics?: MarketOverviewMetric[] }) {
   if (!metrics.length) {
     return (
-      <Card variant="muted" effect="fill" className="rounded-xl p-0">
-        <CardContent className="p-4 text-sm text-muted-foreground">
+      <SurfaceCard tone="warning">
+        <SurfaceCardContent className="text-sm text-muted-foreground">
           Market overview metrics are not available at the moment.
-        </CardContent>
-      </Card>
+        </SurfaceCardContent>
+      </SurfaceCard>
     );
   }
 
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {metrics.map((metric) => (
-        <Card
+        <SurfaceCard
           key={metric.id || metric.label}
-          variant="none"
-          effect="glass"
-          className="rounded-[20px] border-foreground/10 p-0"
+          accent={
+            metric.tone === "positive"
+              ? "emerald"
+              : metric.tone === "negative"
+                ? "rose"
+                : metric.tone === "warning"
+                  ? "amber"
+                  : "sky"
+          }
         >
-          <CardContent className="flex min-h-[84px] flex-col justify-between p-3.5 sm:min-h-[90px] sm:p-4">
+          <SurfaceCardContent className="flex min-h-[84px] flex-col justify-between p-3.5 sm:min-h-[90px] sm:p-4">
             <div className="flex items-start gap-3">
               <span
                 className={cn(
@@ -77,8 +83,8 @@ export function MarketOverviewGrid({ metrics = [] }: { metrics?: MarketOverviewM
                 {metric.delta}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </SurfaceCardContent>
+        </SurfaceCard>
       ))}
     </div>
   );

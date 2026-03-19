@@ -12,7 +12,6 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Card, CardContent } from "@/lib/morphy-ux/card";
 import { Button as MorphyButton } from "@/lib/morphy-ux/button";
 
 import {
@@ -26,6 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { SurfaceCard, SurfaceCardContent } from "@/components/app-ui/surfaces";
 import { Icon } from "@/lib/morphy-ux/ui";
 import { scrollAppToTop } from "@/lib/navigation/use-scroll-reset";
 
@@ -171,8 +171,8 @@ export function PortfolioImportView({
       </div>
 
       {/* Plaid integration */}
-      <Card variant="none" effect="glass" showRipple={false}>
-        <CardContent className="p-4 space-y-3 md:p-5">
+      <SurfaceCard accent="sky">
+        <SurfaceCardContent className="space-y-3 p-4 md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center shrink-0">
@@ -226,8 +226,8 @@ export function PortfolioImportView({
           <p className="text-[11px] text-muted-foreground">
             Plaid data stays read-only in Kai. Statements remain your editable source.
           </p>
-        </CardContent>
-      </Card>
+        </SurfaceCardContent>
+      </SurfaceCard>
 
       <div className="flex items-center gap-3 px-2">
         <div className="h-px flex-1 bg-border/60" />
@@ -238,8 +238,8 @@ export function PortfolioImportView({
       </div>
 
       {/* Statement upload */}
-      <Card variant="none" effect="glass" showRipple={false}>
-        <CardContent className="p-4 space-y-4 md:p-5">
+      <SurfaceCard>
+        <SurfaceCardContent className="space-y-4 p-4 md:p-5">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center shrink-0">
               <Icon icon={Upload} size="md" className="text-primary" />
@@ -317,8 +317,8 @@ export function PortfolioImportView({
           >
             {isUploading ? "Parsing..." : "Continue"}
           </MorphyButton>
-        </CardContent>
-      </Card>
+        </SurfaceCardContent>
+      </SurfaceCard>
 
       {selectionError && (
         <p className="text-xs text-destructive px-2">{selectionError}</p>

@@ -2,7 +2,7 @@
 
 import { LineChart } from "lucide-react";
 
-import { Card, CardContent } from "@/lib/morphy-ux/card";
+import { SurfaceCard, SurfaceCardContent } from "@/components/app-ui/surfaces";
 import { Icon } from "@/lib/morphy-ux/ui";
 import { cn } from "@/lib/utils";
 
@@ -27,8 +27,16 @@ export function SpotlightCard(props: {
         : "bg-orange-500/10 text-orange-700 dark:text-orange-300";
 
   return (
-    <Card variant="none" effect="glass" className="rounded-xl p-0">
-      <CardContent className="space-y-4 p-5">
+    <SurfaceCard
+      accent={
+        props.decision === "BUY"
+          ? "emerald"
+          : props.decision === "REDUCE"
+            ? "amber"
+            : "sky"
+      }
+    >
+      <SurfaceCardContent className="space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <h3 className="text-base font-black tracking-tight leading-tight">{props.title}</h3>
@@ -68,7 +76,7 @@ export function SpotlightCard(props: {
             <span>{props.context}</span>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </SurfaceCardContent>
+    </SurfaceCard>
   );
 }

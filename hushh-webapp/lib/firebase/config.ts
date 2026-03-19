@@ -20,7 +20,7 @@ const firebaseMeasurementId =
     ? process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_PRODUCTION
     : nonProdMeasurementId);
 
-// Primary Firebase configuration (non-auth app behaviors).
+// Primary Firebase configuration.
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -57,7 +57,7 @@ if (
 }
 
 // Initialize Firebase (singleton pattern for Next.js)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const baseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 const shouldUseSeparateAuthApp =
   !!authFirebaseConfig.projectId &&
@@ -69,7 +69,18 @@ const authApp = shouldUseSeparateAuthApp
   ? getApps().find((candidate) => candidate.name === "auth")
     ? getApp("auth")
     : initializeApp(authFirebaseConfig, "auth")
-  : app;
+  : baseApp;
+
+// Keep the client identity plane aligned with the authenticated Firebase project.
+// If auth is intentionally overridden to a different Firebase project, web messaging
+// must use that same project or FCM browser registration will fail with 401/403.
+const app = shouldUseSeparateAuthApp ? authApp : baseApp;
+
+if (shouldUseSeparateAuthApp && typeof window !== "undefined") {
+  console.info(
+    "[Firebase Config] Auth override detected. Using the auth Firebase app as the shared client app for web messaging and identity-linked flows."
+  );
+}
 
 const auth = getAuth(authApp);
 

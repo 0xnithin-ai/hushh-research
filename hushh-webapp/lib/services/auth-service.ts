@@ -617,12 +617,12 @@ export class AuthService {
   /**
    * Get ID token (for API calls)
    */
-  static async getIdToken(): Promise<string | null> {
+  static async getIdToken(forceRefresh = false): Promise<string | null> {
     // Firebase token takes precedence (it's refreshed automatically)
     const firebaseUser = auth.currentUser;
     if (firebaseUser) {
       try {
-        return await firebaseUser.getIdToken();
+        return await firebaseUser.getIdToken(forceRefresh);
       } catch {
         this.debugError("[AuthService] Failed to get Firebase ID token");
       }

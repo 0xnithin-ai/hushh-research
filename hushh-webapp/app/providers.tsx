@@ -21,6 +21,7 @@ import { StepProgressBar } from "@/components/app-ui/step-progress-bar";
 import { CacheProvider } from "@/lib/cache/cache-context";
 import { ConsentNotificationProvider } from "@/components/consent/notification-provider";
 import { resolveTopShellRouteProfile } from "@/components/app-ui/top-shell-metrics";
+import { resolveAppRouteLayoutMode } from "@/lib/navigation/app-route-layout";
 import { TopAppBar } from "@/components/app-ui/top-app-bar";
 import { Navbar } from "@/components/navbar";
 import { Toaster } from "@/components/ui/sonner";
@@ -47,18 +48,16 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   const pathname = usePathname();
-  const isImportRoute = pathname.startsWith("/kai/import");
   const chromeState = useMemo(() => getKaiChromeState(pathname), [pathname]);
+  const routeLayoutMode = useMemo(() => resolveAppRouteLayoutMode(pathname), [pathname]);
   const topShellRouteProfile = useMemo(
     () => resolveTopShellRouteProfile(pathname),
     [pathname]
   );
   const topShellMetrics = topShellRouteProfile.metrics;
   const hideGlobalChrome = !topShellMetrics.shellVisible;
-  const isFullscreenTopFlow = topShellMetrics.contentOffsetMode === "fullscreen-flow";
-  const shouldLockFullscreenRoot = isFullscreenTopFlow && !isImportRoute;
-  const shouldRenderTopSpacer =
-    topShellMetrics.shellVisible && (!isFullscreenTopFlow || isImportRoute);
+  const isFullscreenTopFlow = routeLayoutMode === "flow";
+  const shouldLockFullscreenRoot = isFullscreenTopFlow;
   const topShellRouteStyle = useMemo(
     () =>
       ({
@@ -66,13 +65,11 @@ export function Providers({ children }: ProvidersProps) {
         "--top-tabs-total": topShellMetrics.hasTabs
           ? "calc(var(--top-tabs-h) + var(--top-tabs-gap))"
           : "0px",
-        "--top-systembar-row-gap": topShellMetrics.hasTabs ? "4px" : "6px",
-        "--top-fade-active": topShellMetrics.hasTabs ? "6px" : "8px",
-        "--top-content-pad": topShellMetrics.hasTabs
-          ? "calc(var(--top-shell-h) + 2px)"
-          : "calc(var(--top-shell-h) + 2px)",
-        "--kai-route-content-gap": topShellMetrics.hasTabs ? "2px" : "10px",
-        "--kai-route-content-gap-sm": topShellMetrics.hasTabs ? "6px" : "14px",
+        "--top-systembar-row-gap": topShellMetrics.hasTabs ? "2px" : "0px",
+        "--top-fade-active": topShellMetrics.hasTabs ? "24px" : "22px",
+        "--top-content-pad": "var(--top-shell-reserved-height)",
+        "--kai-route-content-gap": topShellMetrics.hasTabs ? "28px" : "20px",
+        "--kai-route-content-gap-sm": topShellMetrics.hasTabs ? "32px" : "24px",
         "--app-top-shell-visible": topShellMetrics.shellVisible ? "1" : "0",
         "--app-top-has-tabs": topShellMetrics.hasTabs ? "1" : "0",
         "--app-top-offset-mode":
@@ -139,8 +136,8 @@ export function Providers({ children }: ProvidersProps) {
         <AuthProvider>
           <CacheProvider>
             <PersonaProvider>
-              <PersonaBootstrapRedirect />
               <VaultProvider>
+                <PersonaBootstrapRedirect />
                 <ConsentNotificationProvider>
                   {/* Flex container for proper scroll behavior */}
                   <div
@@ -166,7 +163,7 @@ export function Providers({ children }: ProvidersProps) {
                                   "--app-bar-glass-bg-dark": "rgba(10, 12, 16, 0.64)",
                                   "--app-bar-glass-blur": "2px",
                                   "--app-bar-shadow": "none",
-                                  "--app-bar-mask-overscan": "30px",
+                                  "--app-bar-mask-overscan": "22px",
                                 } as CSSProperties
                               }
                             />
@@ -196,13 +193,6 @@ export function Providers({ children }: ProvidersProps) {
                           : "flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none touch-pan-y pb-[var(--app-scroll-bottom-pad,var(--app-bottom-inset))] relative z-10 min-h-0"
                       }
                     >
-                      {shouldRenderTopSpacer ? (
-                        <div
-                          aria-hidden
-                          className="w-full shrink-0"
-                          style={{ height: "var(--top-shell-reserved-height)" }}
-                        />
-                      ) : null}
                       <div
                         ref={pageRef}
                         className={shouldLockFullscreenRoot ? "min-h-0 h-full" : "min-h-0"}

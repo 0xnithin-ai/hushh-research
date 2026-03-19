@@ -12,6 +12,7 @@ import {
   KaiProfileService,
   computeRiskScore,
   mapRiskProfile,
+  resolveKaiOnboardingCompletion,
   type KaiProfileV2,
   type RiskProfile,
   type DrawdownResponse,
@@ -34,12 +35,10 @@ import {
   setOnboardingRequiredCookie,
 } from "@/lib/services/onboarding-route-cookie";
 import { trackEvent } from "@/lib/observability/client";
-import { MaterialRipple } from "@/lib/morphy-ux/material-ripple";
+import { Card } from "@/lib/morphy-ux/card";
 
 type Stage = "loading" | "entry" | "wizard" | "persona";
 type OnboardingSource = "pre_vault" | "vault";
-const ONBOARDING_ACTION_TIMEOUT_MS = 15000;
-const ONBOARDING_TIMEOUT_ERROR = "OnboardingTimeoutError";
 
 type WizardAnswers = {
   investment_horizon: InvestmentHorizon | null;
@@ -67,26 +66,6 @@ function computePersona(answers: WizardAnswers, explicit?: RiskProfile | null): 
   if (explicit) return explicit;
   const score = computeRiskScore(answers as PreVaultOnboardingAnswers);
   return score === null ? "balanced" : mapRiskProfile(score);
-}
-
-function withActionTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timeoutId = globalThis.setTimeout(() => {
-      const error = new Error(`${label} timed out after ${ONBOARDING_ACTION_TIMEOUT_MS}ms`);
-      error.name = ONBOARDING_TIMEOUT_ERROR;
-      reject(error);
-    }, ONBOARDING_ACTION_TIMEOUT_MS);
-
-    promise
-      .then((value) => {
-        globalThis.clearTimeout(timeoutId);
-        resolve(value);
-      })
-      .catch((error: unknown) => {
-        globalThis.clearTimeout(timeoutId);
-        reject(error);
-      });
-  });
 }
 
 export default function KaiOnboardingPage() {
@@ -173,7 +152,16 @@ export default function KaiOnboardingPage() {
         if (cancelled) return;
 
         setProfile(nextProfile);
-        if (nextProfile.onboarding.completed) {
+        const completion = resolveKaiOnboardingCompletion(nextProfile);
+        if (completion.completed) {
+          void PreVaultUserStateService.syncKaiOnboardingState({
+            userId: user.uid,
+            completed: true,
+            skipped: completion.skippedPreferences,
+            completedAt: completion.completedAt,
+          }).catch((syncError) => {
+            console.warn("[KaiOnboardingPage] Failed vault->remote onboarding bridge:", syncError);
+          });
           setOnboardingRequiredCookie(false);
           setOnboardingFlowActiveCookie(false);
           router.replace("/kai");
@@ -223,23 +211,6 @@ export default function KaiOnboardingPage() {
     }
     return computePersona(wizardAnswers, preVaultState?.risk_profile ?? null);
   }, [source, wizardAnswers, profile?.preferences.risk_profile, preVaultState?.risk_profile]);
-
-  async function persistLocalCompletionFallback(params: {
-    skipped: boolean;
-    answers: WizardAnswers;
-  }): Promise<void> {
-    const userId = user?.uid;
-    if (!userId) return;
-    const score = computeRiskScore(params.answers as PreVaultOnboardingAnswers);
-    const profileForFallback = score === null ? null : mapRiskProfile(score);
-    const nextState = await PreVaultOnboardingService.markCompleted(userId, {
-      skipped: params.skipped,
-      answers: params.answers,
-      risk_score: score,
-      risk_profile: profileForFallback,
-    });
-    setPreVaultState(nextState);
-  }
 
   useEffect(() => {
     if (!source || stage !== "wizard" || onboardingStartedRef.current) return;
@@ -300,90 +271,108 @@ export default function KaiOnboardingPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={async () => {
-                if (saving) return;
-                try {
-                  setSaving(true);
-                  const nextState =
-                    preVaultState || (await PreVaultOnboardingService.saveDraft(user.uid, {}));
-                  setPreVaultState(nextState);
-                  setStage("wizard");
-                  trackEvent("onboarding_step_completed", {
-                    action: "persona",
-                    result: "success",
-                  });
-                } catch (error) {
-                  console.error("[KaiOnboardingPage] Failed to start investor onboarding:", error);
-                  trackEvent("onboarding_step_completed", {
-                    action: "persona",
-                    result: "error",
-                  });
-                  toast.error("Couldn't start investor onboarding. Please retry.");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              className="relative overflow-hidden rounded-[28px] border border-border bg-card/80 p-6 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-card"
+            <Card
+              asChild
+              preset="hero"
+              variant="none"
+              effect="glass"
+              showRipple
+              interactive={!saving}
+              className="transition-[border-color,background-color,box-shadow] enabled:hover:!border-primary/40"
             >
-              <MaterialRipple variant="blue" effect="fade" />
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">
-                Investor
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold text-foreground">
-                Build your Kai profile first
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                Answer your risk and preference questions, then connect accounts and start using
-                Kai.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              disabled={saving || riaCapability === "disabled"}
-              onClick={async () => {
-                if (saving || riaCapability === "disabled") return;
-                try {
-                  setSaving(true);
-                  await switchPersona("ria");
-                  trackEvent("onboarding_step_completed", {
-                    action: "persona",
-                    result: "success",
-                  });
-                  router.replace(ROUTES.RIA_HOME);
-                } catch (error) {
-                  console.error("[KaiOnboardingPage] Failed to enter RIA setup:", error);
-                  trackEvent("onboarding_step_completed", {
-                    action: "persona",
-                    result: "error",
-                  });
-                  toast.error("Couldn't enter RIA setup. Please retry.");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              className="relative overflow-hidden rounded-[28px] border border-border bg-card/80 p-6 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-card disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <MaterialRipple variant="blue" effect="fade" disabled={saving || riaCapability === "disabled"} />
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">
-                RIA
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold text-foreground">
-                Verify the advisor workspace
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                Set up your advisor identity, verification, firm details, and marketplace trust
-                profile before sending consent requests.
-              </p>
-              {riaCapability === "disabled" ? (
-                <p className="mt-4 text-xs font-medium text-muted-foreground">
-                  RIA mode is unavailable in this environment until IAM is active.
+              <button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  if (saving) return;
+                  try {
+                    setSaving(true);
+                    const nextState =
+                      preVaultState || (await PreVaultOnboardingService.saveDraft(user.uid, {}));
+                    setPreVaultState(nextState);
+                    setStage("wizard");
+                    trackEvent("onboarding_step_completed", {
+                      action: "persona",
+                      result: "success",
+                    });
+                  } catch (error) {
+                    console.error("[KaiOnboardingPage] Failed to start investor onboarding:", error);
+                    trackEvent("onboarding_step_completed", {
+                      action: "persona",
+                      result: "error",
+                    });
+                    toast.error("Couldn't start investor onboarding. Please retry.");
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                className="w-full p-6 text-left"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">
+                  Investor
                 </p>
-              ) : null}
-            </button>
+                <h2 className="mt-3 text-2xl font-semibold text-foreground">
+                  Build your Kai profile first
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  Answer your risk and preference questions, then connect accounts and start using
+                  Kai.
+                </p>
+              </button>
+            </Card>
+
+            <Card
+              asChild
+              preset="hero"
+              variant="none"
+              effect="glass"
+              showRipple
+              interactive={!saving && riaCapability !== "disabled"}
+              className="transition-[border-color,background-color,box-shadow] enabled:hover:!border-primary/40 disabled:opacity-60"
+            >
+              <button
+                type="button"
+                disabled={saving || riaCapability === "disabled"}
+                onClick={async () => {
+                  if (saving || riaCapability === "disabled") return;
+                  try {
+                    setSaving(true);
+                    await switchPersona("ria");
+                    trackEvent("onboarding_step_completed", {
+                      action: "persona",
+                      result: "success",
+                    });
+                    router.replace(ROUTES.RIA_HOME);
+                  } catch (error) {
+                    console.error("[KaiOnboardingPage] Failed to enter RIA setup:", error);
+                    trackEvent("onboarding_step_completed", {
+                      action: "persona",
+                      result: "error",
+                    });
+                    toast.error("Couldn't enter RIA setup. Please retry.");
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                className="w-full p-6 text-left disabled:cursor-not-allowed"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">
+                  RIA
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold text-foreground">
+                  Verify the advisor workspace
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  Set up your advisor identity, verification, firm details, and marketplace trust
+                  profile before sending consent requests.
+                </p>
+                {riaCapability === "disabled" ? (
+                  <p className="mt-4 text-xs font-medium text-muted-foreground">
+                    RIA mode is unavailable in this environment until IAM is active.
+                  </p>
+                ) : null}
+              </button>
+            </Card>
           </div>
         </div>
       </div>
@@ -407,28 +396,24 @@ export default function KaiOnboardingPage() {
                 toast.error("Unlock your vault to continue.");
                 return;
               }
-              try {
-                const nextProfile = await withActionTimeout(
-                  KaiProfileService.setOnboardingCompleted({
-                    userId: user.uid,
-                    vaultKey,
-                    vaultOwnerToken,
-                    skippedPreferences: false,
-                  }),
-                  "Finalize onboarding"
-                );
-                setProfile(nextProfile);
-              } catch (vaultError) {
+              const nextProfile = await KaiProfileService.setOnboardingCompleted({
+                userId: user.uid,
+                vaultKey,
+                vaultOwnerToken,
+                skippedPreferences: false,
+              });
+              void PreVaultUserStateService.syncKaiOnboardingState({
+                userId: user.uid,
+                completed: true,
+                skipped: false,
+                completedAt: nextProfile.onboarding.completed_at,
+              }).catch((syncError) => {
                 console.warn(
-                  "[KaiOnboardingPage] Vault finalize failed. Falling back to local completion state:",
-                  vaultError
+                  "[KaiOnboardingPage] Failed vault->remote onboarding bridge after completion:",
+                  syncError
                 );
-                await persistLocalCompletionFallback({
-                  skipped: false,
-                  answers: wizardAnswers,
-                });
-                toast.warning("Vault sync is slow. Continuing and syncing in background.");
-              }
+              });
+              setProfile(nextProfile);
             } else {
               const completedAt = Date.now();
               await PreVaultUserStateService.updatePreVaultState(user.uid, {
@@ -479,7 +464,6 @@ export default function KaiOnboardingPage() {
     <KaiPreferencesWizard
       mode="onboarding"
       layout="page"
-      isSubmitting={saving}
       initialStep={0}
       initialAnswers={wizardAnswers}
       onBack={() => router.replace("/kai")}
@@ -504,28 +488,24 @@ export default function KaiOnboardingPage() {
               toast.error("Unlock your vault to continue.");
               return;
             }
-            try {
-              const nextProfile = await withActionTimeout(
-                KaiProfileService.setOnboardingCompleted({
-                  userId: user.uid,
-                  vaultKey,
-                  vaultOwnerToken,
-                  skippedPreferences: true,
-                }),
-                "Skip onboarding"
-              );
-              setProfile(nextProfile);
-            } catch (vaultError) {
+            const nextProfile = await KaiProfileService.setOnboardingCompleted({
+              userId: user.uid,
+              vaultKey,
+              vaultOwnerToken,
+              skippedPreferences: true,
+            });
+            void PreVaultUserStateService.syncKaiOnboardingState({
+              userId: user.uid,
+              completed: true,
+              skipped: true,
+              completedAt: nextProfile.onboarding.completed_at,
+            }).catch((syncError) => {
               console.warn(
-                "[KaiOnboardingPage] Vault skip failed. Falling back to local completion state:",
-                vaultError
+                "[KaiOnboardingPage] Failed vault->remote onboarding bridge after skip:",
+                syncError
               );
-              await persistLocalCompletionFallback({
-                skipped: true,
-                answers: wizardAnswers,
-              });
-              toast.warning("Vault sync is slow. Skipping now and syncing in background.");
-            }
+            });
+            setProfile(nextProfile);
           } else {
             const completedAt = Date.now();
             await PreVaultUserStateService.updatePreVaultState(user.uid, {
@@ -577,32 +557,15 @@ export default function KaiOnboardingPage() {
               toast.error("Unlock your vault to continue.");
               return;
             }
-            try {
-              const nextProfile = await withActionTimeout(
-                KaiProfileService.savePreferences({
-                  userId: user.uid,
-                  vaultKey,
-                  vaultOwnerToken,
-                  updates: nextAnswers,
-                  mode: "onboarding",
-                }),
-                "Save onboarding preferences"
-              );
-              setProfile(nextProfile);
-            } catch (vaultError) {
-              console.warn(
-                "[KaiOnboardingPage] Vault preference save failed. Falling back to local draft:",
-                vaultError
-              );
-              const score = computeRiskScore(nextAnswers as PreVaultOnboardingAnswers);
-              const nextState = await PreVaultOnboardingService.saveDraft(user.uid, {
-                answers: nextAnswers,
-                risk_score: score,
-                risk_profile: score === null ? null : mapRiskProfile(score),
-              });
-              setPreVaultState(nextState);
-              toast.warning("Vault sync is slow. Continuing with local draft.");
-            }
+
+            const nextProfile = await KaiProfileService.savePreferences({
+              userId: user.uid,
+              vaultKey,
+              vaultOwnerToken,
+              updates: nextAnswers,
+              mode: "onboarding",
+            });
+            setProfile(nextProfile);
           } else {
             const score = computeRiskScore(nextAnswers as PreVaultOnboardingAnswers);
             const nextState = await PreVaultOnboardingService.saveDraft(user.uid, {

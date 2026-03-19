@@ -115,20 +115,20 @@ Layer 4: Agent Tokens     → Scoped permissions (OPERATIONS)
 ## 🚀 Quick Start
 
 ```bash
-# Clone
 git clone https://github.com/hushh-labs/hushh-research.git
 cd hushh-research
-
-# Install
-cd hushh-webapp && npm install
-cd ../consent-protocol && pip install -r requirements.txt
-cd ..
-
-# Full local stack against UAT-backed resources
-make local
-
-# Open http://localhost:3000
+make bootstrap
+make doctor PROFILE=uat-remote
+make web PROFILE=uat-remote
 ```
+
+Supported runtime profiles:
+
+- `local-uatdb`
+- `uat-remote`
+- `prod-remote`
+
+Use `make dev PROFILE=local-uatdb` when you need the full local stack. Start with `uat-remote` if you want the fastest first-run path.
 
 ---
 
@@ -136,13 +136,14 @@ make local
 
 | Document                                                              | Description                |
 | --------------------------------------------------------------------- | -------------------------- |
-| [**🚀 Getting Started**](./getting_started.md)                        | Setup and run locally      |
+| [**🚀 Getting Started**](./getting_started.md)                        | Canonical contributor bootstrap |
+| [**🌍 Environment Model**](./docs/guides/environment-model.md)        | The three supported runtime profiles |
+| [**🛠 Advanced Ops**](./docs/guides/advanced-ops.md)                  | Deploy, parity, and ops-only workflows |
 | [**📖 Documentation Index**](./docs/README.md)                        | Complete documentation hub |
 | [**👥 Contributor Guide**](./contributing.md)                         | Making your first contribution |
 | [**🏗️ Architecture**](./docs/reference/architecture/architecture.md)  | System design & flows      |
 | [**🔐 Consent Protocol**](./consent-protocol/docs/reference/consent-protocol.md) | Token lifecycle            |
 | [**🔧 Developer API**](./docs/reference/architecture/api-contracts.md) | API contract surface      |
-| [**💾 Database Schema**](./consent-protocol/db/migrations/COMBINED_MIGRATION.sql) | PostgreSQL tables          |
 
 ---
 
@@ -240,21 +241,21 @@ The subtree workflow source-of-truth lives in `consent-protocol/ops/monorepo/` (
 
 This monorepo uses a `Makefile` for all common operations. Run `make help` to see all targets.
 
-**First-time setup:**
+**Canonical contributor setup:**
 
 ```bash
 git clone https://github.com/hushh-labs/hushh-research.git
 cd hushh-research
-make setup              # Adds the consent-upstream remote
-make sync-protocol      # Pulls latest backend from upstream
+make bootstrap
 ```
 
-### Frontend-Only Contributor
+### Run A Profile Explicitly
 
 ```bash
-make local-backend      # Start backend (terminal 1)
-make local-web          # Start frontend (terminal 2)
-# Commit normally -- consent-protocol/ is just a directory to you
+make dev PROFILE=local-uatdb
+make web PROFILE=uat-remote
+make web PROFILE=prod-remote
+make backend PROFILE=local-uatdb
 ```
 
 ### Backend-Only Contributor (Community)
@@ -312,12 +313,13 @@ We welcome contributions! See our [Contributing Guide](./contributing.md) and [G
 
 **Quick start:**
 1. Fork & clone the repository
-2. Run `make setup` to configure the upstream remote
-3. Run `make ci-local` to test CI checks locally
-4. Create a feature branch
-5. Make your changes
-6. Test CI locally again before committing
-7. Submit a pull request
+2. Run `make bootstrap`
+3. Run `make doctor PROFILE=uat-remote`
+4. Run `bash scripts/ci/orchestrate.sh all`
+5. Create a feature branch
+6. Make your changes
+7. Test CI locally again before committing
+8. Submit a pull request
 
 **Backend contributions:** Open PRs directly at [hushh-labs/consent-protocol](https://github.com/hushh-labs/consent-protocol). See the [Developer Workflow](#-developer-workflow) section above.
 

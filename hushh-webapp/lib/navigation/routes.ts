@@ -5,6 +5,7 @@
 
 export const ROUTES = {
   HOME: "/",
+  DEVELOPERS: "/developers",
   LOGIN: "/login",
   LOGOUT: "/logout",
   LABS_PROFILE_APPEARANCE: "/labs/profile-appearance",
@@ -39,6 +40,7 @@ export function isKaiOnboardingRoute(pathname: string): boolean {
 export function isPublicRoute(pathname: string): boolean {
   return (
     pathname === ROUTES.HOME ||
+    pathname === ROUTES.DEVELOPERS ||
     pathname === ROUTES.LOGIN ||
     pathname === ROUTES.LOGOUT ||
     pathname === ROUTES.PROFILE

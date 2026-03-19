@@ -3,6 +3,11 @@
 import { BarChart3, GitCompareArrows, Loader2, SearchCheck } from "lucide-react";
 
 import { SectionHeader } from "@/components/app-ui/page-sections";
+import {
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceInset,
+} from "@/components/app-ui/surfaces";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/lib/morphy-ux/button";
 import { type KaiStockPreviewResponse } from "@/lib/services/api-service";
@@ -46,37 +51,34 @@ export function StockComparisonPreview({
   showOpenFullAnalysis?: boolean;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-[28px] border border-border/80 bg-background/90 shadow-[0_18px_60px_-30px_rgba(15,23,42,0.25)]",
-        compact ? "p-4 sm:p-5" : "p-5 sm:p-6"
-      )}
-    >
-      <SectionHeader
-        eyebrow="Stock preview"
-        title={preview ? `${preview.symbol} vs the selected picks list` : "Compare before debate"}
-        description={
-          preview
-            ? "See where the live quote stands against the current Kai list context before launching the full debate."
-            : "Kai is preparing a live quote and list comparison."
-        }
-        icon={GitCompareArrows}
-        accent="sky"
-      />
+    <section>
+      <SurfaceCard tone="feature">
+        <SurfaceCardContent className={cn("space-y-6", compact ? "p-4 sm:p-5" : "p-5 sm:p-6")}>
+          <SectionHeader
+            eyebrow="Stock preview"
+            title={preview ? `${preview.symbol} vs the selected picks list` : "Compare before debate"}
+            description={
+              preview
+                ? "See where the live quote stands against the current Kai list context before launching the full debate."
+                : "Kai is preparing a live quote and list comparison."
+            }
+            icon={GitCompareArrows}
+            accent="sky"
+          />
 
-      {loading ? (
-        <div className="flex items-center gap-2 px-1 py-4 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading stock preview...
-        </div>
-      ) : null}
+          {loading ? (
+            <div className="flex items-center gap-2 px-1 py-1 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading stock preview...
+            </div>
+          ) : null}
 
-      {error ? <p className="px-1 py-4 text-sm text-red-500">{error}</p> : null}
+          {error ? <p className="px-1 py-1 text-sm text-red-500">{error}</p> : null}
 
-      {!loading && !error && preview ? (
-        <div className="space-y-4">
+          {!loading && !error && preview ? (
+            <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-[1.15fr_1fr]">
-            <div className="rounded-[24px] border border-border/70 bg-background/70 p-4">
+            <SurfaceInset className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -104,9 +106,9 @@ export function StockComparisonPreview({
                   {formatPercent(preview.quote.change_pct)}
                 </p>
               </div>
-            </div>
+            </SurfaceInset>
 
-            <div className="rounded-[24px] border border-border/70 bg-background/70 p-4">
+            <SurfaceInset className="p-4">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   List comparison
@@ -134,10 +136,10 @@ export function StockComparisonPreview({
                   <Badge variant="outline">{formatFcf(preview.list_match.fcf_billions)}</Badge>
                 ) : null}
               </div>
-            </div>
+            </SurfaceInset>
           </div>
 
-          <div className="rounded-[24px] border border-border/70 bg-background/70 p-4">
+          <SurfaceInset className="p-4">
             <div className="flex items-start gap-3">
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/15 bg-sky-500/10 text-sky-700 dark:text-sky-300">
                 {preview.list_match.in_list ? <SearchCheck className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}
@@ -147,11 +149,12 @@ export function StockComparisonPreview({
                   {preview.list_match.investment_thesis || "Kai can launch the full debate to generate the deeper thesis and recommendation context."}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Source: {preview.list_match.source_id} · Quote as of {new Date(preview.quote.as_of || Date.now()).toLocaleString()}
+                  Source: {preview.list_match.label || preview.list_match.source_id} · Quote as of{" "}
+                  {new Date(preview.quote.as_of || Date.now()).toLocaleString()}
                 </p>
               </div>
             </div>
-          </div>
+          </SurfaceInset>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button variant="blue-gradient" effect="fill" onClick={onStartDebate}>
@@ -164,7 +167,9 @@ export function StockComparisonPreview({
             ) : null}
           </div>
         </div>
-      ) : null}
+          ) : null}
+        </SurfaceCardContent>
+      </SurfaceCard>
     </section>
   );
 }

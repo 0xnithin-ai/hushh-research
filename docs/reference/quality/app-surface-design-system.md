@@ -8,11 +8,14 @@ Profile remains the reference implementation for settings rows. This document ex
 
 1. The top shell is the single authority for header clearance.
 2. Standard routes must reserve top space through `--top-shell-reserved-height`, not raw `env(safe-area-inset-top)`.
-3. Raw safe-area math is allowed only for true fullscreen or overlay surfaces that do not participate in the normal shell.
-4. Native iOS stays aligned with:
+3. Standard page roots own their own start spacing through `padding-top: var(--page-top-start)`.
+4. Do not solve overlap by adding bottom padding to the fixed top bar or by inserting route-local spacer nodes above page content.
+5. Shared page-shell wrappers such as `RiaPageShell` and consent/profile/Kai route roots must apply the same page-start token.
+6. Raw safe-area math is allowed only for true fullscreen or overlay surfaces that do not participate in the normal shell.
+7. Native iOS stays aligned with:
    - `ios.contentInset = "never"`
    - `SystemBars.insetsHandling = "css"`
-5. Decorative glass fade is visual-only and must never add extra content spacing.
+8. Decorative glass fade is visual-only and must never add extra content spacing.
 
 ## Page Header Contract
 
@@ -41,6 +44,82 @@ Rules:
 6. Standalone actions should use the shared `Button` primitive so ripple, loading, and emphasis stay consistent across the app.
 7. Do not ship raw clickable pills or text links for primary app actions when a shared button or row primitive already exists.
 
+## Surface Card Contract
+
+Rules:
+
+1. Shared app cards must originate from the `surface` card preset, not page-level radius/shadow recipes.
+2. Prefer `SurfaceCard`, `ChartSurfaceCard`, `FallbackSurfaceCard`, and `SurfaceInset` from `components/app-ui/surfaces.tsx`.
+3. `Card` remains the low-level primitive. App pages should not re-specify:
+   - outer radius
+   - outer shadow
+   - border opacity
+   - glass background treatment
+4. Standard header/content spacing for app-facing cards must come from:
+   - `SurfaceCardHeader`
+   - `SurfaceCardContent`
+   - `SurfaceCardTitle`
+5. Page files may control layout width and grid placement, but not reinvent card chrome.
+6. Nested content should use `SurfaceInset` or another semantic surface helper instead of raw `rounded-[..] border bg ...` blocks where possible.
+7. Feature/hero summary cards may use the `surface-feature` preset, but they must stay in the same visual family as default data surfaces.
+8. Standard Kai, RIA, and consent routes should use `SurfaceStack` to provide shared horizontal overscan and vertical spacing for card sections.
+9. `AppPageShell` owns route start and shared page gutter. Card breathing comes from `SurfaceStack`, not from per-page inline padding hacks.
+10. Outer app-facing surface shells must not rely on `overflow-hidden`; clipping is allowed only on inner media/chart/inset containers.
+
+### Card Depth Model
+
+Use the `Subtle Apple` depth model:
+
+1. Outer cards stay neutral in both light and dark mode.
+2. Shared depth comes from two root tokens only:
+   - `--app-card-shadow-standard`
+   - `--app-card-shadow-feature`
+3. Shared surface/background tokens come from:
+   - `--app-card-surface-compact`
+   - `--app-card-surface-default`
+   - `--app-card-surface-surface`
+   - `--app-card-surface-hero`
+4. Shared border tokens come from:
+   - `--app-card-border-standard`
+   - `--app-card-border-strong`
+5. Feature emphasis belongs inside the card:
+   - icon wells
+   - badges
+   - insets
+   - copy hierarchy
+6. Do not tint outer card chrome to communicate state.
+7. If a surface needs more presence, move from `surface` to `surface-feature` or `hero`; do not invent a new route-local shadow recipe.
+
+### Ripple Ownership and Clipping
+
+1. Every actionable shell should show Material ripple.
+2. The ripple host owns clipping.
+3. Rounded interactive shells must clip ripple to the exact visible radius.
+4. Outer cards remain `overflow-visible`; ripple, media, code panes, and chart plots clip inside their own inner boundaries.
+5. Standard shared actionables include:
+   - `Button`
+   - dropdown/select rows
+   - segmented controls / bottom nav items
+   - actionable settings rows
+   - actionable cards or list rows
+6. Do not add route-level ripple wrappers when a shared primitive already provides one.
+
+### Cache-First Vault UX
+
+1. Vault-backed routes should prefer cache-first rendering after unlock.
+2. The standard behavior is `SWR by route/session key`:
+   - render cached data immediately when valid
+   - refresh silently in the background only when the cache is stale
+   - dedupe in-flight refreshes
+   - do not re-fetch because of unchanged token churn
+3. Cache keys should be based on:
+   - `userId`
+   - route scope
+   - source selection
+   - critical params
+4. Visibility and interval refreshes should be stale-aware, not unconditional.
+5. Unlock warmup can seed cache, but route loaders must still own stale-refresh policy.
+
 ## Icon Policy
 
 Rules:
@@ -67,6 +146,19 @@ Rules:
 3. Market overview should only promote metrics backed by providers that are actually configured in the active environment.
 4. Degraded or delayed states should read as intentional status, not as broken empty cards.
 5. Long browse lists must support client-side pagination or equivalent browse controls once the result set stops being comfortably scannable in one pass.
+
+## RIA Information Architecture
+
+1. `RIA` is a lightweight workspace shell, not a second dense operations dashboard.
+2. The RIA bottom navigation is `Home / Clients / Picks / Profile`.
+3. `/consents` is the single consent/request workspace for both investor and RIA personas.
+4. `/ria/requests` remains only as a compatibility alias into `/consents`, not as a second consent system.
+5. Relationship views should stay grouped around:
+   - relationship state
+   - next action
+   - available scope metadata
+   - current grants
+6. Workspace data views should open only after consent is active; pre-consent relationship surfaces stay metadata-only.
 
 ## Documentation References
 

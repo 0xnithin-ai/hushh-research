@@ -7,9 +7,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getPythonApiUrl } from "@/app/api/_utils/backend";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const BACKEND_URL = getPythonApiUrl();
 
 interface StoreDomainRequest {
   user_id: string;
@@ -48,9 +51,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward to backend
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
     const backendResponse = await fetch(
-      `${backendUrl}/api/world-model/store-domain`,
+      `${BACKEND_URL}/api/world-model/store-domain`,
       {
         method: "POST",
         headers: {

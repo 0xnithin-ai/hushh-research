@@ -66,7 +66,7 @@ function consentFromFCMPayload(
   if (!requestId) return null;
   return {
     id: requestId,
-    developer: data.agent_id || "Unknown Agent",
+    developer: data.agent_label || data.agent_id || "Unknown Agent",
     scope: data.scope || "",
     scopeDescription: data.scope_description || undefined,
     requestedAt: Date.now(),
@@ -115,12 +115,81 @@ type ConsentNotificationStateValue = {
   deliveryMode: ConsentNotificationDeliveryMode;
   deliveryDetail: string | null;
   pendingCount: number;
+  retryPushRegistration: () => void;
+  isRetryingPushRegistration: boolean;
 };
+
+type PersistedDeliveryState = {
+  status: FCMInitStatus;
+  detail: string | null;
+  updatedAt: number;
+};
+
+const DELIVERY_STATE_SESSION_KEY_PREFIX = "consent_delivery_state";
+
+function getDeliveryStateSessionKey(userId: string) {
+  return `${DELIVERY_STATE_SESSION_KEY_PREFIX}:${userId}`;
+}
+
+function deliveryModeFromInitStatus(
+  status: FCMInitStatus
+): ConsentNotificationDeliveryMode {
+  if (status === "push_active") return "push_active";
+  if (status === "push_blocked") return "push_blocked";
+  return "push_failed_fallback_active";
+}
+
+function readPersistedDeliveryState(userId: string): PersistedDeliveryState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(getDeliveryStateSessionKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedDeliveryState>;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      typeof parsed.status !== "string" ||
+      typeof parsed.updatedAt !== "number"
+    ) {
+      return null;
+    }
+    return {
+      status: parsed.status as FCMInitStatus,
+      detail: typeof parsed.detail === "string" ? parsed.detail : null,
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistDeliveryState(userId: string, state: PersistedDeliveryState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      getDeliveryStateSessionKey(userId),
+      JSON.stringify(state)
+    );
+  } catch {
+    // Ignore session storage write failures.
+  }
+}
+
+function clearPersistedDeliveryState(userId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(getDeliveryStateSessionKey(userId));
+  } catch {
+    // Ignore session storage cleanup failures.
+  }
+}
 
 const ConsentNotificationStateContext = createContext<ConsentNotificationStateValue>({
   deliveryMode: "inbox_only",
   deliveryDetail: null,
   pendingCount: 0,
+  retryPushRegistration: () => {},
+  isRetryingPushRegistration: false,
 });
 
 // ============================================================================
@@ -138,8 +207,11 @@ export function ConsentNotificationProvider({
     useState<ConsentNotificationDeliveryMode>("inbox_only");
   const [deliveryDetail, setDeliveryDetail] = useState<string | null>(null);
   const [fcmInitStatus, setFcmInitStatus] = useState<FCMInitStatus | null>(null);
+  const [fcmInitGeneration, setFcmInitGeneration] = useState(0);
+  const [isRetryingPushRegistration, setIsRetryingPushRegistration] =
+    useState(false);
   const { user } = useAuth();
-  const fcmInitializedRef = useRef(false);
+  const lastAuthenticatedUidRef = useRef<string | null>(null);
   // Track which request IDs we've already toasted this session
   const toastedIdsRef = useRef(new Set<string>());
 
@@ -223,49 +295,83 @@ export function ConsentNotificationProvider({
   // Important: use the authenticated user object from our auth context.
   // This app can sign into a dedicated Firebase auth app, so `getAuth().currentUser`
   // may be null even while `useAuth()` is correctly authenticated.
+  const retryPushRegistration = useCallback(() => {
+    if (!user) return;
+    clearPersistedDeliveryState(user.uid);
+    setIsRetryingPushRegistration(true);
+    setFcmInitGeneration((current) => current + 1);
+  }, [user]);
+
   useEffect(() => {
     if (!user) {
-      fcmInitializedRef.current = false;
+      if (lastAuthenticatedUidRef.current) {
+        clearPersistedDeliveryState(lastAuthenticatedUidRef.current);
+      }
+      lastAuthenticatedUidRef.current = null;
       setFcmInitStatus(null);
       setDeliveryMode("inbox_only");
       setDeliveryDetail(null);
       setPendingCount(0);
+      setIsRetryingPushRegistration(false);
       return;
     }
-    if (fcmInitializedRef.current) return;
 
     let cancelled = false;
-    fcmInitializedRef.current = true;
+    lastAuthenticatedUidRef.current = user.uid;
 
-    user
-      .getIdToken()
-      .then(async (idToken) => {
+    const run = async () => {
+      const shouldRestoreFromSession = fcmInitGeneration === 0;
+      if (shouldRestoreFromSession) {
+        const persisted = readPersistedDeliveryState(user.uid);
+        if (persisted) {
+          if (cancelled) return;
+          setFcmInitStatus(persisted.status);
+          setDeliveryDetail(persisted.detail);
+          setDeliveryMode(deliveryModeFromInitStatus(persisted.status));
+          console.info("[NotificationProvider] Restored delivery state:", persisted);
+          return;
+        }
+      }
+
+      try {
+        const idToken = await user.getIdToken();
         const result = await initializeFCM(user.uid, idToken);
         if (cancelled) return;
+
+        persistDeliveryState(user.uid, {
+          status: result.status,
+          detail: result.detail ?? null,
+          updatedAt: Date.now(),
+        });
         setFcmInitStatus(result.status);
         setDeliveryDetail(result.detail ?? null);
-        if (result.status === "push_active") {
-          setDeliveryMode("push_active");
-        } else if (result.status === "push_blocked") {
-          setDeliveryMode("push_blocked");
-        } else {
-          setDeliveryMode("inbox_only");
-        }
+        setDeliveryMode(deliveryModeFromInitStatus(result.status));
         console.info("[NotificationProvider] Delivery init:", result);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
+        const detail = err instanceof Error ? err.message : "fcm_init_failed";
         console.error("[NotificationProvider] FCM initialization failed:", err);
-        fcmInitializedRef.current = false;
+        persistDeliveryState(user.uid, {
+          status: "push_failed",
+          detail,
+          updatedAt: Date.now(),
+        });
         setFcmInitStatus("push_failed");
-        setDeliveryMode("inbox_only");
-        setDeliveryDetail(err instanceof Error ? err.message : "fcm_init_failed");
-      });
+        setDeliveryMode("push_failed_fallback_active");
+        setDeliveryDetail(detail);
+      } finally {
+        if (!cancelled) {
+          setIsRetryingPushRegistration(false);
+        }
+      }
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [fcmInitGeneration, user]);
 
   useEffect(() => {
     if (!user || Capacitor.isNativePlatform()) return;
@@ -443,6 +549,8 @@ export function ConsentNotificationProvider({
         deliveryMode,
         deliveryDetail,
         pendingCount,
+        retryPushRegistration,
+        isRetryingPushRegistration,
       }}
     >
       {children}

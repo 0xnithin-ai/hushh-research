@@ -22,6 +22,7 @@ import {
   BriefcaseBusiness,
   Check,
   ChevronDown,
+  Code2,
   type LucideIcon,
   Loader2,
   LogOut,
@@ -105,6 +106,10 @@ function getTopBarTitle(
     return { label: "Set up RIA", interactive: false as const };
   }
 
+  if (pathname === ROUTES.DEVELOPERS) {
+    return { label: "Developers", icon: Code2, interactive: false as const };
+  }
+
   const isPersonaShellRoute =
     pathname.startsWith(ROUTES.KAI_HOME) ||
     pathname.startsWith(ROUTES.RIA_HOME) ||
@@ -177,12 +182,7 @@ export function TopAppBar({ className }: TopAppBarProps) {
         return;
       }
 
-      if (target === "ria" && riaCapability === "disabled") {
-        toast.info("RIA access is not available in this environment yet.");
-        return;
-      }
-
-      if (target === "ria" && riaCapability === "setup") {
+      if (target === "ria" && riaCapability !== "switch") {
         setSwitchingPersona(target);
         router.push(nextRoute);
         return;
@@ -295,22 +295,22 @@ export function TopAppBar({ className }: TopAppBarProps) {
                             <span>Investor</span>
                           </div>
                           {activePersona === "investor" ? (
-                            <Check className="ml-auto h-4 w-4 text-primary" />
+                            <Check className="ml-auto h-4 w-4 text-current" />
                           ) : null}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => void handlePersonaSelect("ria")}
-                          disabled={riaCapability === "disabled" || switchingPersona !== null}
+                          disabled={switchingPersona !== null}
                           className="group"
                         >
                           <div className="relative z-10 flex min-w-0 items-center gap-2 text-current">
                             <BriefcaseBusiness className="h-4 w-4 text-current" />
-                            <span>{riaCapability === "setup" ? "Set up RIA" : "RIA"}</span>
+                            <span>{riaCapability === "switch" ? "RIA" : "Set up RIA"}</span>
                           </div>
                           {switchingPersona === "ria" ? (
-                            <Loader2 className="ml-auto h-4 w-4 animate-spin text-primary" />
+                            <Loader2 className="ml-auto h-4 w-4 animate-spin text-current" />
                           ) : activePersona === "ria" ? (
-                            <Check className="ml-auto h-4 w-4 text-primary" />
+                            <Check className="ml-auto h-4 w-4 text-current" />
                           ) : null}
                         </DropdownMenuItem>
                       </DropdownMenuContent>

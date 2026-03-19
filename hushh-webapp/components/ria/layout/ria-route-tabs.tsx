@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { Card } from "@/lib/morphy-ux/card";
 import {
   activeRiaRouteTabFromPath,
   RIA_ROUTE_TABS,
@@ -25,7 +26,12 @@ export function RiaRouteTabs({ embedded = false }: { embedded?: boolean }) {
       )}
       data-tour-id="ria-route-tabs"
     >
-      <div className="grid w-full grid-cols-4 gap-2 rounded-[22px] border border-border/50 bg-background/65 p-1.5 shadow-sm backdrop-blur-md">
+      <Card
+        preset="compact"
+        variant="none"
+        effect="glass"
+        className="grid w-full grid-cols-4 gap-2 p-1.5"
+      >
         {RIA_ROUTE_TABS.map((tab) => {
           const isActive = tab.id === activeTab;
           return (
@@ -44,7 +50,7 @@ export function RiaRouteTabs({ embedded = false }: { embedded?: boolean }) {
             </button>
           );
         })}
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const path = require('node:path');
-const readline = require('node:readline');
 const { spawn, spawnSync } = require('node:child_process');
 
 const CANONICAL_PROFILES = ['local-uatdb', 'uat-remote', 'prod-remote'];
@@ -41,38 +40,6 @@ function normalizeProfile(raw) {
   return null;
 }
 
-function promptSelectProfile(defaultProfile) {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    const options = CANONICAL_PROFILES.map((profile, index) => {
-      const marker = profile === defaultProfile ? ' (default)' : '';
-      return `  ${index + 1}) ${profile}${marker}`;
-    }).join('\n');
-
-    rl.question(
-      `Select runtime profile:\n${options}\nEnter 1/2/3 (or profile name): `,
-      (answer) => {
-        rl.close();
-        const raw = String(answer || '').trim().toLowerCase();
-        if (!raw) {
-          resolve(defaultProfile);
-          return;
-        }
-        const byIndex = Number.parseInt(raw, 10);
-        if (!Number.isNaN(byIndex) && byIndex >= 1 && byIndex <= CANONICAL_PROFILES.length) {
-          resolve(CANONICAL_PROFILES[byIndex - 1]);
-          return;
-        }
-        resolve(normalizeProfile(raw));
-      }
-    );
-  });
-}
-
 function activateProfile(profile) {
   const scriptPath = path.join(repoRoot, 'scripts/env/use_profile.sh');
   const result = spawnSync('bash', [scriptPath, profile], {
@@ -92,14 +59,12 @@ async function main() {
   const requested = normalizeProfile(argProfile) || envProfile;
   const defaultProfile = 'local-uatdb';
 
-  let profile = requested;
-  if (!profile) {
-    if (!process.stdin.isTTY || !process.stdout.isTTY) {
-      profile = defaultProfile;
-      console.log(`No interactive TTY detected. Using runtime profile: ${profile}`);
-    } else {
-      profile = await promptSelectProfile(defaultProfile);
-    }
+  const profile = requested || defaultProfile;
+  if (!requested) {
+    console.log(
+      `No runtime profile was specified. Defaulting to ${profile}. ` +
+        'Use make dev PROFILE=<profile> or npm run dev -- --profile=<profile> for an explicit target.'
+    );
   }
 
   if (!profile) {

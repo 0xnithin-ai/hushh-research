@@ -1,44 +1,72 @@
 # Getting Started
 
-> Canonical local setup guide for the Hushh monorepo.
-
----
+This is the canonical contributor setup path for the monorepo.
 
 ## Prerequisites
 
-| Tool | Version |
-| --- | --- |
-| Node.js | 20+ |
-| Python | 3.13+ |
-| Git | current |
-| PostgreSQL-compatible runtime | local Postgres or Supabase-backed profile |
+Required for the core web + backend contributor flow:
 
-Optional for native work:
+| Tool | Required version | Why |
+| --- | --- | --- |
+| `git` | current | clone the repo and use worktrees/branches |
+| `make` | current | canonical command surface (`make bootstrap`, `make doctor`, `make dev`) |
+| `node` | `>=20` | Next.js 16 / frontend toolchain |
+| `npm` | `>=10` | lockfile-compatible package install |
+| `python3` | `>=3.13` | FastAPI backend, bootstrap, CI parity |
+| `jq` | current | profile/bootstrap/deploy helper scripts |
 
-| Tool | Purpose |
-| --- | --- |
-| Xcode + CocoaPods | iOS |
-| Android Studio | Android |
+Optional, depending on the work you need to do:
 
----
+| Tool | Needed when | Notes |
+| --- | --- | --- |
+| `gcloud` | hydrating profiles from GCP, checking live UAT/prod parity, deploying | bootstrap still works without it, but falls back to templates/cached values |
+| `cloud-sql-proxy` | running `local-uatdb` backend | not needed for `uat-remote` or `prod-remote` |
+| Xcode / Android Studio | native/mobile work | not part of the core first-run path |
 
-## Clone And Bootstrap
+## What You Are Running
+
+- Frontend: Next.js 16 + React 19 + Capacitor
+- Backend: FastAPI on Python 3.13
+- Storage: Postgres with encrypted world-model blob/index separation
+- Auth: Firebase
+- Runtime profiles:
+  - `local-uatdb`: local frontend + local backend, backed by UAT resources
+  - `uat-remote`: local frontend against deployed UAT backend
+  - `prod-remote`: local frontend against deployed production backend
+
+## First Run
 
 ```bash
 git clone https://github.com/hushh-labs/hushh-research.git
 cd hushh-research
-make setup
+make bootstrap
+make web PROFILE=uat-remote
 ```
 
-Install package dependencies:
+`make bootstrap` is the only supported first-run entrypoint. It:
+
+- configures monorepo hooks and the consent-protocol upstream remote
+- installs frontend dependencies
+- creates the backend `.venv` and installs requirements
+- hydrates the three canonical runtime profiles from GCP when available
+- falls back to templates and cached local values when GCP access is unavailable
+- runs `make doctor PROFILE=uat-remote`
+
+The default first-run recommendation is `uat-remote` because it is the fastest path to a working app: local frontend, deployed UAT backend, no local backend or Cloud SQL proxy required.
+
+## Canonical Commands
+
+Use these commands instead of manually assembling `.env` files or inventing a new launch flow.
 
 ```bash
-cd hushh-webapp && npm install
-cd ../consent-protocol
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cd ..
+make doctor PROFILE=local-uatdb
+make doctor PROFILE=uat-remote
+make doctor PROFILE=prod-remote
+
+make dev PROFILE=local-uatdb
+make web PROFILE=uat-remote
+make web PROFILE=prod-remote
+make backend PROFILE=local-uatdb
 ```
 
 Use `.venv` as the backend virtual environment. Do not maintain a second `venv` alongside it.
@@ -62,6 +90,19 @@ Activate a profile into `consent-protocol/.env` and `hushh-webapp/.env.local`:
 ```bash
 bash scripts/env/use_profile.sh local-uatdb
 ```
+
+For `local-uatdb`, start the backend with the launcher instead of running
+`python`/`uvicorn` directly:
+
+```bash
+bash scripts/runtime/run_backend_local.sh local-uatdb
+```
+
+That launcher starts the local Cloud SQL proxy automatically when the active
+profile points at UAT Cloud SQL. It authenticates the proxy from
+`FIREBASE_SERVICE_ACCOUNT_JSON` in the active backend env, or from
+`CLOUDSQL_PROXY_CREDENTIALS_FILE` if you set one explicitly. It refuses to
+fall back to local `gcloud`/ADC credentials.
 
 Supported profile names:
 
@@ -88,7 +129,7 @@ make uat
 make prod
 ```
 
-Useful narrower launchers:
+Shortcut aliases still exist:
 
 ```bash
 make local-web
@@ -97,74 +138,49 @@ make prod-web
 make local-backend
 ```
 
-Manual backend start after activating `.venv` and the selected profile:
+## Decision Table
+
+| I need to… | Use this profile | Run this |
+| --- | --- | --- |
+| get the app running as fast as possible on first clone | `uat-remote` | `make web PROFILE=uat-remote` |
+| run the full local stack | `local-uatdb` | `make dev PROFILE=local-uatdb` |
+| debug the local frontend against UAT | `uat-remote` | `make web PROFILE=uat-remote` |
+| inspect production behavior safely from local web | `prod-remote` | `make web PROFILE=prod-remote` |
+| run only the local backend | `local-uatdb` | `make backend PROFILE=local-uatdb` |
+| confirm a profile is coherent before booting | any | `make doctor PROFILE=<profile>` |
+| bootstrap without GCP access yet | `uat-remote` first | `make bootstrap`, then read the doctor output for missing secrets/placeholders |
+
+## Expected Endpoints
+
+For `local-uatdb`:
+
+- frontend: `http://localhost:3000`
+- backend: `http://127.0.0.1:8000`
+- health: `curl http://127.0.0.1:8000/health`
+
+For remote profiles:
+
+- frontend: `http://localhost:3000`
+- backend target is whatever `make doctor PROFILE=<profile>` reports from the canonical profile file
+
+## Important Rules
+
+- Use only `local-uatdb`, `uat-remote`, or `prod-remote`
+- Use only `consent-protocol/.env.<profile>.local` and `hushh-webapp/.env.<profile>.local`
+- Do not rely on `*.dev.local`, `*.uat.local`, or `*.prod.local`
+- Do not rely on server-side localhost or production fallbacks in hosted environments
+- Do not run local UAT DB access with raw `uvicorn`; use `make backend PROFILE=local-uatdb`
+
+## Verification Before You Start Coding
 
 ```bash
-cd consent-protocol
-source .venv/bin/activate
-python -m uvicorn server:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Health check:
-
-```bash
-curl http://localhost:8000/health
-```
-
-Expected outcomes:
-
-- frontend available at `http://localhost:3000`
-- backend responds on `http://localhost:8000`
-- profile-based launchers resolve the correct runtime profile before boot
-- IAM schema verification passes before `make local` and `make local-backend` continue
-
----
-
-## Database And Migrations
-
-SQL migrations live in `consent-protocol/db/migrations/`.
-
-Do not use `psql $DATABASE_URL ...` guidance here. Runtime and migration scripts are aligned to the `DB_*` contract.
-
-For IAM schema setup and verification:
-
-```bash
-make db-init-iam
-make verify-iam-schema
-```
-
-For profile-backed local startup, `make local` and `make local-backend` already run IAM schema verification before boot.
-
----
-
-## Verification
-
-Run the common local checks before opening a PR:
-
-```bash
-./scripts/test-ci-local.sh
+bash scripts/ci/orchestrate.sh all
+make doctor PROFILE=uat-remote
 make verify-docs
-cd hushh-webapp && npm run verify:routes
 ```
 
-Useful quick checks after first boot:
+## Next Reads
 
-- open the frontend and confirm the login screen renders
-- hit `curl http://localhost:8000/health`
-- run `cd hushh-webapp && npm run typecheck` if you changed frontend code
-- run targeted backend `pytest` if you changed protocol/runtime behavior
-
-Package-local docs for deeper implementation detail:
-
-- backend/protocol: [../../consent-protocol/docs/README.md](../../consent-protocol/docs/README.md)
-- frontend/native: [../../hushh-webapp/docs/README.md](../../hushh-webapp/docs/README.md)
-
----
-
-## Related References
-
-- architecture: [../reference/architecture/architecture.md](../reference/architecture/architecture.md)
-- API contracts: [../reference/architecture/api-contracts.md](../reference/architecture/api-contracts.md)
-- route governance: [../reference/architecture/route-contracts.md](../reference/architecture/route-contracts.md)
-- env and secrets: [../reference/operations/env-and-secrets.md](../reference/operations/env-and-secrets.md)
-- mobile/native workflow: [./mobile.md](./mobile.md)
+- [Environment Model](./environment-model.md)
+- [Advanced Ops](./advanced-ops.md)
+- [Architecture](../reference/architecture/architecture.md)

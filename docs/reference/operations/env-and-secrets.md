@@ -27,14 +27,22 @@ See also: [deploy/README.md](../../../deploy/README.md), [consent-protocol/.env.
 5. Runtime profile bootstrap command:
 
 ```bash
-bash scripts/env/bootstrap_profiles.sh
+make bootstrap
 ```
 
-This command creates and hydrates local runtime-profile files from templates plus current cloud secrets/runtime metadata.
+This is the supported contributor entrypoint. It installs dependencies, hydrates local runtime-profile files from templates plus current cloud secrets/runtime metadata when available, and runs the profile doctor.
 It does not print secret values and sets profile files to `chmod 600`.
-It also validates canonical identity keys per runtime profile (`ENVIRONMENT`, `NEXT_PUBLIC_APP_ENV`) and reports missing required values.
 
 6. Activate the chosen runtime profile:
+
+```bash
+make doctor PROFILE=local-uatdb
+make dev PROFILE=local-uatdb
+make web PROFILE=uat-remote
+make web PROFILE=prod-remote
+```
+
+Low-level activation still exists when you need it:
 
 ```bash
 bash scripts/env/use_profile.sh local-uatdb
@@ -42,24 +50,14 @@ bash scripts/env/use_profile.sh uat-remote
 bash scripts/env/use_profile.sh prod-remote
 ```
 
-Canonical launchers:
-
-```bash
-make local
-make uat
-make prod
-```
-
 `make local` and `make local-backend` now run IAM schema verification against the active UAT-backed database before booting. If IAM is incomplete, the launcher exits instead of silently falling back to investor-compatibility mode.
 
-Frontend-only launcher:
+Profile-aware frontend-only launcher:
 
 ```bash
 cd hushh-webapp
 npm run dev -- --profile=local-uatdb
 ```
-
-`npm run dev` now prompts for `local-uatdb|uat-remote|prod-remote` unless `APP_RUNTIME_PROFILE` or `--profile=<runtime-profile>` is provided.
 
 ### One-command parity audit
 
@@ -84,11 +82,25 @@ The script reports:
 - whether each required key exists in the target project
 - missing keys (if any), with non-zero exit on failure
 
+### Firebase identity plane rule
+
+1. The application uses one Firebase identity plane across `development`, `uat`, and `production`.
+2. Environment separation is primarily at the database / backend runtime layer, not by switching Firebase projects for web messaging.
+3. `NEXT_PUBLIC_FIREBASE_*` and `FIREBASE_SERVICE_ACCOUNT_JSON` must stay aligned with the Firebase project used for login and ID-token verification.
+4. `NEXT_PUBLIC_AUTH_FIREBASE_*` and `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON` are compatibility overrides only. If they are set to a different project, the client and backend must still resolve to the same effective Firebase identity plane for auth + FCM.
+5. A split where auth uses one Firebase project and web messaging/default admin uses another is considered config drift and will break web FCM registration.
+6. UAT and production share the live Plaid credential set; only local development should use sandbox Plaid secrets and `PLAID_ENV=sandbox`.
+7. Web consent delivery uses different defaults by environment:
+   - local development: `CONSENT_SSE_ENABLED=true`
+   - UAT: `CONSENT_SSE_ENABLED=true`
+   - production: `CONSENT_SSE_ENABLED=false` unless there is an explicit incident-response or rollout reason to enable it
+8. `RIA_DEV_BYPASS_ENABLED` is the only RIA dev-bypass switch. When `true`, it enables the Dev Bypass flow for any non-production backend environment. It must remain `false` in production.
+
 ### Branch divergence note (current)
 
-1. `deploy_uat` currently includes analytics/auth-split expectations (`NEXT_PUBLIC_AUTH_FIREBASE_*`, measurement IDs, GTM IDs).
+1. `deploy_uat` currently carries analytics keys plus optional auth-override keys (`NEXT_PUBLIC_AUTH_FIREBASE_*`).
 2. Production branch rollout does not yet require all analytics keys until the dedicated migration step is approved.
-3. Production analytics migration remains deferred by policy; do not mutate production to match UAT-only analytics during routine UAT delivery.
+3. Auth override keys are not a signal that UAT should use a different Firebase project for messaging. They remain compatibility inputs only.
 
 ### Ops-only GitHub secrets (backup/recovery governance)
 
@@ -134,7 +146,7 @@ Used by:
 | `SYNC_REMOTE_ENABLED` | deploy env (`deploy/backend.cloudbuild.yaml`) | No | Legacy deploy flag; currently not read by backend code |
 | `DEVELOPER_API_ENABLED` | `server.py`, `mcp_modules/config.py` | No | Production default false; MCP developer tooling gate |
 | `DEVELOPER_REGISTRY_JSON` | n/a (legacy) | Optional legacy | Legacy developer registry payload; no active backend reader |
-| `MCP_DEVELOPER_TOKEN` | `api/routes/session.py` (`/api/user/lookup`) | Recommended | Required for protected service-to-service lookup |
+| `HUSHH_DEVELOPER_TOKEN` | `api/routes/session.py` (`/api/user/lookup`) | Optional | Self-serve developer token for stdio MCP and token-auth developer lookups. Not part of the normal hosted runtime bootstrap. |
 
 **Migrations/scripts:** Use **DB_*** only (same as runtime). `db/migrate.py` uses `db.connection.get_database_url()` and `get_database_ssl()`. No `DATABASE_URL` anywhere.
 
@@ -154,10 +166,10 @@ Used by:
 | `NEXT_PUBLIC_CONSENT_TIMEOUT_SECONDS` | `lib/constants.ts` | No | |
 | `NEXT_PUBLIC_FRONTEND_URL` | `lib/config.ts` | No | |
 | `CAPACITOR_BUILD` | `next.config.ts` | Build script | |
-| `BACKEND_URL` | Server-side api routes | No | Fallback for NEXT_PUBLIC_BACKEND_URL |
+| `BACKEND_URL` | Server-side api routes | Hosted runtime required | Canonical runtime backend origin for Next.js route handlers |
 | `SESSION_SECRET` | `lib/auth/session.ts` | If session API | Server-only |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | `lib/firebase/admin.ts` | Server-side Firebase | Server-only |
-| `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON` | `lib/firebase/admin.ts` | Recommended for auth-split | Server-only; used for token verification when web auth project differs |
+| `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON` | `lib/firebase/admin.ts` | Optional compatibility override | Server-only; if set differently from `FIREBASE_SERVICE_ACCOUNT_JSON`, default/admin messaging must still resolve to the same effective Firebase project |
 
 ---
 
@@ -189,12 +201,12 @@ Used by:
 | `APP_REVIEW_MODE` | No | Yes (prod) | Local: `.env`; Prod: Secret Manager | Backend app-review toggle |
 | `HUSHH_APP_REVIEW_MODE` | No | No | Optional alternative key | Alias toggle for app review |
 | `REVIEWER_UID` | If app review | Yes (prod) | Local: `.env`; Prod: Secret Manager | Reviewer Firebase UID for custom token minting |
-| `CONSENT_SSE_ENABLED` | No | No | Local: `.env`; Prod: Cloud Run env | Keep false in production (FCM-first) |
+| `CONSENT_SSE_ENABLED` | No | No | Local: `.env`; UAT/Prod: Cloud Run env | Local + UAT should be true for web fallback validation; production stays false by default (FCM-first) |
 | `SYNC_REMOTE_ENABLED` | No | No | Local: `.env`; Prod: Cloud Run env | Legacy deploy flag; keep false |
 | `DEVELOPER_API_ENABLED` | No | No | Local: `.env`; Prod: Cloud Run env | Keep false in production |
 | `OBS_DATA_STALE_RATIO_THRESHOLD` | No | No | Local: `.env`; Scheduler/Job env | Threshold for Supabase data-health stale-ratio anomaly |
 | `DEVELOPER_REGISTRY_JSON` | Optional legacy | No | Local/non-prod env | Legacy developer registry JSON |
-| `MCP_DEVELOPER_TOKEN` | Recommended | Yes (prod) | Local: `.env`; Prod: Secret Manager | Service auth for `/api/user/lookup` |
+| `HUSHH_DEVELOPER_TOKEN` | Optional | No | Local: `.env` when needed | Self-serve developer token for stdio MCP and token-auth `/api/user/lookup` |
 
 **CI (GitHub Actions):** Backend tests use `TESTING=true`, dummy `SECRET_KEY`, and dummy `VAULT_ENCRYPTION_KEY`; no `.env` file required.
 
@@ -205,7 +217,7 @@ These are used by MCP modules (`mcp_modules/`) for MCP server functionality, not
 - `CONSENT_API_URL` - MCP server FastAPI URL (defaults to `http://localhost:8000`)
 - `PRODUCTION_MODE` - MCP server production mode flag
 - `DEVELOPER_API_ENABLED` - MCP view of `/api/v1/*` availability (default false in production)
-- `MCP_DEVELOPER_TOKEN` - MCP developer token for service-auth protected lookup
+- `HUSHH_DEVELOPER_TOKEN` - optional self-serve developer token for stdio MCP and token-auth lookup
 
 **Note:** These are not required for Cloud Run backend deployment; only needed when running the MCP server locally.
 
@@ -223,10 +235,10 @@ These are used by MCP modules (`mcp_modules/`) for MCP server functionality, not
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Yes | No | Same | Required by current Cloud Build frontend manifest |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | No | Same | Required by current Cloud Build frontend manifest |
 | `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | Yes | No | Same | **Web push (FCM)**: VAPID key from Firebase Console -> Cloud Messaging -> Web configuration -> Key pair. Required for production build and consent push on web. See [fcm-notifications.md](../../../consent-protocol/docs/reference/fcm-notifications.md). |
-| `NEXT_PUBLIC_AUTH_FIREBASE_API_KEY` | Recommended (auth-split) | No | `.env.local` / CI / build-arg | Optional auth-only override for web login project |
-| `NEXT_PUBLIC_AUTH_FIREBASE_AUTH_DOMAIN` | Recommended (auth-split) | No | Same | Optional auth-only override for web login project |
-| `NEXT_PUBLIC_AUTH_FIREBASE_PROJECT_ID` | Recommended (auth-split) | No | Same | Optional auth-only override for web login project |
-| `NEXT_PUBLIC_AUTH_FIREBASE_APP_ID` | Recommended (auth-split) | No | Same | Optional auth-only override for web login project |
+| `NEXT_PUBLIC_AUTH_FIREBASE_API_KEY` | Optional compatibility override | No | `.env.local` / CI / build-arg | Keep equal to `NEXT_PUBLIC_FIREBASE_*` unless a temporary auth override is explicitly required |
+| `NEXT_PUBLIC_AUTH_FIREBASE_AUTH_DOMAIN` | Optional compatibility override | No | Same | Same rule: do not diverge from the primary Firebase project unless intentionally testing an override |
+| `NEXT_PUBLIC_AUTH_FIREBASE_PROJECT_ID` | Optional compatibility override | No | Same | Same rule |
+| `NEXT_PUBLIC_AUTH_FIREBASE_APP_ID` | Optional compatibility override | No | Same | Same rule |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_UAT` | Recommended | No | `.env.local` / CI / build-arg | Analytics measurement ID for UAT (preferred key) |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_STAGING` | Optional legacy | No | `.env.local` / CI / build-arg | Backward-compatible alias for UAT measurement ID |
 | `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_PRODUCTION` | Recommended | No | `.env.local` / CI / Prod build-arg | Analytics measurement ID for production |
@@ -241,16 +253,16 @@ These are used by MCP modules (`mcp_modules/`) for MCP server functionality, not
 | `NEXT_PUBLIC_OBSERVABILITY_SAMPLE_RATE` | No | No | `.env.local` / CI / Prod build-arg | Sampling rate (0-1) |
 | `CAPACITOR_BUILD` | For native build | No | Set by npm script | true for cap:build |
 | `NODE_ENV` | No | No | Set by Next.js / CI | |
-| `BACKEND_URL` | Server-side | No | Same as NEXT_PUBLIC_BACKEND_URL where used | |
+| `BACKEND_URL` | Server-side | Hosted runtime required | Cloud Run runtime env or local profile value; do not leave unset in hosted environments | |
 | `SESSION_SECRET` | If using session API | Yes | Server env only | Not in client |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Server-side Firebase | Yes | Server env only | |
-| `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON` | Auth-split token verification | Yes (for auth-split) | Server env only | Falls back to FIREBASE_SERVICE_ACCOUNT_JSON if unset |
+| `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON` | Auth token verification compatibility override | No | Server env only | Falls back to `FIREBASE_SERVICE_ACCOUNT_JSON` if unset; keep aligned with the same Firebase identity plane |
 | `NEXT_PUBLIC_CONSENT_TIMEOUT_SECONDS` | No | No | Optional; sync with backend | |
 | `NEXT_PUBLIC_FRONTEND_URL` | No | No | Optional | |
 
 **CI:** Frontend build uses dummy Firebase vars and `NEXT_PUBLIC_BACKEND_URL=https://api.example.com`; no `.env.local` required.
 
-**Prod build (Cloud Build):** Secret `BACKEND_URL` is passed as build-arg from Secret Manager.
+**Prod/UAT deploy (Cloud Build):** Secret `BACKEND_URL` is passed both as a build-arg and as a Cloud Run runtime env so client and server-side route handlers stay aligned.
 
 ### Legacy/Deprecated vars
 
@@ -276,8 +288,6 @@ Secret Manager must hold **exactly** the keys the code uses. No extra secrets; n
 | `DB_PASSWORD` | `DB_PASSWORD` (same) |
 | `APP_REVIEW_MODE` | `APP_REVIEW_MODE` (api/routes/health.py) |
 | `REVIEWER_UID` | `REVIEWER_UID` (api/routes/health.py) |
-| `MCP_DEVELOPER_TOKEN` | `MCP_DEVELOPER_TOKEN` (api/routes/session.py) |
-
 **Not in Secret Manager (set as Cloud Run env vars in cloudbuild):** `DB_HOST`, `DB_PORT`, `DB_NAME`, `ENVIRONMENT`, `GOOGLE_GENAI_USE_VERTEXAI`, `CONSENT_SSE_ENABLED`, `SYNC_REMOTE_ENABLED`, `DEVELOPER_API_ENABLED`, `CORS_ALLOWED_ORIGINS`.
 
 **Strict parity:** `DATABASE_URL` is not used anywhere. Migrations (`db/migrate.py`) use **DB_*** only, via `db.connection.get_database_url()`. Do **not** create or keep `DATABASE_URL` in Secret Manager; delete it if present.
@@ -313,21 +323,24 @@ Cloud Run frontend runtime secrets (server-only Next.js API handlers):
 ### gcloud CLI: list and create only these secrets
 
 ```bash
-# List existing secrets (ensure only the 27 above exist for this project)
+# List existing required secrets (26 unique names in the current contract)
 gcloud secrets list --project=YOUR_PROJECT_ID
 
 # Create a missing backend secret (repeat for each of the 10 names)
 gcloud secrets create SECRET_KEY --replication-policy=automatic --project=YOUR_PROJECT_ID
 echo -n "your-value" | gcloud secrets versions add SECRET_KEY --data-file=- --project=YOUR_PROJECT_ID
 
-# Create missing frontend values in Secret Manager (repeat for each of the 12 names)
+# Create missing frontend values in Secret Manager (repeat for each of the 16 client-facing names)
 gcloud secrets create BACKEND_URL --replication-policy=automatic --project=YOUR_PROJECT_ID
 echo -n "https://your-backend.run.app" | gcloud secrets versions add BACKEND_URL --data-file=- --project=YOUR_PROJECT_ID
 ```
 
-**Required backend 11:** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `APP_REVIEW_MODE`, `REVIEWER_UID`, `MCP_DEVELOPER_TOKEN`.
+**Required backend 10:** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `APP_REVIEW_MODE`, `REVIEWER_UID`.
 **Required backend Plaid secrets when brokerage is enabled:** `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_TOKEN_ENCRYPTION_KEY`.
 **Required frontend 16:** `BACKEND_URL`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`, `NEXT_PUBLIC_FIREBASE_VAPID_KEY`, `NEXT_PUBLIC_AUTH_FIREBASE_API_KEY`, `NEXT_PUBLIC_AUTH_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_AUTH_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_AUTH_FIREBASE_APP_ID`, `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_STAGING`, `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID_PRODUCTION`, `NEXT_PUBLIC_GTM_ID_STAGING`, `NEXT_PUBLIC_GTM_ID_PRODUCTION`.
+
+Operational note:
+- For normal deployments, the `NEXT_PUBLIC_AUTH_FIREBASE_*` values should match the primary `NEXT_PUBLIC_FIREBASE_*` values. If they intentionally differ, the repo must still force auth, messaging, and backend admin onto the same effective Firebase project.
 
 These Firebase values are public client config, but storing them in Secret Manager keeps deployment manifests free of hardcoded production values.
 

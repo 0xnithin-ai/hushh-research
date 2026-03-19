@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""Verify required Secret Manager keys exist for backend/frontend deploy parity.
-
-This script intentionally performs a strict existence check only. It does not
-read secret values.
-"""
+"""Verify deploy-time secret/runtime env parity for backend/frontend services."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from typing import Iterable
@@ -23,7 +20,6 @@ BACKEND_REQUIRED = (
     "DB_PASSWORD",
     "APP_REVIEW_MODE",
     "REVIEWER_UID",
-    "MCP_DEVELOPER_TOKEN",
 )
 
 BACKEND_PLAID_REQUIRED = (
@@ -77,6 +73,62 @@ def _format_names(names: Iterable[str]) -> str:
     return ", ".join(sorted(names))
 
 
+def _describe_run_service(project: str, region: str, service: str) -> dict | None:
+    cmd = [
+        "gcloud",
+        "run",
+        "services",
+        "describe",
+        service,
+        "--project",
+        project,
+        "--region",
+        region,
+        "--format=json",
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+      return None
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
+def _container_env_map(service_json: dict | None) -> dict[str, dict]:
+    if not isinstance(service_json, dict):
+        return {}
+    containers = (
+        service_json.get("spec", {})
+        .get("template", {})
+        .get("spec", {})
+        .get("containers", [])
+    )
+    if not containers or not isinstance(containers[0], dict):
+        return {}
+    env_entries = containers[0].get("env", [])
+    if not isinstance(env_entries, list):
+        return {}
+    out: dict[str, dict] = {}
+    for entry in env_entries:
+        if isinstance(entry, dict) and entry.get("name"):
+            out[str(entry["name"])] = entry
+    return out
+
+
+def _runtime_source_label(entry: dict) -> str:
+    value_from = entry.get("valueFrom")
+    if isinstance(value_from, dict):
+        secret_ref = value_from.get("secretKeyRef")
+        if isinstance(secret_ref, dict):
+            name = str(secret_ref.get("name") or "").strip()
+            key = str(secret_ref.get("key") or "").strip()
+            if name:
+                return f"secret:{name}:{key or 'latest'}"
+    value = str(entry.get("value") or "").strip()
+    return f"value:{value}" if value else "missing"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Verify required GCP Secret Manager keys for deploy parity."
@@ -103,9 +155,12 @@ def main() -> int:
         action="store_true",
         help="Also require Plaid backend secrets for brokerage-enabled environments.",
     )
+    parser.add_argument(
+        "--assert-runtime-env-contract",
+        action="store_true",
+        help="Also verify Cloud Run runtime env injection for hosted frontend/backend parity.",
+    )
     args = parser.parse_args()
-
-    del args.region, args.backend_service, args.frontend_service
 
     required = list(BACKEND_REQUIRED + FRONTEND_REQUIRED)
     if args.require_plaid:
@@ -132,6 +187,47 @@ def main() -> int:
     if missing:
         print(f"Missing secrets ({len(missing)}): {_format_names(missing)}")
         return 1
+
+    if args.assert_runtime_env_contract:
+        frontend_json = _describe_run_service(args.project, args.region, args.frontend_service)
+        backend_json = _describe_run_service(args.project, args.region, args.backend_service)
+        frontend_env = _container_env_map(frontend_json)
+        backend_env = _container_env_map(backend_json)
+
+        runtime_failures: list[str] = []
+
+        required_frontend_runtime = ("BACKEND_URL", "DEVELOPER_API_URL", "NEXT_PUBLIC_APP_ENV")
+        for key in required_frontend_runtime:
+            if key not in frontend_env:
+                runtime_failures.append(f"frontend runtime env missing {key}")
+
+        if "BACKEND_URL" in frontend_env and "DEVELOPER_API_URL" in frontend_env:
+            backend_source = _runtime_source_label(frontend_env["BACKEND_URL"])
+            developer_source = _runtime_source_label(frontend_env["DEVELOPER_API_URL"])
+            if backend_source != developer_source:
+                runtime_failures.append(
+                    "frontend BACKEND_URL and DEVELOPER_API_URL must resolve from the same source"
+                )
+            if backend_source.startswith("value:") and "localhost" in backend_source:
+                runtime_failures.append("frontend BACKEND_URL must not resolve to localhost in Cloud Run")
+
+        if "FRONTEND_URL" not in backend_env:
+            runtime_failures.append("backend runtime env missing FRONTEND_URL")
+
+        print(
+            "Frontend runtime env contract:"
+            f" BACKEND_URL={_runtime_source_label(frontend_env.get('BACKEND_URL', {}))},"
+            f" DEVELOPER_API_URL={_runtime_source_label(frontend_env.get('DEVELOPER_API_URL', {}))},"
+            f" NEXT_PUBLIC_APP_ENV={_runtime_source_label(frontend_env.get('NEXT_PUBLIC_APP_ENV', {}))}"
+        )
+        print(
+            "Backend runtime env contract:"
+            f" FRONTEND_URL={_runtime_source_label(backend_env.get('FRONTEND_URL', {}))}"
+        )
+
+        if runtime_failures:
+            print(f"Runtime env contract failures ({len(runtime_failures)}): {_format_names(runtime_failures)}")
+            return 1
 
     print(f"All required secrets present ({len(required)}).")
     return 0

@@ -16,7 +16,14 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { type ColorVariant, type ComponentEffect } from "./types";
-import "@material/web/ripple/ripple.js";
+
+// ============================================================================
+// TYPES - MdRipple interface is now in global.d.ts
+// ============================================================================
+
+interface MdRipple extends HTMLElement {
+  disabled: boolean;
+}
 
 // ============================================================================
 // COLOR MAPPING - Morphy Variants to Material 3 Tokens
@@ -146,12 +153,64 @@ export const MaterialRipple = ({
   disabled = false,
   className = "",
 }: MaterialRippleProps) => {
+  const rippleRef = useRef<MdRipple>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
+  const [isRippleReady, setIsRippleReady] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    let cancelled = false;
+
+    const ensureRippleElement = async () => {
+      if (typeof window === "undefined") return;
+
+      if (customElements.get("md-ripple")) {
+        if (!cancelled) setIsRippleReady(true);
+        return;
+      }
+
+      try {
+        await import("@material/web/ripple/ripple.js");
+        if (!cancelled) {
+          setIsRippleReady(Boolean(customElements.get("md-ripple")));
+        }
+      } catch (error) {
+        console.warn(
+          "[MaterialRipple] Material Web ripple is unavailable. Rendering without the custom ripple element.",
+          error
+        );
+        if (!cancelled) setIsRippleReady(false);
+      }
+    };
+
+    void ensureRippleElement();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!isRippleReady || !containerRef.current || rippleRef.current) return;
+
+    const rippleElement = document.createElement("md-ripple") as MdRipple;
+    rippleElement.className = "morphy-md-ripple";
+    rippleElement.disabled = disabled;
+    containerRef.current.appendChild(rippleElement);
+    rippleRef.current = rippleElement;
+
+    return () => {
+      if (rippleRef.current === rippleElement) {
+        rippleRef.current = null;
+      }
+      rippleElement.remove();
+    };
+  }, [disabled, isRippleReady]);
+
+  useEffect(() => {
+    if (rippleRef.current) {
+      rippleRef.current.disabled = disabled;
+    }
+  }, [disabled]);
 
   useEffect(() => {
     // Check for dark mode
@@ -211,17 +270,10 @@ export const MaterialRipple = ({
   return (
     <div
       ref={containerRef}
-      className={`absolute inset-0 ${className}`}
-      // Ensure the ripple clips correctly for pill/rounded buttons.
-      style={{ borderRadius: "inherit" }}
-    >
-      {mounted
-        ? React.createElement("md-ripple", {
-            disabled: disabled || undefined,
-            className: "morphy-md-ripple",
-          })
-        : null}
-    </div>
+      className={`morphy-ripple-host absolute inset-0 ${className}`}
+      // Let the ripple host own the clip boundary for rounded actionables.
+      style={{ borderRadius: "inherit", contain: "paint" }}
+    />
   );
 };
 

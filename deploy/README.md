@@ -1,10 +1,24 @@
 # Hushh Research - Cloud Build Deployment
 
-> **CI/CD deployment using Google Cloud Build**
+> CI/CD deployment using Google Cloud Build. Contributor setup lives in `make bootstrap` plus the docs under `docs/guides/`.
 
 ---
 
 ## 🚀 Quick Deploy
+
+UAT is the first deployment lane. Do not treat production as the initial validation target.
+
+Recommended order:
+
+```bash
+# local validation before touching deploy branches
+bash scripts/ci/orchestrate.sh all
+
+# release through the UAT branch first
+git push origin deploy_uat
+```
+
+The push to `deploy_uat` triggers [`.github/workflows/deploy-uat.yml`](../.github/workflows/deploy-uat.yml), which deploys backend/frontend and then runs the hosted runtime parity check.
 
 ### Backend Deployment
 
@@ -20,9 +34,22 @@ gcloud builds submit --config=deploy/frontend.cloudbuild.yaml
 
 ---
 
-## 🧭 Runtime Profiles (Local/UAT-Remote/Prod-Remote)
+## 🧭 Runtime Profiles
 
-Use profile sources and activate one profile into the live local files:
+Contributor onboarding should start with:
+
+```bash
+make bootstrap
+make doctor PROFILE=local-uatdb
+```
+
+Detailed profile behavior now lives in:
+
+- [docs/guides/getting-started.md](../docs/guides/getting-started.md)
+- [docs/guides/environment-model.md](../docs/guides/environment-model.md)
+- [docs/guides/advanced-ops.md](../docs/guides/advanced-ops.md)
+
+Low-level profile activation still works when you need it:
 
 - Backend active file: `consent-protocol/.env`
 - Frontend active file: `hushh-webapp/.env.local`
@@ -32,14 +59,29 @@ Runtime profile sources (local only, not committed):
 - `consent-protocol/.env.local-uatdb.local`, `.env.uat-remote.local`, `.env.prod-remote.local`
 - `hushh-webapp/.env.local-uatdb.local`, `.env.uat-remote.local`, `.env.prod-remote.local`
 
-Activation:
+`local-uatdb` backend note:
 
-```bash
-bash scripts/env/bootstrap_profiles.sh
-bash scripts/env/use_profile.sh local-uatdb
-bash scripts/env/use_profile.sh uat-remote
-bash scripts/env/use_profile.sh prod-remote
-```
+- Start the backend with `bash scripts/runtime/run_backend_local.sh local-uatdb`
+  or the `make local-backend` wrapper.
+- Do not start local UAT DB access with bare `python`/`uvicorn` unless the
+  proxy is already running.
+- The launcher starts `cloud-sql-proxy` automatically for the UAT Cloud SQL
+  instance and authenticates it from `FIREBASE_SERVICE_ACCOUNT_JSON` in the
+  active backend env, or `CLOUDSQL_PROXY_CREDENTIALS_FILE` if explicitly set.
+- The launcher refuses to fall back to local `gcloud`/ADC credentials for this
+  path.
+
+`local-uatdb` backend note:
+
+- Start the backend with `bash scripts/runtime/run_backend_local.sh local-uatdb`
+  or the `make local-backend` wrapper.
+- Do not start local UAT DB access with bare `python`/`uvicorn` unless the
+  proxy is already running.
+- The launcher starts `cloud-sql-proxy` automatically for the UAT Cloud SQL
+  instance and authenticates it from `FIREBASE_SERVICE_ACCOUNT_JSON` in the
+  active backend env, or `CLOUDSQL_PROXY_CREDENTIALS_FILE` if explicitly set.
+- The launcher refuses to fall back to local `gcloud`/ADC credentials for this
+  path.
 
 Makefile wrappers:
 
@@ -138,7 +180,6 @@ Production analytics key migration is deferred intentionally and should be handl
    - `DB_PASSWORD`
    - `APP_REVIEW_MODE`
    - `REVIEWER_UID`
-   - `MCP_DEVELOPER_TOKEN`
 
    Optional when Plaid brokerage is enabled (3):
 
@@ -149,6 +190,7 @@ Production analytics key migration is deferred intentionally and should be handl
    **Note:** `DB_HOST`, `DB_PORT`, `DB_NAME`, `CONSENT_SSE_ENABLED`, and `SYNC_REMOTE_ENABLED` are set as Cloud Run env vars (not secrets). **Do not use `DATABASE_URL`** — migrations and scripts use DB_* only (strict parity). Delete `DATABASE_URL` from Secret Manager if present.
    Plaid webhook and callback settings are runtime env vars, not dashboard secrets:
    `PLAID_ENV`, `PLAID_CLIENT_NAME`, `PLAID_COUNTRY_CODES`, `PLAID_WEBHOOK_URL`, `PLAID_REDIRECT_PATH`, `PLAID_TX_HISTORY_DAYS`.
+   UAT and production use the live/shared Plaid credential set; local development stays on sandbox-only credentials.
 
 4. **Configure production logical backup infrastructure** (GCP)
 
@@ -274,7 +316,7 @@ gcloud builds submit --config=deploy/frontend.cloudbuild.yaml
 
 All required secrets must exist in Google Cloud Secret Manager before deployment. Run the parity audit script, then create any missing secrets manually.
 
-**Backend (11 secrets):** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `APP_REVIEW_MODE`, `REVIEWER_UID`, `MCP_DEVELOPER_TOKEN`
+**Backend (10 secrets):** `SECRET_KEY`, `VAULT_ENCRYPTION_KEY`, `GOOGLE_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_AUTH_SERVICE_ACCOUNT_JSON`, `FRONTEND_URL`, `DB_USER`, `DB_PASSWORD`, `APP_REVIEW_MODE`, `REVIEWER_UID`
 **Backend Plaid secrets when brokerage is enabled (3):** `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_TOKEN_ENCRYPTION_KEY`
 
 **Note:** 

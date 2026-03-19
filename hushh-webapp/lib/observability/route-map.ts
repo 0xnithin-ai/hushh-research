@@ -2,6 +2,7 @@ import { ROUTES } from "@/lib/navigation/routes";
 
 export const ROUTE_ID_VALUES = [
   "landing",
+  "developers",
   "login",
   "logout",
   "labs_profile_appearance",
@@ -30,6 +31,7 @@ export type RouteId = (typeof ROUTE_ID_VALUES)[number];
 
 export function resolveRouteId(pathname: string): RouteId {
   if (pathname === ROUTES.HOME) return "landing";
+  if (pathname === ROUTES.DEVELOPERS) return "developers";
   if (pathname === ROUTES.LOGIN) return "login";
   if (pathname === ROUTES.LOGOUT) return "logout";
   if (pathname === ROUTES.LABS_PROFILE_APPEARANCE) return "labs_profile_appearance";
@@ -196,6 +198,22 @@ const API_TEMPLATE_RULES: Array<{ regex: RegExp; template: string }> = [
   {
     regex: /^\/api\/account\/delete(?:\?.*)?$/i,
     template: "/api/account/delete",
+  },
+  {
+    regex: /^\/api\/developer\/access(?:\?.*)?$/i,
+    template: "/api/developer/access",
+  },
+  {
+    regex: /^\/api\/developer\/access\/enable(?:\?.*)?$/i,
+    template: "/api/developer/access/enable",
+  },
+  {
+    regex: /^\/api\/developer\/access\/profile(?:\?.*)?$/i,
+    template: "/api/developer/access/profile",
+  },
+  {
+    regex: /^\/api\/developer\/access\/rotate-key(?:\?.*)?$/i,
+    template: "/api/developer/access/rotate-key",
   },
   {
     regex: /^\/api\/iam\/persona(?:\?.*)?$/i,

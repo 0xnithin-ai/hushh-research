@@ -14,10 +14,6 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { type MorphyCardBaseProps } from "@/lib/morphy-ux/types";
-import {
-  getVariantStyles,
-  getVariantStylesNoHover,
-} from "@/lib/morphy-ux/utils";
 import { MaterialRipple } from "@/lib/morphy-ux/material-ripple";
 
 export interface CardProps
@@ -33,6 +29,37 @@ export interface CardProps
 }
 
 type IconPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+const CARD_PRESET_SHELL_CLASSES: Record<
+  NonNullable<CardProps["preset"]>,
+  { shell: string; spacing: string }
+> = {
+  compact: {
+    shell:
+      "!rounded-[20px] !border-[color:var(--app-card-border-standard)] !bg-[var(--app-card-surface-compact)] !shadow-[var(--app-card-shadow-standard)]",
+    spacing: "p-0",
+  },
+  default: {
+    shell:
+      "!rounded-[22px] !border-[color:var(--app-card-border-standard)] !bg-[var(--app-card-surface-default)] !shadow-[var(--app-card-shadow-standard)]",
+    spacing: "p-4 sm:p-6",
+  },
+  hero: {
+    shell:
+      "!rounded-[28px] !border-[color:var(--app-card-border-strong)] !bg-[var(--app-card-surface-hero)] !shadow-[var(--app-card-shadow-feature)]",
+    spacing: "p-0",
+  },
+  surface: {
+    shell:
+      "!rounded-[24px] !border-[color:var(--app-card-border-standard)] !bg-[var(--app-card-surface-surface)] !shadow-[var(--app-card-shadow-standard)]",
+    spacing: "min-w-0 p-0",
+  },
+  "surface-feature": {
+    shell:
+      "!rounded-[24px] !border-[color:var(--app-card-border-strong)] !bg-[var(--app-card-surface-hero)] !shadow-[var(--app-card-shadow-feature)]",
+    spacing: "min-w-0 p-0",
+  },
+};
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   (
@@ -54,9 +81,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     ref
   ) => {
     const Comp = asChild ? Slot : StockCard;
-    const variantStyles = showRipple
-      ? getVariantStyles(variant, effect)
-      : getVariantStylesNoHover(variant, effect);
+    const presetConfig = CARD_PRESET_SHELL_CLASSES[preset];
 
     const IconComponent = icon?.icon;
     const iconPosition = icon?.position || "top-left";
@@ -112,26 +137,15 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <Comp
         ref={ref}
         className={cn(
-          "relative rounded-lg border border-solid text-card-foreground p-4 sm:p-6 transition-[border-color,box-shadow,background-color] duration-200",
-          "shadow-[0_1px_3px_0_rgb(0_0_0_/_0.3),_0_1px_2px_-1px_rgb(0_0_0_/_0.2)]",
-          preset === "hero" &&
-            "p-0 rounded-3xl shadow-[0_18px_60px_rgba(0,0,0,0.10)]",
-          variant === "muted"
-            ? "bg-white/60 dark:bg-background/40 border-border/30"
-            : effect === "glass"
-            ? ""
-            : "bg-white/80 dark:bg-gray-900/40",
-          effect === "fade" ? "!backdrop-blur-none" : "backdrop-blur-[6px]",
-          variantStyles,
-          showRipple ? "overflow-hidden" : "",
-          showRipple
-            ? "!border-transparent hover:!border-[var(--morphy-primary-start)]"
-            : variant === "muted"
-            ? ""
-            : "!border-transparent",
+          "relative !overflow-visible border border-solid transition-[border-color,box-shadow,background-color] duration-200",
+          presetConfig.shell,
+          "!text-card-foreground",
+          effect === "fade" ? "!backdrop-blur-none" : "backdrop-blur-xl backdrop-saturate-150",
+          presetConfig.spacing,
+          showRipple ? "hover:!border-[var(--morphy-primary-start)]/18" : "",
           interactive ? "cursor-pointer" : "",
           fullHeight ? "h-full" : "",
-          selected ? "border-[var(--morphy-primary-start)]" : "",
+          selected ? "!border-[var(--morphy-primary-start)]/40" : "",
           className
         )}
         {...props}
@@ -142,8 +156,8 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
             className={cn(
               "pointer-events-none absolute inset-0",
               glassAccent === "soft"
-                ? "bg-[radial-gradient(95%_75%_at_15%_82%,var(--morphy-glass-accent-a)_0%,transparent_70%),radial-gradient(88%_70%_at_84%_16%,var(--morphy-glass-accent-b)_0%,transparent_68%)] opacity-70"
-                : "bg-[radial-gradient(95%_75%_at_15%_82%,var(--morphy-glass-accent-a)_0%,transparent_66%),radial-gradient(88%_70%_at_84%_16%,var(--morphy-glass-accent-b)_0%,transparent_64%)] opacity-95"
+                ? "bg-[radial-gradient(92%_75%_at_16%_14%,rgba(255,255,255,0.22)_0%,transparent_66%)] opacity-100 dark:bg-[radial-gradient(92%_75%_at_16%_14%,rgba(255,255,255,0.08)_0%,transparent_66%)]"
+                : "bg-[radial-gradient(92%_75%_at_16%_14%,rgba(255,255,255,0.28)_0%,transparent_60%),radial-gradient(78%_65%_at_86%_100%,rgba(15,23,42,0.06)_0%,transparent_64%)] opacity-100 dark:bg-[radial-gradient(92%_75%_at_16%_14%,rgba(255,255,255,0.1)_0%,transparent_60%),radial-gradient(78%_65%_at_86%_100%,rgba(255,255,255,0.03)_0%,transparent_64%)]"
             )}
             style={{ borderRadius: "inherit" }}
           />
@@ -161,7 +175,15 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
             : null}
         </div>
 
-        {showRipple ? <MaterialRipple variant={variant} effect={effect} /> : null}
+        {showRipple ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 overflow-hidden"
+            style={{ borderRadius: "inherit" }}
+          >
+            <MaterialRipple variant={variant} effect={effect} />
+          </div>
+        ) : null}
       </Comp>
     );
   }
@@ -173,7 +195,7 @@ const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<typeof StockCardHeader>
 >(({ className, ...props }, ref) => (
-  <StockCardHeader ref={ref} className={cn("px-0 space-y-4 pb-2", className)} {...props} />
+  <StockCardHeader ref={ref} className={cn("px-0 space-y-4 pb-2.5", className)} {...props} />
 ));
 CardHeader.displayName = "CardHeader";
 
@@ -195,7 +217,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <StockCardDescription
     ref={ref}
-    className={cn("text-sm text-muted-foreground leading-relaxed", className)}
+    className={cn("text-sm leading-6 text-muted-foreground", className)}
     {...props}
   />
 ));

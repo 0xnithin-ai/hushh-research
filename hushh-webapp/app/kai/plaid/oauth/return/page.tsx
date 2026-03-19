@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { AppPageShell } from "@/components/app-ui/app-page-shell";
 import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { Button } from "@/lib/morphy-ux/button";
 import { useAuth } from "@/lib/firebase/auth-context";
@@ -149,7 +150,7 @@ export default function KaiPlaidOauthReturnPage() {
 
   if (stage !== "error") {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <AppPageShell as="div" width="narrow" className="flex min-h-[60vh] items-center justify-center">
         <HushhLoader
           label={
             stage === "redirecting"
@@ -157,12 +158,12 @@ export default function KaiPlaidOauthReturnPage() {
               : "Resuming your Plaid brokerage connection..."
           }
         />
-      </div>
+      </AppPageShell>
     );
   }
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
+    <AppPageShell as="div" width="narrow" className="flex min-h-[60vh] items-center justify-center">
       <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card/80 p-5 text-center shadow-sm">
         <h1 className="text-lg font-semibold text-foreground">Plaid connection needs attention</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error}</p>
@@ -183,6 +184,6 @@ export default function KaiPlaidOauthReturnPage() {
           </Button>
         </div>
       </div>
-    </div>
+    </AppPageShell>
   );
 }

@@ -16,6 +16,16 @@ interface CacheEntry<T> {
   ttl: number;
 }
 
+export interface CacheSnapshot<T> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+  ageMs: number;
+  expiresAt: number;
+  isFresh: boolean;
+  isStale: boolean;
+}
+
 type CacheEvent =
   | { type: "set"; key: string }
   | { type: "invalidate"; keys: string[] }
@@ -50,20 +60,39 @@ class CacheService {
    * Get cached data if not expired
    */
   get<T>(key: string): T | null {
-    const entry = this.cache.get(key) as CacheEntry<T> | undefined;
+    const snapshot = this.peek<T>(key);
+    if (!snapshot) {
+      return null;
+    }
+    if (snapshot.isStale) {
+      this.cache.delete(key);
+      return null;
+    }
+    return snapshot.data;
+  }
 
+  /**
+   * Inspect a cache entry without invalidating it.
+   */
+  peek<T>(key: string): CacheSnapshot<T> | null {
+    const entry = this.cache.get(key) as CacheEntry<T> | undefined;
     if (!entry) {
       return null;
     }
 
-    // Check if expired
-    const now = Date.now();
-    if (now - entry.timestamp > entry.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
+    const ageMs = Math.max(0, Date.now() - entry.timestamp);
+    const expiresAt = entry.timestamp + entry.ttl;
+    const isFresh = ageMs <= entry.ttl;
 
-    return entry.data;
+    return {
+      data: entry.data,
+      timestamp: entry.timestamp,
+      ttl: entry.ttl,
+      ageMs,
+      expiresAt,
+      isFresh,
+      isStale: !isFresh,
+    };
   }
 
   /**

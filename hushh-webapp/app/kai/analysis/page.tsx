@@ -6,6 +6,8 @@ import { ArrowLeft, BarChart3, X } from "lucide-react";
 import { morphyToast as toast } from "@/lib/morphy-ux/morphy";
 
 import { PageHeader } from "@/components/app-ui/page-sections";
+import { AppPageShell } from "@/components/app-ui/app-page-shell";
+import { SurfaceCard, SurfaceCardContent, SurfaceStack } from "@/components/app-ui/surfaces";
 import { DebateStreamView, type AgentState } from "@/components/kai/debate-stream-view";
 import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { AnalysisHistoryDashboard } from "@/components/kai/views/analysis-history-dashboard";
@@ -556,16 +558,17 @@ export default function KaiAnalysisPage() {
 
   if (!user || !userId) {
     return (
-      <div className="flex min-h-96 items-center justify-center">
+      <AppPageShell as="div" width="content" className="flex min-h-96 items-center justify-center">
         <HushhLoader variant="inline" label={toInvestorLoading("ANALYSIS")} />
-      </div>
+      </AppPageShell>
     );
   }
 
   if (!vaultKey) {
     return (
-      <div className="mx-auto w-full max-w-xl px-4 pt-[var(--kai-view-top-gap,16px)]">
-        <div className="rounded-2xl border border-border/60 bg-background/80 p-5 text-center">
+      <AppPageShell as="div" width="narrow">
+        <SurfaceCard>
+          <SurfaceCardContent className="p-5 text-center">
           <h2 className="text-lg font-semibold">Connect your portfolio first</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Stock analysis is available after your portfolio is saved in Vault.
@@ -582,16 +585,18 @@ export default function KaiAnalysisPage() {
               Open Portfolio
             </MorphyButton>
           </div>
-        </div>
-      </div>
+          </SurfaceCardContent>
+        </SurfaceCard>
+      </AppPageShell>
     );
   }
 
   return (
-    <div className="overflow-x-hidden pt-[var(--kai-view-top-gap,16px)]">
+    <div className="w-full">
       {showWorkspace ? (
-        <div ref={workspaceTopRef} className="mx-auto w-full max-w-6xl space-y-4 px-4 sm:px-6">
-          <div className="space-y-3">
+        <AppPageShell as="div" width="wide">
+          <div ref={workspaceTopRef}>
+            <SurfaceStack compact>
             <PageHeader
               eyebrow="Kai Analysis"
               title="Analysis"
@@ -613,7 +618,8 @@ export default function KaiAnalysisPage() {
                 </>
               }
             />
-            <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3 shadow-sm backdrop-blur-md">
+            <SurfaceCard>
+              <SurfaceCardContent className="px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h1 className="text-2xl font-black tracking-tighter text-foreground sm:text-3xl">
                   {activeTicker}
@@ -639,7 +645,8 @@ export default function KaiAnalysisPage() {
                   )}
                 </div>
               </div>
-            </div>
+              </SurfaceCardContent>
+            </SurfaceCard>
             <Tabs
               value={workspaceTab}
               onValueChange={handleWorkspaceTabChange}
@@ -735,11 +742,12 @@ export default function KaiAnalysisPage() {
                 )}
               </TabsContent>
             </Tabs>
+            </SurfaceStack>
           </div>
-        </div>
+        </AppPageShell>
       ) : !resolvingEntry ? (
-        <div className="space-y-3 pt-3">
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+        <AppPageShell as="div" width="wide">
+          <SurfaceStack compact>
             <PageHeader
               eyebrow="Kai Analysis"
               title="Analysis"
@@ -747,9 +755,8 @@ export default function KaiAnalysisPage() {
               icon={BarChart3}
               accent="violet"
             />
-          </div>
           {previewTickerFromQuery ? (
-            <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
+            <div className="mx-auto w-full max-w-4xl">
               <StockComparisonPreview
                 preview={stockPreview}
                 loading={stockPreviewLoading}
@@ -762,7 +769,8 @@ export default function KaiAnalysisPage() {
             </div>
           ) : null}
           {activeRunTask ? (
-            <div className="mx-auto w-full max-w-4xl rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+            <SurfaceCard accent="sky" className="mx-auto w-full max-w-4xl">
+              <SurfaceCardContent className="px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
               Analysis for <span className="font-semibold">{activeRunTask.ticker}</span> is still
               running in the background.
               <MorphyButton
@@ -783,7 +791,8 @@ export default function KaiAnalysisPage() {
               >
                 Open active analysis
               </MorphyButton>
-            </div>
+              </SurfaceCardContent>
+            </SurfaceCard>
           ) : null}
           <AnalysisHistoryDashboard
             userId={userId}
@@ -792,13 +801,14 @@ export default function KaiAnalysisPage() {
             onSelectTicker={handleSelectTicker}
             onViewHistory={handleViewHistory}
           />
-        </div>
+          </SurfaceStack>
+        </AppPageShell>
       ) : null}
 
       {resolvingEntry ? (
-        <div className="flex min-h-64 items-center justify-center">
+        <AppPageShell as="div" width="content" className="flex min-h-64 items-center justify-center">
           <HushhLoader variant="inline" label="Loading saved analysis..." />
-        </div>
+        </AppPageShell>
       ) : null}
     </div>
   );

@@ -344,6 +344,20 @@
       }
     },
     {
+      "id": "developerPortalProxy",
+      "webRouteFile": "hushh-webapp/app/api/developer/[...path]/route.ts",
+      "backend": {
+        "file": "consent-protocol/api/routes/developer.py",
+        "routerPrefix": "/api/developer",
+        "paths": [
+          "/access",
+          "/access/enable",
+          "/access/profile",
+          "/access/rotate-key"
+        ]
+      }
+    },
+    {
       "id": "riaProxy",
       "webRouteFile": "hushh-webapp/app/api/ria/[...path]/route.ts",
       "backend": {
@@ -627,6 +641,13 @@
       "nativeContractIds": [
         "consentPendingMgmt",
         "vaultOwnerToken"
+      ]
+    },
+    {
+      "id": "developersPage",
+      "pageFile": "hushh-webapp/app/developers/page.tsx",
+      "apiContractIds": [
+        "developerPortalProxy"
       ]
     },
     {

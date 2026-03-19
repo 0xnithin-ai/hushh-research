@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { HushhLoader } from "@/components/app-ui/hushh-loader";
+import { SurfaceCard, SurfaceCardContent } from "@/components/app-ui/surfaces";
 import { WorldModelService } from "@/lib/services/world-model-service";
 import { normalizeStoredPortfolio } from "@/lib/utils/portfolio-normalize";
 import { useCache } from "@/lib/cache/cache-context";
@@ -3152,33 +3153,35 @@ export function KaiFlow({
   }
 
   return (
-    <div className="flex w-full flex-col overflow-x-hidden">
+    <div className="flex w-full flex-col">
       {/* Error display */}
       {error && state !== "importing" && state !== "import_complete" && (
-        <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-600 dark:text-red-400">
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+        <SurfaceCard tone="critical" className="mb-4">
+          <SurfaceCardContent className="space-y-3 pt-5">
+            <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
+              <svg
+                className="mt-0.5 h-5 w-5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span className="text-sm font-medium">{error}</span>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-left text-sm font-medium text-red-700 underline underline-offset-4 hover:no-underline dark:text-red-300"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>{error}</span>
-          </div>
-          <button
-            onClick={() => setError(null)}
-            className="mt-2 text-sm underline hover:no-underline"
-          >
-            Dismiss
-          </button>
-        </div>
+              Dismiss
+            </button>
+          </SurfaceCardContent>
+        </SurfaceCard>
       )}
 
       {/* State-based rendering */}

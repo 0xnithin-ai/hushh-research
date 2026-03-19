@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { AppPageShell } from "@/components/app-ui/app-page-shell";
 import { HushhLoader } from "@/components/app-ui/hushh-loader";
 
 export default function LegacyKaiDashboardAnalysisRedirect() {
@@ -15,8 +16,8 @@ export default function LegacyKaiDashboardAnalysisRedirect() {
   }, [router, searchParams]);
 
   return (
-    <div className="flex min-h-72 items-center justify-center">
+    <AppPageShell as="div" width="content" className="flex min-h-72 items-center justify-center">
       <HushhLoader variant="inline" label="Redirecting to analysis…" />
-    </div>
+    </AppPageShell>
   );
 }

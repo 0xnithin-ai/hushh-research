@@ -411,7 +411,7 @@ export function AnalysisSummaryView({
         </div>
       ) : null}
 
-      <Card variant="none" effect="glass" className="rounded-3xl p-0">
+      <Card variant="none" effect="glass" preset="hero">
         <CardContent className="space-y-5 p-6">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-bold uppercase tracking-widest text-primary">Analysis</span>
@@ -455,7 +455,7 @@ export function AnalysisSummaryView({
         </CardContent>
       </Card>
 
-      <Card variant="muted" effect="fill" className="rounded-2xl p-0">
+      <Card variant="muted" effect="fill" preset="default">
         <CardContent className="space-y-3 p-4">
           <div className="border-l-2 border-primary pl-3">
             <p className="text-sm font-medium leading-relaxed">{shortRecommendation}</p>

@@ -15,7 +15,13 @@ import {
 import { toast } from "sonner";
 
 import { PortfolioSourceSwitcher } from "@/components/kai/portfolio-source-switcher";
+import { AppPageShell } from "@/components/app-ui/app-page-shell";
 import { PageHeader } from "@/components/app-ui/page-sections";
+import {
+  SurfaceCard,
+  SurfaceCardContent,
+  SurfaceStack,
+} from "@/components/app-ui/surfaces";
 import { SettingsGroup, SettingsRow } from "@/components/profile/settings-ui";
 import { PlaidBrokerageSummarySection, PlaidInvestmentAccountsSection } from "@/components/kai/plaid/plaid-brokerage-sections";
 import { TransactionActivity } from "@/components/kai/cards/transaction-activity";
@@ -392,17 +398,27 @@ export function InvestmentsMasterView({
 
   if (isLoading && !workingPortfolio) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-center px-5 pb-10 pt-[var(--kai-view-top-gap,16px)] sm:px-8">
-        <div className="flex items-center gap-3 rounded-[24px] border border-border/70 bg-background/84 px-5 py-5 text-sm text-muted-foreground shadow-sm backdrop-blur-xl">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading investments...
-        </div>
-      </div>
+      <AppPageShell
+        as="div"
+        width="wide"
+        className="flex items-center justify-center pb-10"
+      >
+        <SurfaceCard className="max-w-md">
+          <SurfaceCardContent className="flex items-center gap-3 py-5 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading investments...
+          </SurfaceCardContent>
+        </SurfaceCard>
+      </AppPageShell>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 overflow-x-hidden px-5 pb-10 pt-[var(--kai-view-top-gap,16px)] sm:px-8">
+    <AppPageShell
+      as="div"
+      width="wide"
+      className="pb-10"
+    >
       <PageHeader
         eyebrow="Kai Investments"
         title="Investments"
@@ -434,162 +450,195 @@ export function InvestmentsMasterView({
         }
       />
 
-      <PortfolioSourceSwitcher
-        activeSource={activeSource}
-        availableSources={availableSources}
-        freshness={freshness}
-        onSourceChange={handleSourceChange}
-        statementSnapshots={statementSnapshots}
-        activeStatementSnapshotId={activeStatementSnapshotId}
-        onStatementSnapshotChange={handleStatementSnapshotChange}
-        onRefreshPlaid={() => handleRefresh()}
-        onCancelRefreshPlaid={isPlaidRefreshing ? () => handleCancelRefresh() : undefined}
-        isRefreshing={isPlaidRefreshing}
-      />
-
-      {error ? (
-        <div className="rounded-[22px] border border-amber-500/20 bg-amber-500/8 px-4 py-3 text-sm text-muted-foreground">
-          {error}
-        </div>
-      ) : null}
-
-      {activeSource === "plaid" && plaidProjectionStale ? (
-        <div className="rounded-[22px] border border-sky-500/20 bg-sky-500/8 px-4 py-3 text-sm text-muted-foreground">
-          Brokerage data is fresher than the mirrored world-model snapshot right now. Kai will project the latest Plaid source again while your vault is unlocked.
-        </div>
-      ) : null}
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-[24px] border border-border/70 bg-background/82 p-4 shadow-sm backdrop-blur-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Source</p>
-          <p className="mt-2 text-lg font-semibold text-foreground">{sourceLabel}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {activeSource === "plaid" ? "Broker-sourced and read-only" : "Statement-driven and editable"}
-          </p>
-        </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/82 p-4 shadow-sm backdrop-blur-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Portfolio value</p>
-          <p className="mt-2 text-lg font-semibold text-foreground">{formatCurrency(model.hero.totalValue)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Current active source value</p>
-        </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/82 p-4 shadow-sm backdrop-blur-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Investable positions</p>
-          <p className="mt-2 text-lg font-semibold text-foreground">{model.hero.investableHoldingsCount}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Equity positions ready for analysis</p>
-        </div>
-        <div className="rounded-[24px] border border-border/70 bg-background/82 p-4 shadow-sm backdrop-blur-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Top 3 concentration</p>
-          <p className="mt-2 text-lg font-semibold text-foreground">
-            {formatPercent(
-              model.concentration.slice(0, 3).reduce((sum, row) => sum + row.weightPct, 0)
-            )}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">Largest positions share of portfolio</p>
-        </div>
-      </section>
-
-      <PlaidBrokerageSummarySection
-        items={plaidStatus?.items || []}
-        onRefreshItem={(itemId) => handleRefresh(itemId)}
-        onCancelRefresh={(params) => handleCancelRefresh(params)}
-        onManageConnection={(itemId) => void openPlaidLinkFlow(itemId)}
-      />
-
-      {activeSource === "plaid" ? (
-        <PlaidInvestmentAccountsSection items={plaidStatus?.items || []} />
-      ) : null}
-
-      {equitySectorHoldings.length > 0 ? (
-        <SectorAllocationChart
-          className="min-w-0 overflow-hidden rounded-[24px]"
-          holdings={equitySectorHoldings}
-          title="Equity sector view"
-          subtitle={`Built from the current ${sourceLabel.toLowerCase()} source and ready for debate context.`}
+      <SurfaceStack className="mt-6">
+        <PortfolioSourceSwitcher
+          activeSource={activeSource}
+          availableSources={availableSources}
+          freshness={freshness}
+          onSourceChange={handleSourceChange}
+          statementSnapshots={statementSnapshots}
+          activeStatementSnapshotId={activeStatementSnapshotId}
+          onStatementSnapshotChange={handleStatementSnapshotChange}
+          onRefreshPlaid={() => handleRefresh()}
+          onCancelRefreshPlaid={isPlaidRefreshing ? () => handleCancelRefresh() : undefined}
+          isRefreshing={isPlaidRefreshing}
         />
-      ) : null}
 
-      <SettingsGroup
-        eyebrow="Positions"
-        title="Largest positions"
-        description="Use this to see where current value is concentrated and jump straight into analysis for eligible holdings."
-      >
-      {topPositions.map((position) => (
-          <SettingsRow
-            key={`${position.displaySymbol}:${position.name}`}
-            icon={PieChart}
-            title={`${position.displaySymbol || "—"} · ${position.name}`}
-            description={holdingRowDescription({
-              sector: position.sector,
-              assetType: position.assetType,
-            })}
-            trailing={
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <p className="text-[13px] font-semibold text-foreground">
-                    {formatCurrency(position.marketValue)}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {formatPercent(
-                      model.hero.totalValue > 0
-                        ? (position.marketValue / model.hero.totalValue) * 100
-                        : 0
-                    )}
-                  </p>
-                </div>
-                {position.debateEligible && position.displaySymbol ? (
-                  <Button
-                    variant="none"
-                    effect="fade"
-                    size="sm"
-                    onClick={() => handleAnalyzeHolding(position.displaySymbol)}
-                  >
-                    Analyze
-                  </Button>
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        {error ? (
+          <SurfaceCard tone="warning">
+            <SurfaceCardContent className="py-3 text-sm text-muted-foreground">
+              {error}
+            </SurfaceCardContent>
+          </SurfaceCard>
+        ) : null}
+
+        {activeSource === "plaid" && plaidProjectionStale ? (
+          <SurfaceCard accent="sky">
+            <SurfaceCardContent className="py-3 text-sm text-muted-foreground">
+              Brokerage data is fresher than the mirrored world-model snapshot right now. Kai will
+              project the latest Plaid source again while your vault is unlocked.
+            </SurfaceCardContent>
+          </SurfaceCard>
+        ) : null}
+
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <SurfaceCard>
+            <SurfaceCardContent className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Source
+              </p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{sourceLabel}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {activeSource === "plaid"
+                  ? "Broker-sourced and read-only"
+                  : "Statement-driven and editable"}
+              </p>
+            </SurfaceCardContent>
+          </SurfaceCard>
+          <SurfaceCard>
+            <SurfaceCardContent className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Portfolio value
+              </p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {formatCurrency(model.hero.totalValue)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Current active source value</p>
+            </SurfaceCardContent>
+          </SurfaceCard>
+          <SurfaceCard>
+            <SurfaceCardContent className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Investable positions
+              </p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {model.hero.investableHoldingsCount}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Equity positions ready for analysis
+              </p>
+            </SurfaceCardContent>
+          </SurfaceCard>
+          <SurfaceCard>
+            <SurfaceCardContent className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Top 3 concentration
+              </p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {formatPercent(
+                  model.concentration.slice(0, 3).reduce((sum, row) => sum + row.weightPct, 0)
                 )}
-              </div>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Largest positions share of portfolio
+              </p>
+            </SurfaceCardContent>
+          </SurfaceCard>
+        </section>
+
+        <PlaidBrokerageSummarySection
+          items={plaidStatus?.items || []}
+          onRefreshItem={(itemId) => handleRefresh(itemId)}
+          onCancelRefresh={(params) => handleCancelRefresh(params)}
+          onManageConnection={(itemId) => void openPlaidLinkFlow(itemId)}
+        />
+
+        {activeSource === "plaid" ? (
+          <PlaidInvestmentAccountsSection items={plaidStatus?.items || []} />
+        ) : null}
+
+        {equitySectorHoldings.length > 0 ? (
+          <SectorAllocationChart
+            className="min-w-0"
+            holdings={equitySectorHoldings}
+            title="Equity sector view"
+            subtitle={`Built from the current ${sourceLabel.toLowerCase()} source and ready for debate context.`}
+          />
+        ) : null}
+
+        <SettingsGroup
+          eyebrow="Positions"
+          title="Largest positions"
+          description="Use this to see where current value is concentrated and jump straight into analysis for eligible holdings."
+        >
+          {topPositions.map((position) => (
+            <SettingsRow
+              key={`${position.displaySymbol}:${position.name}`}
+              icon={PieChart}
+              title={`${position.displaySymbol || "—"} · ${position.name}`}
+              description={holdingRowDescription({
+                sector: position.sector,
+                assetType: position.assetType,
+              })}
+              trailing={
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <p className="text-[13px] font-semibold text-foreground">
+                      {formatCurrency(position.marketValue)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatPercent(
+                        model.hero.totalValue > 0
+                          ? (position.marketValue / model.hero.totalValue) * 100
+                          : 0
+                      )}
+                    </p>
+                  </div>
+                  {position.debateEligible && position.displaySymbol ? (
+                    <Button
+                      variant="none"
+                      effect="fade"
+                      size="sm"
+                      onClick={() => handleAnalyzeHolding(position.displaySymbol)}
+                    >
+                      Analyze
+                    </Button>
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              }
+            />
+          ))}
+        </SettingsGroup>
+
+        <SettingsGroup
+          eyebrow="Activity"
+          title="Recent investment activity"
+          description="Transactions stay source-aware, so you can compare what came from broker data versus uploaded statements."
+        >
+          <div className="p-3 sm:p-4">
+            <TransactionActivity
+              transactions={recentTransactions}
+              maxItems={8}
+              className="min-w-0"
+            />
+          </div>
+        </SettingsGroup>
+
+        <SettingsGroup
+          eyebrow="Actions"
+          title="Use this source in Kai"
+          description="Debate and Optimize will carry the current source and freshness context forward."
+        >
+          <SettingsRow
+            icon={BarChart3}
+            title="Open optimization workspace"
+            description={`Continue with the current ${sourceLabel.toLowerCase()} source in Optimize.`}
+            trailing={
+              <Button variant="none" effect="fade" size="sm" onClick={handleOptimize}>
+                Open Optimize
+              </Button>
             }
           />
-        ))}
-      </SettingsGroup>
-
-      <SettingsGroup
-        eyebrow="Activity"
-        title="Recent investment activity"
-        description="Transactions stay source-aware, so you can compare what came from broker data versus uploaded statements."
-      >
-        <div className="p-3 sm:p-4">
-          <TransactionActivity
-            transactions={recentTransactions}
-            maxItems={8}
-            className="rounded-[18px] border border-border/70 bg-background/72"
+          <SettingsRow
+            icon={ArrowRight}
+            title="Analyze a holding from this source"
+            description="Use the Analyze action beside a position above to launch the debate engine with this source context."
+            trailing={<ArrowRight className="h-4 w-4 text-muted-foreground" />}
           />
-        </div>
-      </SettingsGroup>
-
-      <SettingsGroup
-        eyebrow="Actions"
-        title="Use this source in Kai"
-        description="Debate and Optimize will carry the current source and freshness context forward."
-      >
-        <SettingsRow
-          icon={BarChart3}
-          title="Open optimization workspace"
-          description={`Continue with the current ${sourceLabel.toLowerCase()} source in Optimize.`}
-          trailing={
-            <Button variant="none" effect="fade" size="sm" onClick={handleOptimize}>
-              Open Optimize
-            </Button>
-          }
-        />
-        <SettingsRow
-          icon={ArrowRight}
-          title="Analyze a holding from this source"
-          description="Use the Analyze action beside a position above to launch the debate engine with this source context."
-          trailing={<ArrowRight className="h-4 w-4 text-muted-foreground" />}
-        />
-      </SettingsGroup>
-    </div>
+        </SettingsGroup>
+      </SurfaceStack>
+    </AppPageShell>
   );
 }

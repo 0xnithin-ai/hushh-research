@@ -14,5 +14,21 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
-LOG_OPTS="${GITLEAKS_LOG_OPTS:---all}"
+if [ -n "${GITLEAKS_LOG_OPTS:-}" ]; then
+  LOG_OPTS="${GITLEAKS_LOG_OPTS}"
+else
+  DEFAULT_BRANCH="${GITLEAKS_DEFAULT_BRANCH:-}"
+  if [ -z "$DEFAULT_BRANCH" ]; then
+    DEFAULT_BRANCH="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
+  fi
+
+  if [ -n "$DEFAULT_BRANCH" ] && git rev-parse "origin/$DEFAULT_BRANCH" >/dev/null 2>&1; then
+    MERGE_BASE="$(git merge-base "origin/$DEFAULT_BRANCH" HEAD)"
+    LOG_OPTS="--ancestry-path ${MERGE_BASE}..HEAD"
+  else
+    LOG_OPTS="HEAD"
+  fi
+fi
+
+echo "Running gitleaks with log opts: ${LOG_OPTS}"
 gitleaks git --redact --no-banner --exit-code 1 --log-opts="${LOG_OPTS}"

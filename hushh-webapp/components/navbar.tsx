@@ -6,8 +6,8 @@
 import React, { useEffect, useMemo, type CSSProperties } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Activity,
   BriefcaseBusiness,
+  FileSpreadsheet,
   LayoutDashboard,
   LineChart,
   Store,
@@ -31,7 +31,7 @@ import { activeRiaRouteTabFromPath } from "@/lib/navigation/ria-route-tabs";
 import { useVault } from "@/lib/vault/vault-context";
 
 type InvestorNavKey = "dashboard" | "market" | "analysis" | "profile";
-type RiaNavKey = "home" | "clients" | "activity" | "profile";
+type RiaNavKey = "home" | "clients" | "picks" | "profile";
 type NavKey = InvestorNavKey | RiaNavKey;
 
 export const Navbar = () => {
@@ -91,13 +91,15 @@ export const Navbar = () => {
       useKaiSession.getState().setLastRiaPath(pathname);
     }
   }, [pathname]);
-  const hideNavbar = pathname?.startsWith(ROUTES.LABS_PROFILE_APPEARANCE);
+  const hideNavbar =
+    pathname?.startsWith(ROUTES.LABS_PROFILE_APPEARANCE) ||
+    pathname === ROUTES.DEVELOPERS;
 
   useEffect(() => {
-    if (activePersona === "ria") {
+      if (activePersona === "ria") {
       router.prefetch(lastRiaPath || riaEntryRoute);
       router.prefetch(ROUTES.RIA_CLIENTS);
-      router.prefetch(ROUTES.RIA_REQUESTS);
+      router.prefetch(ROUTES.RIA_PICKS);
       return;
     }
 
@@ -123,10 +125,10 @@ export const Navbar = () => {
               dataTourId: "nav-ria-clients",
             },
             {
-              value: "activity",
-              label: "Activity",
-              icon: Activity,
-              dataTourId: "nav-ria-activity",
+              value: "picks",
+              label: "Picks",
+              icon: FileSpreadsheet,
+              dataTourId: "nav-ria-picks",
             },
             {
               value: "profile",
@@ -226,8 +228,8 @@ export const Navbar = () => {
       case "clients":
         router.push(ROUTES.RIA_CLIENTS);
         return;
-      case "activity":
-        router.push(ROUTES.RIA_REQUESTS);
+      case "picks":
+        router.push(ROUTES.RIA_PICKS);
         return;
       case "profile":
         router.push(ROUTES.PROFILE);
@@ -265,7 +267,7 @@ export const Navbar = () => {
           ref={pillRef}
           size="compact"
           layout="stacked"
-          hitArea="content"
+          hitArea="segment"
           value={activeNav}
           options={navOptions}
           onValueChange={navigateTo}

@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+runtime_profiles() {
+  printf '%s\n' "local-uatdb" "uat-remote" "prod-remote"
+}
+
+runtime_profiles_csv() {
+  printf 'local-uatdb, uat-remote, prod-remote'
+}
+
 normalize_runtime_profile() {
   local raw="${1:-}"
   local normalized

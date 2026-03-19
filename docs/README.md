@@ -33,6 +33,8 @@ For repo setup, see [`readme.md`](../readme.md) and [`getting_started.md`](../ge
 | Follow design system rules | [reference/quality/design-system.md](./reference/quality/design-system.md) |
 | Validate PR impact checklist | [reference/quality/pr-impact-checklist.md](./reference/quality/pr-impact-checklist.md) |
 | Get started quickly | [guides/getting-started.md](./guides/getting-started.md) |
+| Understand the three supported runtime profiles | [guides/environment-model.md](./guides/environment-model.md) |
+| Run deploy/parity/native ops after setup | [guides/advanced-ops.md](./guides/advanced-ops.md) |
 | Activate and test Plaid end to end | [guides/plaid-activation-and-testing.md](./guides/plaid-activation-and-testing.md) |
 | Build mobile/native | [guides/mobile.md](./guides/mobile.md) |
 | Review planned broker execution architecture | [vision/kai/broker-execution-future-state.md](./vision/kai/broker-execution-future-state.md) |

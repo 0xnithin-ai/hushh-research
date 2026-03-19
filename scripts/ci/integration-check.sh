@@ -7,6 +7,7 @@ CI_NATIVE_PARITY_REQUIRED="${CI_NATIVE_PARITY_REQUIRED:-0}"
 CI_DOCS_PARITY_REQUIRED="${CI_DOCS_PARITY_REQUIRED:-0}"
 
 bash "$REPO_ROOT/scripts/ci/no-ria-feature-flags.sh"
+bash "$REPO_ROOT/scripts/ci/runtime-contract-check.sh"
 
 cd "$WEB_DIR"
 

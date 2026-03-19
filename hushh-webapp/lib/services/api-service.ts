@@ -37,6 +37,15 @@ import {
 } from "@/lib/observability/request-id";
 import { resolveRouteId } from "@/lib/observability/route-map";
 
+const AUTH_REFRESH_RETRY_HEADER = "X-Hushh-Auth-Refresh-Retry";
+const AUTH_SESSION_INVALIDATED_EVENT = "auth-session-invalidated";
+const VAULT_LOCK_REQUESTED_EVENT = "vault-lock-requested";
+
+type VaultOwnerAuthFailure = {
+  shouldLockVault: boolean;
+  reason: string | null;
+};
+
 const getEnvBackendUrl = (): string => {
   return (process.env.NEXT_PUBLIC_BACKEND_URL || "").trim().replace(/\/$/, "");
 };
@@ -129,6 +138,43 @@ function toStatusBucketFromStatus(
   return "network_error";
 }
 
+async function classifyVaultOwnerAuthFailure(
+  response: Response
+): Promise<VaultOwnerAuthFailure> {
+  try {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: unknown; detail?: unknown; details?: unknown }
+        | null;
+      const reasonCandidates = [
+        typeof payload?.error === "string" ? payload.error : null,
+        typeof payload?.detail === "string" ? payload.detail : null,
+        typeof payload?.details === "string" ? payload.details : null,
+      ].filter(Boolean) as string[];
+      const reason = reasonCandidates[0] ?? null;
+      const normalized = (reason || "").toLowerCase();
+      return {
+        shouldLockVault:
+          normalized.includes("token has been revoked") ||
+          normalized.includes("invalid token"),
+        reason,
+      };
+    }
+
+    const raw = await response.text().catch(() => "");
+    const normalized = raw.toLowerCase();
+    return {
+      shouldLockVault:
+        normalized.includes("token has been revoked") ||
+        normalized.includes("invalid token"),
+      reason: raw || null,
+    };
+  } catch {
+    return { shouldLockVault: false, reason: null };
+  }
+}
+
 /**
  * Platform-aware fetch wrapper
  * Automatically adds base URL and common headers
@@ -170,6 +216,70 @@ async function apiFetch(
     }
   }
   mergedHeaders[REQUEST_ID_HEADER] = requestId;
+
+  const getAuthorizationBearer = () => {
+    const authorization =
+      mergedHeaders.Authorization ||
+      mergedHeaders.authorization ||
+      "";
+    return authorization.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length).trim()
+      : "";
+  };
+
+  const shouldAttemptFirebaseAuthRecovery = () => {
+    const bearer = getAuthorizationBearer();
+    if (!bearer) return false;
+    if (bearer.startsWith("HCT:")) return false;
+    return mergedHeaders[AUTH_REFRESH_RETRY_HEADER] !== "1";
+  };
+
+  const dispatchAuthSessionInvalidated = (reason: string) => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent(AUTH_SESSION_INVALIDATED_EVENT, {
+        detail: { reason, path },
+      })
+    );
+  };
+
+  const dispatchVaultLockRequested = (reason: string) => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent(VAULT_LOCK_REQUESTED_EVENT, {
+        detail: { reason, path },
+      })
+    );
+  };
+
+  const retryWithFreshFirebaseToken = async (): Promise<Response | null> => {
+    if (!shouldAttemptFirebaseAuthRecovery()) {
+      return null;
+    }
+
+    try {
+      const freshToken = await AuthService.getIdToken(true);
+      const currentBearer = getAuthorizationBearer();
+      if (!freshToken || freshToken === currentBearer) {
+        dispatchAuthSessionInvalidated("Firebase session is no longer valid");
+        return null;
+      }
+
+      const retryHeaders = {
+        ...mergedHeaders,
+        Authorization: `Bearer ${freshToken}`,
+        [AUTH_REFRESH_RETRY_HEADER]: "1",
+      };
+      return apiFetch(path, {
+        ...options,
+        headers: retryHeaders,
+      });
+    } catch (error) {
+      console.warn("[ApiService] Firebase auth refresh failed:", error);
+      dispatchAuthSessionInvalidated("Firebase session refresh failed");
+      return null;
+    }
+  };
 
   const recordApiRequestMetric = (statusCode: number | null) => {
     trackApiRequestCompleted({
@@ -283,6 +393,20 @@ async function apiFetch(
       credentials: "include",
       headers: mergedHeaders,
     });
+    if ((response.status === 401 || response.status === 403) && getAuthorizationBearer().startsWith("HCT:")) {
+      const failure = await classifyVaultOwnerAuthFailure(response.clone());
+      if (failure.shouldLockVault) {
+        dispatchVaultLockRequested(
+          failure.reason || "Vault access token is no longer valid"
+        );
+      }
+    }
+    if (response.status === 401) {
+      const retryResponse = await retryWithFreshFirebaseToken();
+      if (retryResponse) {
+        return retryResponse;
+      }
+    }
     recordApiRequestMetric(response.status);
     return response;
   } catch (error) {
@@ -1282,6 +1406,7 @@ export class ApiService {
   /**
    * Check if user has a vault
    * Route: GET /api/vault/check?userId=xxx
+   * Web callers resolve through bootstrap-state so placeholder rows stay current.
    */
   static async checkVault(userId: string): Promise<Response> {
     return apiFetch(`/api/vault/check?userId=${encodeURIComponent(userId)}`);

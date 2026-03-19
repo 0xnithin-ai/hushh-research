@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { Slot } from "radix-ui";
@@ -19,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { SurfaceCard } from "@/components/app-ui/surfaces";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MaterialRipple } from "@/lib/morphy-ux/material-ripple";
 import { Icon } from "@/lib/morphy-ux/ui";
@@ -28,22 +29,30 @@ export function SettingsSegmentedTabs({
   value,
   onValueChange,
   options,
+  mobileColumns,
   className,
 }: {
   value: string;
   onValueChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
+  mobileColumns?: number;
   className?: string;
 }) {
+  const resolvedDesktopColumns = Math.max(options.length, 1);
+  const resolvedMobileColumns = Math.max(mobileColumns ?? resolvedDesktopColumns, 1);
+
   return (
     <div
       className={cn(
-        "relative grid w-full grid-cols-3 rounded-[20px] border border-border/80 bg-muted/60 p-1 shadow-sm backdrop-blur-xl sm:rounded-[22px]",
+        "relative grid w-full rounded-[20px] border border-border/80 bg-muted/60 p-1 shadow-sm backdrop-blur-xl [grid-template-columns:repeat(var(--segmented-mobile-cols),minmax(0,1fr))] sm:rounded-[22px] sm:[grid-template-columns:repeat(var(--segmented-desktop-cols),minmax(0,1fr))]",
         className
       )}
-      style={{
-        gridTemplateColumns: `repeat(${Math.max(options.length, 1)}, minmax(0, 1fr))`,
-      }}
+      style={
+        {
+          "--segmented-mobile-cols": String(resolvedMobileColumns),
+          "--segmented-desktop-cols": String(resolvedDesktopColumns),
+        } as CSSProperties
+      }
     >
       {options.map((option) => {
         const isActive = option.value === value;
@@ -78,14 +87,35 @@ export function SettingsGroup({
   title,
   description,
   children,
+  embedded = false,
   className,
 }: {
   eyebrow?: string;
   title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
+  embedded?: boolean;
   className?: string;
 }) {
+  const clipShell = (
+    <div className="relative isolate overflow-hidden rounded-[calc(var(--settings-group-radius)-1px)]">
+      <div className="relative isolate divide-y divide-border/60">{children}</div>
+    </div>
+  );
+
+  const shell = (
+    <div
+      className={cn(
+        "relative isolate p-px",
+        embedded
+          ? "[--settings-group-radius:20px] rounded-[20px] border border-border/60 bg-background/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+          : "[--settings-group-radius:inherit] rounded-[inherit]"
+      )}
+    >
+      {clipShell}
+    </div>
+  );
+
   return (
     <section className={cn("space-y-2", className)}>
       {eyebrow || title || description ? (
@@ -107,9 +137,13 @@ export function SettingsGroup({
           ) : null}
         </div>
       ) : null}
-      <div className="overflow-hidden rounded-[22px] border border-foreground/10 bg-background/72 shadow-sm backdrop-blur-sm divide-y divide-foreground/10 dark:border-white/10 dark:divide-white/10 sm:rounded-[28px]">
-        {children}
-      </div>
+      {embedded ? (
+        shell
+      ) : (
+        <SurfaceCard>
+          {shell}
+        </SurfaceCard>
+      )}
     </section>
   );
 }
@@ -144,6 +178,14 @@ export function SettingsRow({
   const isInteractive = !disabled && (typeof onClick === "function" || asChild);
   const shouldStackTrailing = stackTrailingOnMobile && Boolean(trailing) && !chevron;
   const Comp = asChild ? Slot.Root : onClick ? "button" : "div";
+  const rowRadiusClassName =
+    "[--settings-row-top-radius:0px] [--settings-row-bottom-radius:0px] first:[--settings-row-top-radius:calc(var(--settings-group-radius)-1px)] last:[--settings-row-bottom-radius:calc(var(--settings-group-radius)-1px)] [border-top-left-radius:var(--settings-row-top-radius)] [border-top-right-radius:var(--settings-row-top-radius)] [border-bottom-left-radius:var(--settings-row-bottom-radius)] [border-bottom-right-radius:var(--settings-row-bottom-radius)]";
+  const rowShellClassName = cn(
+    "group/settings-row relative isolate overflow-hidden bg-transparent",
+    rowRadiusClassName,
+    disabled && "cursor-not-allowed opacity-60",
+    className
+  );
   const content = (
     <>
       <div
@@ -203,35 +245,46 @@ export function SettingsRow({
   );
 
   const sharedClassName = cn(
-    "group relative grid w-full overflow-hidden px-3 py-3.5 text-left sm:px-4 sm:py-4",
+    "relative z-10 grid w-full appearance-none border-0 bg-transparent px-3 py-3.5 text-left outline-hidden ring-0 [-webkit-tap-highlight-color:transparent] sm:px-4 sm:py-4",
     shouldStackTrailing
       ? "grid-cols-1 gap-y-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-x-3 sm:gap-y-0"
       : "grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3",
     isInteractive &&
-      "transition-[border-color,box-shadow] before:pointer-events-none before:absolute before:inset-0 before:z-[1] before:bg-muted/0 before:transition-[background-color,opacity] before:duration-200 hover:before:bg-muted/36 active:before:bg-muted/48",
-    disabled && "cursor-not-allowed opacity-60",
-    className
+      "transition-[border-color,box-shadow] focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0"
   );
 
   return (
-    <Comp
-      {...(!asChild && onClick
-        ? { type: "button" as const, onClick, disabled }
-        : !asChild
-          ? { "aria-disabled": disabled || undefined }
-          : {})}
-      className={sharedClassName}
-    >
-      {content}
+    <div className={rowShellClassName}>
       {isInteractive ? (
-        <MaterialRipple
-          variant="none"
-          effect="fade"
-          disabled={disabled}
-          className="z-[2]"
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[1] bg-transparent transition-[background-color]",
+            "group-hover/settings-row:bg-muted/36 group-active/settings-row:bg-muted/48"
+          )}
         />
       ) : null}
-    </Comp>
+      {isInteractive ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-[2] overflow-hidden rounded-[inherit]">
+          <MaterialRipple
+            variant="none"
+            effect="fade"
+            disabled={disabled}
+            className="z-[2]"
+          />
+        </div>
+      ) : null}
+      <Comp
+        {...(!asChild && onClick
+          ? { type: "button" as const, onClick, disabled }
+          : !asChild
+            ? { "aria-disabled": disabled || undefined }
+            : {})}
+        className={sharedClassName}
+      >
+        {content}
+      </Comp>
+    </div>
   );
 }
 

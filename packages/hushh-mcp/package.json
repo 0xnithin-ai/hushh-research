@@ -1,0 +1,24 @@
+{
+  "name": "@hushh/mcp",
+  "version": "0.1.0",
+  "description": "Launch-friendly npm wrapper for the Hushh Consent MCP server",
+  "license": "UNLICENSED",
+  "bin": {
+    "hushh-mcp": "./bin/hushh-mcp.js"
+  },
+  "files": [
+    "README.md",
+    "bin/",
+    "scripts/",
+    "vendor/"
+  ],
+  "scripts": {
+    "prepack": "node ./scripts/stage-runtime.mjs",
+    "print-config": "node ./bin/hushh-mcp.js --print-config",
+    "print-codex-toml": "node ./bin/hushh-mcp.js --print-codex-toml",
+    "print-remote-config": "node ./bin/hushh-mcp.js --print-remote-config"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}

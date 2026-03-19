@@ -16,9 +16,10 @@ Canonical environment keys:
 
 Current branch divergence policy:
 
-1. `deploy_uat` carries analytics/auth-split keys as the active rollout lane.
+1. `deploy_uat` carries analytics keys plus optional auth-override keys as the active rollout lane.
 2. Production analytics key parity is intentionally deferred until approved migration.
 3. Missing production analytics keys should be tracked as migration backlog, not silently backfilled outside release planning.
+4. Auth-override keys do not imply a different Firebase messaging project. The effective Firebase identity plane must remain unified.
 
 Profile bootstrap rule:
 
@@ -40,7 +41,7 @@ Profile bootstrap rule:
 | `DB_PASSWORD` | `consent-protocol/db/connection.py` | Y | N | Y | secret | N | secret | N | required |
 | `APP_REVIEW_MODE` | `consent-protocol/api/routes/health.py` | Y | N | Y | secret | N | secret | N | required |
 | `REVIEWER_UID` | `consent-protocol/api/routes/health.py` | N | N | Y | secret | N | secret | N | required |
-| `MCP_DEVELOPER_TOKEN` | `consent-protocol/api/routes/session.py` | Y | N | Y | secret | N | secret | N | required |
+| `HUSHH_DEVELOPER_TOKEN` | `consent-protocol/api/routes/session.py` | Y | N | N | N | N | N | N | optional |
 | `ENVIRONMENT` | `consent-protocol/hushh_mcp/config.py` | Y | N | N | env | N | env | N | required |
 | `GOOGLE_GENAI_USE_VERTEXAI` | runtime SDK config | Y | N | N | env | N | env | N | required |
 | `DB_HOST` | `consent-protocol/db/connection.py` | Y | N | N | env | N | env | N | required |

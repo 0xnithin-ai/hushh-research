@@ -34,8 +34,13 @@ function _getBackendUrl(): string {
   if (Capacitor.isNativePlatform()) {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     if (!backendUrl) {
-      console.warn("[Kai] NEXT_PUBLIC_BACKEND_URL not set, using localhost");
-      return "http://localhost:8000";
+      if (process.env.NEXT_PUBLIC_APP_ENV === "development") {
+        console.warn("[Kai] NEXT_PUBLIC_BACKEND_URL not set, using local development backend");
+        return "http://127.0.0.1:8000";
+      }
+      throw new Error(
+        "[Kai] NEXT_PUBLIC_BACKEND_URL is required for native/hosted dashboard actions outside local development."
+      );
     }
     return backendUrl;
   }

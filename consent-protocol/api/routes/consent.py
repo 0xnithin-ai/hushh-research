@@ -67,6 +67,11 @@ class GenericConsentRequestCreate(BaseModel):
     reason: str | None = None
 
 
+class RelationshipDisconnectRequest(BaseModel):
+    investor_user_id: str | None = None
+    ria_profile_id: str | None = None
+
+
 @router.get("/pending")
 async def get_pending_consents(
     userId: str,
@@ -133,6 +138,9 @@ async def approve_consent(
 
     # Optional metadata on pending request (used for expiry hints)
     metadata = pending_request.get("metadata", {})
+    developer_label = (
+        metadata.get("developer_app_display_name") if isinstance(metadata, dict) else None
+    ) or pending_request["developer"]
     expiry_hours = metadata.get("expiry_hours", 24)
     if isinstance(requested_duration_hours, int) and requested_duration_hours > 0:
         expiry_hours = min(requested_duration_hours, 24 * 365)
@@ -165,7 +173,7 @@ async def approve_consent(
 
         return {
             "status": "approved",
-            "message": f"Consent granted to {pending_request['developer']} (Existing)",
+            "message": f"Consent granted to {developer_label} (Existing)",
             "consent_token": existing_token.get("id")
             or existing_token.get("token"),  # access db model field
             "export_key": exportKey,  # Reuse provided key for this session or potentially re-encrypt (Scope limitation: Reusing token implies reusing access)
@@ -236,7 +244,7 @@ async def approve_consent(
     # Return token with export key for MCP decryption
     return {
         "status": "approved",
-        "message": f"Consent granted to {pending_request['developer']}",
+        "message": f"Consent granted to {developer_label}",
         "consent_token": token.token,
         "export_key": exportKey,  # MCP uses this to decrypt
         "expires_at": token.expires_at,
@@ -268,6 +276,11 @@ async def deny_consent(
     if not pending_request:
         raise HTTPException(status_code=404, detail="Consent request not found")
 
+    metadata = pending_request.get("metadata", {})
+    developer_label = (
+        metadata.get("developer_app_display_name") if isinstance(metadata, dict) else None
+    ) or pending_request["developer"]
+
     # Log CONSENT_DENIED to database
     await service.insert_event(
         user_id=userId,
@@ -286,7 +299,7 @@ async def deny_consent(
     except Exception:
         logger.exception("ria.relationship_sync_failed action=CONSENT_DENIED")
 
-    return {"status": "denied", "message": f"Consent denied to {pending_request['developer']}"}
+    return {"status": "denied", "message": f"Consent denied to {developer_label}"}
 
 
 @router.post("/cancel")
@@ -362,6 +375,21 @@ async def create_generic_consent_request(
             duration_hours=payload.duration_hours,
             firm_id=payload.firm_id,
             reason=payload.reason,
+        )
+    except RIAIAMPolicyError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.post("/relationships/disconnect")
+async def disconnect_relationship(
+    payload: RelationshipDisconnectRequest,
+    firebase_uid: str = Depends(require_firebase_auth),
+):
+    try:
+        return await RIAIAMService().disconnect_relationship(
+            firebase_uid,
+            investor_user_id=payload.investor_user_id,
+            ria_profile_id=payload.ria_profile_id,
         )
     except RIAIAMPolicyError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

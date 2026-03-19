@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -23,9 +23,13 @@ import {
   Cell,
   LabelList,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/lib/morphy-ux/card";
-import { ChevronDown, ChevronUp, PieChart as PieChartIcon } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  ChartSurfaceCard,
+  SurfaceInset,
+} from "@/components/app-ui/surfaces";
 import {
   Collapsible,
   CollapsibleContent,
@@ -69,6 +73,16 @@ interface SectorDatum {
   holdings: SectorHoldingItem[];
 }
 
+type SectorBarChartProps = {
+  chartConfig: ChartConfig;
+  chartHeight: number;
+  leftMargin: number;
+  rightMargin: number;
+  yAxisWidth: number;
+  showInlineValueLabels: boolean;
+  sectorData: { data: SectorDatum[]; total: number };
+};
+
 // Distinct palette so neighboring sectors are easy to scan.
 const CHART_COLORS = [
   "#2563eb",
@@ -97,29 +111,110 @@ function _formatPercent(value: number): string {
   return `${value.toFixed(2)}%`;
 }
 
-const SECTOR_CHART_ABBREVIATIONS: Record<string, string> = {
-  "consumer discretionary": "Consumer Disc.",
-  "consumer staples": "Cons. Staples",
-  "information technology": "Tech",
-  "technology": "Tech",
-  "communication services": "Comm.",
-};
-
-function normalizeSectorLabel(value: string): string {
-  return String(value).replace(/\s+/g, " ").trim();
+function compactSectorLabel(value: string): string {
+  if (value.length <= 16) return value;
+  return `${value.slice(0, 15)}…`;
 }
 
-function abbreviateSectorLabelForChart(value: string): string {
-  const normalized = normalizeSectorLabel(value);
-  if (!normalized) return "Unclassified";
-
-  const mapped = SECTOR_CHART_ABBREVIATIONS[normalized.toLowerCase()];
-  const abbreviated = mapped || normalized;
-  const singleLine = abbreviated.length > 14 ? `${abbreviated.slice(0, 13).trimEnd()}…` : abbreviated;
-
-  // Keep labels on one line inside SVG axis ticks.
-  return singleLine.replace(/ /g, "\u00A0");
-}
+const SectorBarChart = memo(function SectorBarChart({
+  chartConfig,
+  chartHeight,
+  leftMargin,
+  rightMargin,
+  yAxisWidth,
+  showInlineValueLabels,
+  sectorData,
+}: SectorBarChartProps) {
+  return (
+    <SurfaceInset className="p-3 sm:p-4">
+      <ChartContainer
+        config={chartConfig}
+        className="w-full min-w-0"
+        style={{ height: `${chartHeight}px` }}
+      >
+        <BarChart
+          data={sectorData.data}
+          layout="vertical"
+          margin={{ top: 5, right: rightMargin, left: leftMargin, bottom: 5 }}
+        >
+          <XAxis
+            type="number"
+            tickFormatter={(value) => formatCurrency(value)}
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 10, fill: "hsl(var(--foreground) / 0.72)" }}
+          />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="hsl(var(--foreground) / 0.22)"
+            strokeOpacity={0.55}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            tickFormatter={(value) => compactSectorLabel(String(value))}
+            axisLine={false}
+            tickLine={false}
+            width={yAxisWidth}
+            tick={{ fontSize: 10, fill: "hsl(var(--foreground) / 0.72)" }}
+          />
+          <ChartTooltip
+            cursor={false}
+            content={
+              <ChartTooltipContent
+                hideLabel
+                formatter={(value, name, item) => {
+                  const payload = item.payload as {
+                    name: string;
+                    value: number;
+                    count: number;
+                  };
+                  return (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Sector Allocation
+                      </span>
+                      <span className="text-sm font-semibold">{payload.name}</span>
+                      <span className="text-base font-bold text-foreground">
+                        {formatCurrency(payload.value)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {payload.count} holding{payload.count !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  );
+                }}
+              />
+            }
+          />
+          <Bar
+            dataKey="value"
+            radius={[0, 4, 4, 0]}
+            animationDuration={550}
+            maxBarSize={24}
+          >
+            {showInlineValueLabels ? (
+              <LabelList
+                dataKey="value"
+                position="right"
+                className="fill-foreground"
+                fontSize={10}
+                formatter={(value: number) => formatCurrency(Number(value))}
+              />
+            ) : null}
+            {sectorData.data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={entry.color}
+                style={{ cursor: "pointer" }}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ChartContainer>
+    </SurfaceInset>
+  );
+});
 
 export function SectorAllocationChart({
   holdings,
@@ -152,7 +247,7 @@ export function SectorAllocationChart({
     >();
     
     holdings.forEach((holding) => {
-      const normalizedSector = normalizeSectorLabel(holding.sector || "") || "Unclassified";
+      const normalizedSector = String(holding.sector || "").trim() || "Unclassified";
       
       const existing = sectorMap.get(normalizedSector) || { value: 0, count: 0, holdings: [] };
       sectorMap.set(normalizedSector, {
@@ -183,6 +278,7 @@ export function SectorAllocationChart({
           .sort((a, b) => b.marketValue - a.marketValue),
       }))
       .sort((a, b) => b.value - a.value)
+      .slice(0, 8) // Top 8 sectors
       .map((item, index) => ({
         ...item,
         color: CHART_COLORS[index % CHART_COLORS.length] ?? "#2563eb",
@@ -233,7 +329,7 @@ export function SectorAllocationChart({
 
   const yAxisWidth = useMemo(() => {
     if (!responsive) return 96;
-    if (windowWidth < 640) return 92;
+    if (windowWidth < 640) return 66;
     if (windowWidth < 1024) return 82;
     return 96;
   }, [responsive, windowWidth]);
@@ -257,99 +353,23 @@ export function SectorAllocationChart({
   }
 
   return (
-    <Card variant="none" effect="glass" className={className}>
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <PieChartIcon className="w-5 h-5 text-primary" />
-          {title}
-        </CardTitle>
-        {subtitle ? (
-          <p className="text-xs text-muted-foreground pt-1">{subtitle}</p>
-        ) : null}
-      </CardHeader>
-      <CardContent className="px-3 pb-4 min-w-0 overflow-hidden sm:px-4">
-        <ChartContainer config={chartConfig} className="w-full min-w-0" style={{ height: `${chartHeight}px` }}>
-          <BarChart
-            data={sectorData.data}
-            layout="vertical"
-            margin={{ top: 5, right: rightMargin, left: leftMargin, bottom: 5 }}
-          >
-            <XAxis
-              type="number"
-              tickFormatter={(value) => formatCurrency(value)}
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10, fill: "hsl(var(--foreground) / 0.72)" }}
-            />
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="hsl(var(--foreground) / 0.22)"
-              strokeOpacity={0.55}
-            />
-            <YAxis
-              type="category"
-              dataKey="name"
-              tickFormatter={(value) => abbreviateSectorLabelForChart(String(value))}
-              axisLine={false}
-              tickLine={false}
-              width={yAxisWidth}
-              tick={{ fontSize: 10, fill: "hsl(var(--foreground) / 0.72)" }}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  hideLabel
-                  formatter={(value, name, item) => {
-                    const payload = item.payload as {
-                      name: string;
-                      value: number;
-                      count: number;
-                    };
-                    return (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Sector Allocation
-                        </span>
-                        <span className="text-sm font-semibold">{payload.name}</span>
-                        <span className="text-foreground text-base font-bold">{formatCurrency(payload.value)}</span>
-                        <span className="text-muted-foreground text-xs">
-                          {payload.count} holding{payload.count !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                    );
-                  }}
-                />
-              }
-            />
-            <Bar
-              dataKey="value"
-              radius={[0, 4, 4, 0]}
-              animationDuration={800}
-              maxBarSize={24}
-            >
-              {showInlineValueLabels ? (
-                <LabelList
-                  dataKey="value"
-                  position="right"
-                  className="fill-foreground"
-                  fontSize={10}
-                  formatter={(value: number) => formatCurrency(Number(value))}
-                />
-              ) : null}
-              {sectorData.data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.color}
-                  style={{ cursor: "pointer" }}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+    <ChartSurfaceCard
+      title={title}
+      description={subtitle}
+      className={cn("h-full min-w-0", className)}
+      contentClassName="space-y-3"
+    >
+      <SectorBarChart
+        chartConfig={chartConfig}
+        chartHeight={chartHeight}
+        leftMargin={leftMargin}
+        rightMargin={rightMargin}
+        yAxisWidth={yAxisWidth}
+        showInlineValueLabels={showInlineValueLabels}
+        sectorData={sectorData}
+      />
 
-        {/* Summary - simplified legend */}
-        <div className="mt-3 pt-3 border-t border-border/50">
+      <SurfaceInset className="px-3 py-3 sm:px-4">
           <div className="space-y-2">
             {sectorData.data.map((sector) => {
               const totalPages = Math.max(1, Math.ceil(sector.holdings.length / HOLDINGS_PAGE_SIZE));
@@ -367,7 +387,7 @@ export function SectorAllocationChart({
                   onOpenChange={(nextOpen) =>
                     setOpenSectors((prev) => ({ ...prev, [sector.name]: nextOpen }))
                   }
-                  className="rounded-lg border border-border/60 bg-background/70"
+                  className="rounded-lg border border-border/60 bg-background/80"
                 >
                   <CollapsibleTrigger asChild>
                     <button
@@ -378,30 +398,22 @@ export function SectorAllocationChart({
                         className="h-3 w-3 shrink-0 rounded-full"
                         style={{ backgroundColor: sector.color }}
                       />
-                      <span
-                        className="min-w-0 flex-1 truncate whitespace-nowrap text-sm font-medium text-foreground"
-                        title={sector.name}
-                      >
-                        {sector.name}
-                      </span>
-                      <span className="shrink-0 whitespace-nowrap text-xs font-medium text-foreground/80">
+                      <span className="text-sm font-medium text-foreground">{sector.name}</span>
+                      <span className="text-xs font-medium text-foreground/80">
                         {formatCurrency(sector.value)} ({sector.percent.toFixed(1)}%)
                       </span>
-                      <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] text-muted-foreground">
+                      <span className="ml-auto text-[11px] text-muted-foreground">
                         {sector.count} holding{sector.count !== 1 ? "s" : ""}
                       </span>
                       {isOpen ? (
-                        <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
                       ) : (
-                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
                       )}
                     </button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="overflow-hidden border-t border-border/50 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                  <CollapsibleContent className="border-t border-border/50">
                     <div className="space-y-2 p-2.5">
-                      <p className="text-[11px] text-muted-foreground">
-                        <span className="font-semibold text-foreground">{sector.name}</span>
-                      </p>
                       <div className="flex flex-wrap gap-1.5">
                         {visibleHoldings.map((holding) => (
                           <span
@@ -460,9 +472,8 @@ export function SectorAllocationChart({
               );
             })}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+      </SurfaceInset>
+    </ChartSurfaceCard>
   );
 }
 

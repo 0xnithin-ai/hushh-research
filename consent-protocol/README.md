@@ -21,6 +21,16 @@ The Consent Protocol is the single source of truth for the Hushh backend. It pow
 
 ## Quick Start
 
+If you are working inside the `hushh-research` monorepo, use the repo-root bootstrap and runtime profiles instead of manually assembling backend env files:
+
+```bash
+cd ..
+make bootstrap
+make backend PROFILE=local-uatdb
+```
+
+Standalone subtree/backend-only setup:
+
 ```bash
 # Clone
 git clone https://github.com/hushh-labs/consent-protocol.git
@@ -51,6 +61,15 @@ Health check: `curl http://localhost:8000/health`
 If your frontend/backend live in one monorepo and this repository is vendored as a subtree, use the shared monorepo toolkit in `ops/monorepo/`.
 
 See: [docs/monorepo-integration.md](docs/monorepo-integration.md)
+
+## MCP Distribution
+
+The preferred public install surface for the Hushh Consent MCP server is the npm launcher package `@hushh/mcp`, which bootstraps the existing Python stdio server and keeps the protocol logic in this repo. Repo-local direct Python setup remains supported as a fallback for contributors and unpublished-package testing.
+
+See:
+
+- [docs/mcp-setup.md](docs/mcp-setup.md)
+- [`../packages/hushh-mcp/README.md`](../packages/hushh-mcp/README.md)
 
 ---
 

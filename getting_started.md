@@ -1,51 +1,39 @@
 # Getting Started
 
-This file is a repo-root entrypoint. The maintained setup guide lives at [`docs/guides/getting-started.md`](./docs/guides/getting-started.md).
+This is the repo-root contributor entrypoint. The maintained onboarding path lives in:
 
-## What You’re Bootstrapping
+- [docs/guides/getting-started.md](./docs/guides/getting-started.md)
+- [docs/guides/environment-model.md](./docs/guides/environment-model.md)
+- [docs/guides/advanced-ops.md](./docs/guides/advanced-ops.md)
 
-Hushh in this repo is the current Kai + IAM/RIA + consent/world-model stack:
+## Stack In One Screen
 
-- encrypted user-private data through the world-model boundary
-- consent-first runtime access with auditability
-- web, iOS, and Android parity through the tri-flow model
+- Frontend: Next.js 16, React 19, Capacitor
+- Backend: FastAPI on Python 3.13
+- Storage: Postgres plus encrypted world-model blob/index
+- Auth: Firebase
+- Environments: `local-uatdb`, `uat-remote`, `prod-remote`
 
-## Quick Bootstrap
+## Canonical Commands
 
 ```bash
 git clone https://github.com/hushh-labs/hushh-research.git
 cd hushh-research
-make setup
-cd hushh-webapp && npm install
-cd ../consent-protocol
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cd ..
-bash scripts/env/bootstrap_profiles.sh
-make local
+make bootstrap
+make doctor PROFILE=uat-remote
+make web PROFILE=uat-remote
 ```
 
-Expected local endpoints after boot:
-
-- frontend: `http://localhost:3000`
-- backend health: `http://localhost:8000/health`
+Use `make dev PROFILE=local-uatdb` when you need the full local stack. Use `make web PROFILE=prod-remote` only when you intentionally want to inspect production behavior from a local frontend.
 
 ## Read In This Order
 
-1. [`docs/guides/getting-started.md`](./docs/guides/getting-started.md) for local setup, runtime profiles, and launch commands.
-2. [`docs/reference/operations/env-and-secrets.md`](./docs/reference/operations/env-and-secrets.md) for the canonical `DB_*`, Firebase, and runtime environment contract.
-3. [`docs/reference/architecture/architecture.md`](./docs/reference/architecture/architecture.md) for the current system map.
-4. [`docs/reference/operations/branch-governance.md`](./docs/reference/operations/branch-governance.md) for branch lanes and deployment policy.
-5. [`docs/reference/operations/ci.md`](./docs/reference/operations/ci.md) for blocking CI and local parity.
-6. [`docs/reference/operations/coding-agent-mcp.md`](./docs/reference/operations/coding-agent-mcp.md) for coding-agent MCP tooling.
+1. [docs/guides/getting-started.md](./docs/guides/getting-started.md)
+2. [docs/guides/environment-model.md](./docs/guides/environment-model.md)
+3. [docs/reference/architecture/architecture.md](./docs/reference/architecture/architecture.md)
+4. [docs/guides/advanced-ops.md](./docs/guides/advanced-ops.md)
 
-## Package Entry Points
+## Package References
 
-- Backend/protocol setup details: [`consent-protocol/docs/README.md`](./consent-protocol/docs/README.md)
-- Frontend/native setup details: [`hushh-webapp/docs/README.md`](./hushh-webapp/docs/README.md)
-
-## Notes
-
-- Root docs do not carry independent setup truth anymore.
-- This file should keep one-screen onboarding value, but detailed operational truth belongs in the canonical docs under `docs/`, `consent-protocol/docs/`, or `hushh-webapp/docs/`.
+- Backend details: [consent-protocol/docs/README.md](./consent-protocol/docs/README.md)
+- Frontend/native details: [hushh-webapp/docs/README.md](./hushh-webapp/docs/README.md)

@@ -3,7 +3,7 @@
 # Usage: make <target>
 # Run `make help` for available targets.
 
-.PHONY: help local uat prod local-web uat-web prod-web local-backend stack web backend profile-use env-bootstrap lint test verify-docs ci-local db-init-iam verify-iam-schema
+.PHONY: help bootstrap doctor dev local uat prod local-web uat-web prod-web local-backend stack web backend profile-use env-bootstrap lint test verify-docs ci-local db-init-iam verify-iam-schema
 
 PROFILE ?= $(if $(ENV),$(ENV),local-uatdb)
 
@@ -20,6 +20,15 @@ include consent-protocol/ops/monorepo/protocol.mk
 endif
 
 # === Runtime Profiles ======================================================
+
+bootstrap: ## Canonical contributor bootstrap (deps + profile hydration + local doctor)
+	@bash scripts/env/bootstrap.sh
+
+doctor: ## Check whether a runtime profile is coherent and runnable (PROFILE=local-uatdb|uat-remote|prod-remote)
+	@bash scripts/env/doctor.sh "$(PROFILE)"
+
+dev: ## Canonical run command family entrypoint (PROFILE=local-uatdb|uat-remote|prod-remote)
+	@$(MAKE) stack PROFILE="$(PROFILE)"
 
 local: ## Start local frontend + local backend against UAT-backed resources
 	@$(MAKE) stack PROFILE=local-uatdb

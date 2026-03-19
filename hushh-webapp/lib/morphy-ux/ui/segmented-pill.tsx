@@ -118,6 +118,7 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
           const isActive = option.value === value;
           const isDisabled = !!option.disabled;
           const isAccent = option.tone === "accent";
+          const needsWrapper = hitArea === "content" || hitArea === "segment";
           const button = (
             <button
               key={option.value}
@@ -134,7 +135,7 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
               className={cn(
                 "relative z-10 flex min-w-0 items-center justify-center overflow-hidden rounded-full text-center transition-[color,opacity,transform] duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] disabled:cursor-not-allowed",
                 "pointer-events-auto",
-                hitArea === "content" ? "w-fit flex-none self-center" : "w-full",
+                hitArea === "content" ? "w-fit flex-none self-center" : "h-full w-full",
                 isStacked ? "flex-col" : "flex-row",
                 isStacked ? styles.stackedButton : styles.button,
                 isStacked ? styles.stackedGap : styles.gap,
@@ -182,13 +183,14 @@ export const SegmentedPill = React.forwardRef<HTMLDivElement, SegmentedPillProps
             </button>
           );
 
-          if (hitArea === "content") {
+          if (needsWrapper) {
             return (
               <div
                 key={option.value}
                 className={cn(
-                  "relative z-10 flex min-w-0 items-center justify-center",
-                  isStacked && "py-0.5"
+                  "pointer-events-none relative z-10 flex min-w-0 items-center justify-center",
+                  hitArea === "segment" ? "h-full px-[2px] py-[2px]" : "",
+                  hitArea === "content" && isStacked ? "py-0.5" : ""
                 )}
               >
                 {button}

@@ -55,6 +55,12 @@ export type KaiProfileV2 = {
   updated_at: string;
 };
 
+export type KaiOnboardingCompletion = {
+  completed: boolean;
+  completedAt: string | null;
+  skippedPreferences: boolean;
+};
+
 export type KaiPreferencesUpdate = Partial<
   Pick<
     KaiPreferences,
@@ -459,6 +465,22 @@ function recomputeDerived(
       ? now
       : preferences.risk_profile_selected_at ?? now,
   };
+}
+
+export function resolveKaiOnboardingCompletion(
+  profile: KaiProfileV2 | null | undefined
+): KaiOnboardingCompletion {
+  return {
+    completed: profile?.onboarding.completed === true,
+    completedAt: profile?.onboarding.completed_at ?? null,
+    skippedPreferences: profile?.onboarding.skipped_preferences === true,
+  };
+}
+
+export function isKaiOnboardingCompleted(
+  profile: KaiProfileV2 | null | undefined
+): boolean {
+  return resolveKaiOnboardingCompletion(profile).completed;
 }
 
 export class KaiProfileService {

@@ -124,4 +124,25 @@ export class PreVaultUserStateService {
     if (!state) return false;
     return Boolean(state.preNavTourCompletedAt || state.preNavTourSkippedAt);
   }
+
+  static async syncKaiOnboardingState(params: {
+    userId: string;
+    completed: boolean;
+    skipped: boolean;
+    completedAt?: string | number | null;
+  }): Promise<PreVaultUserState> {
+    const completedAtMs =
+      typeof params.completedAt === "number"
+        ? params.completedAt
+        : typeof params.completedAt === "string" && params.completedAt.trim()
+          ? Date.parse(params.completedAt)
+          : Date.now();
+
+    return this.updatePreVaultState(params.userId, {
+      preOnboardingCompleted: params.completed,
+      preOnboardingSkipped: params.skipped,
+      preOnboardingCompletedAt:
+        params.completed && Number.isFinite(completedAtMs) ? completedAtMs : Date.now(),
+    });
+  }
 }

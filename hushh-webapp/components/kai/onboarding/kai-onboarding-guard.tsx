@@ -5,7 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { HushhLoader } from "@/components/app-ui/hushh-loader";
 import { Button } from "@/lib/morphy-ux/button";
-import { KaiProfileService } from "@/lib/services/kai-profile-service";
+import {
+  KaiProfileService,
+  resolveKaiOnboardingCompletion,
+} from "@/lib/services/kai-profile-service";
 import { KaiProfileSyncService } from "@/lib/services/kai-profile-sync-service";
 import { PreVaultOnboardingService } from "@/lib/services/pre-vault-onboarding-service";
 import { PreVaultUserStateService } from "@/lib/services/pre-vault-user-state-service";
@@ -13,7 +16,6 @@ import { VaultService } from "@/lib/services/vault-service";
 import { useAuth } from "@/hooks/use-auth";
 import { useVault } from "@/lib/vault/vault-context";
 import {
-  isOnboardingRequiredCookieEnabled,
   setOnboardingFlowActiveCookie,
   setOnboardingRequiredCookie,
 } from "@/lib/services/onboarding-route-cookie";
@@ -34,7 +36,6 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
     let cancelled = false;
     const chromeState = getKaiChromeState(pathname);
     const onOnboardingRoute = chromeState.isOnboardingRoute;
-    const onImportRoute = chromeState.isImportRoute;
 
     async function run() {
       if (authLoading) return;
@@ -102,14 +103,32 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
           return;
         }
 
-        // If vault exists but is not currently unlocked, rely on lock-guard and last known cookie.
+        // If vault exists but is not currently unlocked, prefer the server-verifiable
+        // pre-vault mirror, but do not force legacy vault users into onboarding when
+        // the mirror has never been backfilled yet. Their real onboarding state will
+        // be determined from the encrypted profile after unlock.
         if (!isVaultUnlocked || !vaultKey || !vaultOwnerToken) {
-          if (!onOnboardingRoute && isOnboardingRequiredCookieEnabled()) {
+          const remoteState = await PreVaultUserStateService.bootstrapState(user.uid).catch(
+            () => null
+          );
+          if (cancelled) return;
+          if (!remoteState) {
+            setChecking(false);
+            return;
+          }
+
+          const onboardingResolved = PreVaultUserStateService.isOnboardingResolved(remoteState);
+          const onboardingExplicitlyIncomplete =
+            remoteState.preOnboardingCompleted === false && !onboardingResolved;
+
+          setOnboardingRequiredCookie(onboardingExplicitlyIncomplete);
+
+          if (!onOnboardingRoute && onboardingExplicitlyIncomplete) {
             router.replace(ROUTES.KAI_ONBOARDING);
             return;
           }
-          if (!onImportRoute && chromeState.onboardingFlowActive) {
-            router.replace(ROUTES.KAI_IMPORT);
+          if (onboardingResolved && onOnboardingRoute) {
+            router.replace(ROUTES.KAI_HOME);
             return;
           }
           setChecking(false);
@@ -124,7 +143,8 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
 
         if (cancelled) return;
 
-        let onboardingIncomplete = !profile.onboarding.completed;
+        const completion = resolveKaiOnboardingCompletion(profile);
+        let onboardingIncomplete = !completion.completed;
         if (onboardingIncomplete) {
           const pending = await PreVaultOnboardingService.load(user.uid).catch(() => null);
           if (cancelled) return;
@@ -141,6 +161,26 @@ export function KaiOnboardingGuard({ children }: { children: React.ReactNode }) 
             }).catch((syncError) => {
               console.warn(
                 "[KaiOnboardingGuard] Deferred onboarding sync failed, retrying later:",
+                syncError
+              );
+            });
+          }
+        }
+
+        if (!onboardingIncomplete) {
+          const remoteState = await PreVaultUserStateService.bootstrapState(user.uid).catch(
+            () => null
+          );
+          if (cancelled) return;
+          if (!PreVaultUserStateService.isOnboardingResolved(remoteState)) {
+            void PreVaultUserStateService.syncKaiOnboardingState({
+              userId: user.uid,
+              completed: true,
+              skipped: completion.skippedPreferences,
+              completedAt: completion.completedAt,
+            }).catch((syncError) => {
+              console.warn(
+                "[KaiOnboardingGuard] Failed vault->remote onboarding bridge:",
                 syncError
               );
             });

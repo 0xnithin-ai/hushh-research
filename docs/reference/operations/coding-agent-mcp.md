@@ -83,6 +83,18 @@ Example Codex config:
 
 ```toml
 [mcp_servers.hushh_consent]
+command = "npx"
+args = ["-y", "@hushh/mcp"]
+enabled = true
+
+[mcp_servers.hushh_consent.env]
+HUSHH_MCP_ENV_FILE = "/absolute/path/to/consent-protocol/.env"
+```
+
+Repo-local fallback:
+
+```toml
+[mcp_servers.hushh_consent]
 command = "python"
 args = ["/absolute/path/to/consent-protocol/mcp_server.py"]
 enabled = true
@@ -120,11 +132,16 @@ Rules:
 1. Confirm the server starts locally with:
 
 ```bash
-cd consent-protocol
-python mcp_server.py
+npx -y @hushh/mcp --help
 ```
 
 2. Confirm the agent can discover Hushh tools/resources after attaching it.
+3. If the npm package is not published yet, use the repo-local fallback:
+
+```bash
+cd consent-protocol
+python mcp_server.py
+```
 
 ## Developer instructions
 
