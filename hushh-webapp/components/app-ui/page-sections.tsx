@@ -102,7 +102,7 @@ export function PageHeader({
     <header className={cn("space-y-[var(--page-header-stack-gap)]", className)}>
       <div className="flex flex-col gap-[var(--page-header-row-gap)] lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl min-w-0 space-y-[var(--page-header-copy-gap)]">
-          <div className="flex items-start gap-4 sm:gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
             <HeaderLeading
               icon={icon}
               leading={leading}
@@ -129,9 +129,9 @@ export function PageHeader({
             </div>
           </div>
           {description ? (
-            <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
+            <div className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-[15px]">
               {description}
-            </p>
+            </div>
           ) : null}
         </div>
         {actions ? (
@@ -167,7 +167,7 @@ export function SectionHeader({
     <div className={cn("space-y-[var(--section-header-stack-gap)]", className)}>
       <div className="flex flex-col gap-[var(--section-header-row-gap)] sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-[var(--section-header-copy-gap)]">
-          <div className="flex items-start gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <HeaderLeading
               icon={icon}
               leading={leading}
@@ -194,9 +194,9 @@ export function SectionHeader({
             </div>
           </div>
           {description ? (
-            <p className="text-sm leading-6 text-muted-foreground sm:text-[15px]">
+            <div className="text-sm leading-6 text-muted-foreground sm:text-[15px]">
               {description}
-            </p>
+            </div>
           ) : null}
         </div>
         {actions ? (

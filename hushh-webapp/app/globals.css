@@ -294,20 +294,20 @@ html body[data-scroll-locked] {
   --md-ripple-pressed-opacity: 0.12;
 
   /* Shared outer-card contract: glass-first, borderless by default. */
-  --app-card-surface-compact: rgba(255, 255, 255, 0.78);
-  --app-card-surface-default: rgba(255, 255, 255, 0.72);
-  --app-card-surface-surface: rgba(255, 255, 255, 0.76);
-  --app-card-surface-hero: rgba(255, 255, 255, 0.82);
+  --app-card-surface-compact: rgba(255, 255, 255, 0.88);
+  --app-card-surface-default: rgba(255, 255, 255, 0.82);
+  --app-card-surface-surface: rgba(255, 255, 255, 0.85);
+  --app-card-surface-hero: rgba(255, 255, 255, 0.9);
   --app-card-border-standard: rgba(15, 23, 42, 0.08);
   --app-card-border-strong: rgba(15, 23, 42, 0.12);
   --app-card-shadow-standard:
-    0 24px 56px -34px rgba(15, 23, 42, 0.28),
-    0 12px 24px -18px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    0 22px 48px -30px rgba(15, 23, 42, 0.26),
+    0 10px 24px -18px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
   --app-card-shadow-feature:
-    0 30px 70px -36px rgba(15, 23, 42, 0.34),
-    0 18px 30px -20px rgba(15, 23, 42, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+    0 26px 58px -30px rgba(15, 23, 42, 0.32),
+    0 14px 28px -18px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
 
 @media (min-width: 640px) {
@@ -505,20 +505,20 @@ html.native-ios {
   --md-ripple-hover-opacity: 0.08;
   --md-ripple-pressed-opacity: 0.12;
 
-  --app-card-surface-compact: rgba(20, 24, 32, 0.72);
-  --app-card-surface-default: rgba(17, 21, 29, 0.78);
-  --app-card-surface-surface: rgba(15, 19, 27, 0.82);
-  --app-card-surface-hero: rgba(16, 20, 29, 0.88);
+  --app-card-surface-compact: rgba(17, 20, 27, 0.82);
+  --app-card-surface-default: rgba(14, 17, 24, 0.88);
+  --app-card-surface-surface: rgba(12, 15, 22, 0.92);
+  --app-card-surface-hero: rgba(10, 14, 20, 0.95);
   --app-card-border-standard: rgba(255, 255, 255, 0.08);
   --app-card-border-strong: rgba(255, 255, 255, 0.12);
   --app-card-shadow-standard:
-    0 28px 60px -38px rgba(0, 0, 0, 0.72),
-    0 14px 28px -20px rgba(2, 6, 23, 0.44),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 24px 54px -30px rgba(0, 0, 0, 0.78),
+    0 12px 26px -18px rgba(2, 6, 23, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   --app-card-shadow-feature:
-    0 34px 72px -38px rgba(0, 0, 0, 0.82),
-    0 18px 34px -20px rgba(2, 6, 23, 0.54),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    0 30px 66px -30px rgba(0, 0, 0, 0.84),
+    0 16px 32px -18px rgba(2, 6, 23, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 /* Hero card specific glass effect - automatically switches between light/dark modes */

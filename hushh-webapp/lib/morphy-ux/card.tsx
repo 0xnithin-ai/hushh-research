@@ -157,11 +157,11 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
             className={cn(
               "pointer-events-none absolute inset-0",
               glassAccent === "none" &&
-                "bg-[linear-gradient(180deg,rgba(255,255,255,0.44)_0%,rgba(255,255,255,0.12)_18%,transparent_38%),radial-gradient(130%_78%_at_50%_-8%,rgba(255,255,255,0.18)_0%,transparent_56%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.03)_18%,transparent_36%),radial-gradient(128%_74%_at_50%_-8%,rgba(255,255,255,0.08)_0%,transparent_56%)]",
+                "bg-[linear-gradient(180deg,rgba(255,255,255,0.56)_0%,rgba(255,255,255,0.2)_16%,rgba(255,255,255,0.04)_34%,transparent_52%),linear-gradient(180deg,rgba(148,163,184,0.06)_0%,transparent_68%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_14%,transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.2)_0%,transparent_70%)]",
               glassAccent === "soft" &&
-                "bg-[linear-gradient(180deg,rgba(255,255,255,0.5)_0%,rgba(255,255,255,0.14)_18%,transparent_40%),radial-gradient(132%_82%_at_50%_-8%,rgba(255,255,255,0.24)_0%,transparent_54%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.16)_0%,rgba(255,255,255,0.04)_18%,transparent_38%),radial-gradient(128%_78%_at_50%_-8%,rgba(255,255,255,0.1)_0%,transparent_54%)]",
+                "bg-[linear-gradient(180deg,rgba(255,255,255,0.62)_0%,rgba(255,255,255,0.24)_16%,rgba(255,255,255,0.06)_34%,transparent_54%),linear-gradient(180deg,rgba(191,219,254,0.08)_0%,transparent_70%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.1)_0%,rgba(255,255,255,0.04)_14%,transparent_32%),linear-gradient(180deg,rgba(30,41,59,0.24)_0%,transparent_74%)]",
               glassAccent === "balanced" &&
-                "bg-[linear-gradient(180deg,rgba(255,255,255,0.56)_0%,rgba(255,255,255,0.18)_18%,transparent_42%),radial-gradient(92%_72%_at_14%_16%,rgba(255,255,255,0.2)_0%,transparent_60%),radial-gradient(76%_60%_at_86%_104%,rgba(15,23,42,0.08)_0%,transparent_62%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.18)_0%,rgba(255,255,255,0.05)_18%,transparent_40%),radial-gradient(92%_72%_at_14%_16%,rgba(255,255,255,0.1)_0%,transparent_60%),radial-gradient(76%_60%_at_86%_104%,rgba(255,255,255,0.04)_0%,transparent_62%)]"
+                "bg-[linear-gradient(180deg,rgba(255,255,255,0.66)_0%,rgba(255,255,255,0.26)_16%,rgba(255,255,255,0.07)_36%,transparent_56%),radial-gradient(88%_56%_at_18%_0%,rgba(191,219,254,0.12)_0%,transparent_58%),linear-gradient(180deg,rgba(148,163,184,0.08)_0%,transparent_72%)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.05)_14%,transparent_34%),radial-gradient(88%_56%_at_18%_0%,rgba(96,165,250,0.06)_0%,transparent_58%),linear-gradient(180deg,rgba(15,23,42,0.26)_0%,transparent_74%)]"
             )}
             style={{ borderRadius: "inherit" }}
           />
