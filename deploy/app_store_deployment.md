@@ -92,6 +92,15 @@ open ios/App/App.xcodeproj
 ```
 
 #### Step 2: Update Project Settings
+Recommended team path:
+1. Bootstrap local signing assets first:
+   ```bash
+   cd /Users/kushals/Downloads/GitHub/hushh-research/hushh-webapp
+   npm run bootstrap:ios-signing
+   npm run bootstrap:mobile-firebase
+   ```
+2. Open Xcode after bootstrap so the local xcconfig overrides and installed profiles are already present.
+
 In Xcode:
 1. Select **App** project in navigator
 2. Select **App** target
@@ -117,7 +126,11 @@ If Firebase bundle ID needs updating:
 2. **Project Settings** → **Your apps** → iOS app
 3. Update **Bundle ID** to `com.hushh.app`
 4. Download new `GoogleService-Info.plist`
-5. Replace in `ios/App/App/`
+5. Refresh your local cache instead of committing the artifact:
+   ```bash
+   cd /Users/kushals/Downloads/GitHub/hushh-research/hushh-webapp
+   npm run sync:mobile-firebase
+   ```
 6. Update `Info.plist` reversed client ID if changed
 
 ### Phase 3: Build & Archive

@@ -90,6 +90,7 @@ jobs:
         env:
           GITLEAKS_LOG_OPTS: ${{ steps.scan-range.outputs.log_opts }}
           GH_TOKEN: ${{ github.token }}
+          REQUIRE_GITHUB_ALERTS_CLEAN: "1"
 
   # ============================================================================
   # Path filters: run frontend/backend jobs only when their paths change (or manual scope)

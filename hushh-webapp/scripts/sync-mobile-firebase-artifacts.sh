@@ -4,8 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-IOS_TARGET="${IOS_TARGET:-${WEB_ROOT}/ios/App/App/GoogleService-Info.plist}"
-ANDROID_TARGET="${ANDROID_TARGET:-${WEB_ROOT}/android/app/google-services.json}"
+LOCAL_SECRETS_ROOT="${LOCAL_SECRETS_ROOT:-${WEB_ROOT}/.local-secrets/mobile-firebase}"
+IOS_TARGET="${IOS_TARGET:-${LOCAL_SECRETS_ROOT}/GoogleService-Info.plist}"
+ANDROID_TARGET="${ANDROID_TARGET:-${LOCAL_SECRETS_ROOT}/google-services.json}"
 ENV_FILE="${ENV_FILE:-${WEB_ROOT}/.env.local}"
 FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-}"
 IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-}"
@@ -122,7 +123,7 @@ PY
 )"
 android_has_analytics_service="$(jq -r 'if any(.client[]?; .services.analytics_service? != null) then "true" else "false" end' "${ANDROID_TARGET}")"
 
-log "Updated mobile Firebase artifacts:"
+log "Updated local mobile Firebase cache:"
 log "  iOS: ${IOS_TARGET}"
 log "  Android: ${ANDROID_TARGET}"
 log "  iOS IS_ANALYTICS_ENABLED=${ios_analytics_enabled}"
@@ -143,3 +144,5 @@ if [[ "${ios_analytics_enabled}" != "true" || "${android_has_analytics_service}"
   log "WARNING: Firebase app configs still indicate analytics is not fully enabled for native."
   log "         Link Firebase project/apps to GA4 and re-download artifacts."
 fi
+
+log "Use scripts/native/with-local-mobile-secrets.sh to apply this cache for native builds without dirtying tracked template files."

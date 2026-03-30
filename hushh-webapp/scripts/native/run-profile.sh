@@ -78,7 +78,7 @@ if [ "$FRESH" = "true" ]; then
 fi
 
 npm run cap:build:mobile
-npx cross-env CAPACITOR_PLATFORM="$PLATFORM" npx cap sync "$PLATFORM"
+bash scripts/native/with-local-mobile-secrets.sh npx cross-env CAPACITOR_PLATFORM="$PLATFORM" npx cap sync "$PLATFORM"
 
 if [ "$SYNC_ONLY" = "true" ]; then
   exit 0
@@ -88,4 +88,4 @@ run_args=("$PLATFORM")
 if [ -n "$TARGET" ]; then
   run_args+=(--target "$TARGET")
 fi
-npx cap run "${run_args[@]}"
+bash scripts/native/with-local-mobile-secrets.sh npx cap run "${run_args[@]}"

@@ -1,1 +1,2 @@
+#include? "../.local-secrets/ios-signing/debug-signing.xcconfig"
 CAPACITOR_DEBUG = true

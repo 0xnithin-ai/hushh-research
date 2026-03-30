@@ -41,6 +41,8 @@ firebase-debug.log
 !.env.*.example
 *environment.zip
 *env keys.zip
+.local-secrets/
+**/.local-secrets/
 
 consent-protocol/.DS_Store
 .DS_Store

@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v gh >/dev/null 2>&1; then
-  echo "Skipping GitHub security alert parity check: gh CLI not installed."
+STRICT_MODE="${REQUIRE_GITHUB_ALERTS_CLEAN:-0}"
+
+strict_fail() {
+  echo "$1"
+  if [ "$STRICT_MODE" = "1" ]; then
+    exit 1
+  fi
   exit 0
+}
+
+if ! command -v gh >/dev/null 2>&1; then
+  strict_fail "GitHub security alert parity check unavailable: gh CLI not installed."
 fi
 
 if ! gh auth status >/dev/null 2>&1; then
-  echo "Skipping GitHub security alert parity check: gh CLI not authenticated."
-  exit 0
+  strict_fail "GitHub security alert parity check unavailable: gh CLI not authenticated."
 fi
 
 resolve_repo() {
@@ -38,8 +46,7 @@ resolve_repo() {
 
 REPO="$(resolve_repo)"
 if [ -z "$REPO" ]; then
-  echo "Skipping GitHub security alert parity check: could not resolve repository."
-  exit 0
+  strict_fail "GitHub security alert parity check unavailable: could not resolve repository."
 fi
 
 TMPDIR="$(mktemp -d)"
@@ -50,15 +57,21 @@ DEPENDABOT_ALERTS_JSON="$TMPDIR/dependabot-alerts.json"
 
 if ! gh api -H 'Accept: application/vnd.github+json' \
   "/repos/${REPO}/secret-scanning/alerts?state=open&per_page=100" >"$SECRET_ALERTS_JSON" 2>"$TMPDIR/secret-errors.log"; then
-  echo "Skipping GitHub security alert parity check: unable to read secret-scanning alerts."
+  echo "GitHub security alert parity check failed: unable to read secret-scanning alerts."
   sed 's/^/  /' "$TMPDIR/secret-errors.log" || true
+  if [ "$STRICT_MODE" = "1" ]; then
+    exit 1
+  fi
   exit 0
 fi
 
 if ! gh api -H 'Accept: application/vnd.github+json' \
   "/repos/${REPO}/dependabot/alerts?state=open&per_page=100" >"$DEPENDABOT_ALERTS_JSON" 2>"$TMPDIR/dependabot-errors.log"; then
-  echo "Skipping GitHub security alert parity check: unable to read dependabot alerts."
+  echo "GitHub security alert parity check failed: unable to read dependabot alerts."
   sed 's/^/  /' "$TMPDIR/dependabot-errors.log" || true
+  if [ "$STRICT_MODE" = "1" ]; then
+    exit 1
+  fi
   exit 0
 fi
 

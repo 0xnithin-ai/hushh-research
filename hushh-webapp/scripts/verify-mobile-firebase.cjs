@@ -45,6 +45,28 @@ function parseAndroidHasAnalyticsService(jsonText) {
   return clients.some((client) => client?.services?.analytics_service != null);
 }
 
+function parseIosApiKey(plistText) {
+  const regex = /<key>API_KEY<\/key>\s*<string>([^<]+)<\/string>/m;
+  const match = plistText.match(regex);
+  return match?.[1]?.trim() || null;
+}
+
+function parseAndroidApiKey(jsonText) {
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (error) {
+    fail(`Invalid JSON in google-services.json: ${String(error)}`);
+    return null;
+  }
+
+  return parsed?.client?.[0]?.api_key?.[0]?.current_key || null;
+}
+
+function looksLikeGoogleApiKey(value) {
+  return typeof value === "string" && /^AIza[0-9A-Za-z_-]{20,}$/.test(value);
+}
+
 function main() {
   const iosText = mustRead(iosPath);
   const androidText = mustRead(androidPath);
@@ -59,9 +81,16 @@ function main() {
     return;
   }
 
+  const iosApiKey = parseIosApiKey(iosText);
+  const androidApiKey = parseAndroidApiKey(androidText);
+  const iosTemplateHasRealKey = looksLikeGoogleApiKey(iosApiKey);
+  const androidTemplateHasRealKey = looksLikeGoogleApiKey(androidApiKey);
+
   console.log(`Mobile Firebase mode: ${requireProdArtifacts ? "release" : "template"}`);
   console.log(`iOS IS_ANALYTICS_ENABLED=${iosAnalyticsEnabled}`);
   console.log(`Android analytics_service_present=${androidHasAnalyticsService}`);
+  console.log(`iOS API_KEY looks_real=${iosTemplateHasRealKey}`);
+  console.log(`Android current_key looks_real=${androidTemplateHasRealKey}`);
 
   if (requireProdArtifacts) {
     if (!iosAnalyticsEnabled) {
@@ -81,6 +110,12 @@ function main() {
   }
   if (androidHasAnalyticsService) {
     fail("Template mode expects no android analytics_service (avoid committing production artifacts)");
+  }
+  if (iosTemplateHasRealKey) {
+    fail("Template mode expects a placeholder iOS API_KEY, not a live Firebase-style key");
+  }
+  if (androidTemplateHasRealKey) {
+    fail("Template mode expects a placeholder Android current_key, not a live Firebase-style key");
   }
 
   if (!process.exitCode) {

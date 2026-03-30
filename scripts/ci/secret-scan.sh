@@ -9,6 +9,8 @@ if [ "${SKIP_SECRET_SCAN:-0}" = "1" ]; then
   exit 0
 fi
 
+export REQUIRE_GITHUB_ALERTS_CLEAN="${REQUIRE_GITHUB_ALERTS_CLEAN:-1}"
+
 if ! command -v gitleaks >/dev/null 2>&1; then
   echo "gitleaks is required for CI parity. Install it or set SKIP_SECRET_SCAN=1 for local-only runs."
   exit 1

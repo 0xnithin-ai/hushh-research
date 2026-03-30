@@ -11,14 +11,14 @@ UAT is the first deployment lane. Do not treat production as the initial validat
 Recommended order:
 
 ```bash
-# local validation before touching deploy branches
+# local validation before touching deployment
 bash scripts/ci/orchestrate.sh all
 
-# release through the UAT branch first
-git push origin deploy_uat
+# release through main; UAT follows the green main SHA
+git push origin main
 ```
 
-The push to `deploy_uat` triggers [`.github/workflows/deploy-uat.yml`](../.github/workflows/deploy-uat.yml), which now:
+The green `main` SHA triggers [`.github/workflows/deploy-uat.yml`](../.github/workflows/deploy-uat.yml), which now:
 
 1. opens a Cloud SQL Auth Proxy session to the UAT database
 2. applies the canonical release lane with `python3 consent-protocol/db/migrate.py --release`
@@ -129,7 +129,7 @@ INCLUDE_ADVISORY_CHECKS=1 ./scripts/test-ci-local.sh
 
 ### UAT analytics divergence note
 
-`deploy_uat` currently includes newer analytics/auth-split expectations (`NEXT_PUBLIC_AUTH_FIREBASE_*`, measurement IDs, GTM IDs).  
+UAT currently includes newer analytics/auth-split expectations (`NEXT_PUBLIC_AUTH_FIREBASE_*`, measurement IDs, GTM IDs).
 Production analytics key migration is deferred intentionally and should be handled as a separate release task.
 
 ---
@@ -265,7 +265,7 @@ Deploys Next.js frontend to Cloud Run:
 The repo includes:
 
 - [.github/workflows/deploy-production.yml](../.github/workflows/deploy-production.yml): manual production deploy (`workflow_dispatch`).
-- [.github/workflows/deploy-uat.yml](../.github/workflows/deploy-uat.yml): auto deploy on push to `deploy_uat` and manual dispatch.
+- [.github/workflows/deploy-uat.yml](../.github/workflows/deploy-uat.yml): auto deploy from successful `main` CI and manual dispatch.
 
 Manual dispatch now supports `scope`:
 
@@ -276,7 +276,7 @@ Manual dispatch now supports `scope`:
 **For seamless deployment:**
 
 1. **GitHub secret:** add `GCP_SA_KEY` (and optionally `GCP_SA_KEY_UAT`) with Cloud Build + Cloud Run + Secret Manager permissions.
-2. **Branch flow:** merge to `deploy_uat` for UAT rollout; use manual dispatch for production rollout.
+2. **Branch flow:** merge to `main` for UAT rollout; use manual dispatch for production rollout from a green `main` SHA.
 3. **Approval policy:** configure environment reviewers in GitHub Environments (`production`, `uat`) rather than repo code.
 
 ### CI Security Gates
@@ -368,14 +368,27 @@ See [docs/reference/operations/env-and-secrets.md](../docs/reference/operations/
 - Store production mobile Firebase artifacts in Secret Manager:
   - `IOS_GOOGLESERVICE_INFO_PLIST_B64`
   - `ANDROID_GOOGLE_SERVICES_JSON_B64`
-- Inject both during native release CI and overwrite template files before build/sign.
-- Use `npm run inject:mobile-firebase` in `hushh-webapp/` after exporting those secrets into env vars.
-- Or fetch latest artifacts directly from Firebase and write both files in place:
+- Developers should keep real local artifacts in `hushh-webapp/.local-secrets/mobile-firebase/`, not in tracked native paths.
+- Use `npm run bootstrap:mobile-firebase` to fetch the cached local artifacts from Secret Manager.
+- Or fetch latest artifacts directly from Firebase into the local cache:
   ```bash
   cd hushh-webapp
   npm run sync:mobile-firebase
   ```
+- Native build wrappers apply that local cache for the build and then restore the tracked templates.
+- Release CI still injects both real artifacts into the ephemeral workspace before native build/sign.
 - Run `npm run verify:mobile-firebase` with `REQUIRE_PROD_FIREBASE_ARTIFACTS=true` in release jobs to fail fast if templates were not replaced.
+
+### Local iOS Signing (Shared Team Bootstrap)
+
+- Do not pass around `.p12`, `.mobileprovision`, or App Store Connect API keys manually.
+- Store Apple signing assets in Secret Manager and bootstrap them locally with:
+  ```bash
+  cd hushh-webapp
+  npm run bootstrap:ios-signing
+  ```
+- The bootstrap installs signing material into a local keychain/profile path and writes gitignored xcconfig overrides under `.local-secrets/ios-signing/`.
+- Use `npm run cleanup:ios-signing` to remove the local cache and keychain artifacts when needed.
 
 ### Observability Provisioning (Automated)
 

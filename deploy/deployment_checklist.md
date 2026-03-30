@@ -126,7 +126,7 @@
 - [x] Backend env: Cloud Run sets `ENVIRONMENT=production` and `GOOGLE_GENAI_USE_VERTEXAI=True` (Vertex AI for Gemini)
 - [x] Regulated defaults verified for production: `APP_REVIEW_MODE=false`, `DEVELOPER_API_ENABLED=false`, `CONSENT_SSE_ENABLED=false`, `SYNC_REMOTE_ENABLED=false`
 
-- [x] UAT runtime overrides verified when deploying `deploy_uat`
+- [x] UAT runtime overrides verified when deploying the green `main` SHA
   - `CONSENT_SSE_ENABLED=true`
   - `PLAID_ENV=production`
   - `CORS_ALLOWED_ORIGINS=https://uat.kai.hushh.ai,<current-run-url>`

@@ -402,13 +402,21 @@ Production release process:
 - Store base64-encoded production artifacts in Secret Manager:
   - `IOS_GOOGLESERVICE_INFO_PLIST_B64`
   - `ANDROID_GOOGLE_SERVICES_JSON_B64`
-- Decode and overwrite template files in release CI before native build/sign (or run `npm run inject:mobile-firebase` in `hushh-webapp/`).
-- Optionally fetch latest artifacts from Firebase directly: `npm run sync:mobile-firebase`.
+- Local developer flow:
+  - `npm run bootstrap:mobile-firebase` fetches the real artifacts into `hushh-webapp/.local-secrets/mobile-firebase/`
+  - native build wrappers apply that cache only for the build and then restore the tracked templates
+- Release CI decodes and overwrites template files only inside the ephemeral job workspace before native build/sign.
+- Optionally fetch latest artifacts from Firebase directly into the local cache: `npm run sync:mobile-firebase`.
 - Run `npm run verify:mobile-firebase:release` to fail fast if templates were not replaced.
   - This release gate also enforces analytics readiness (`IS_ANALYTICS_ENABLED=true` on iOS and `services.analytics_service` present on Android).
 
 Repository guard:
-- CI runs `npm run verify:mobile-firebase` to ensure committed files remain templates (no production artifact commits).
+- CI runs `npm run verify:mobile-firebase` to ensure committed files remain templates (no production artifact commits, no real Firebase-style API keys).
+
+Local iOS signing:
+- Store Apple signing assets in Secret Manager and bootstrap them locally with `npm run bootstrap:ios-signing`.
+- The bootstrap writes gitignored xcconfig overrides under `hushh-webapp/.local-secrets/ios-signing/`.
+- `ios/debug.xcconfig` and `ios/release.xcconfig` include those local files conditionally, so clean machines can be bootstrapped without editing the tracked Xcode project state by hand.
 
 ---
 
