@@ -150,7 +150,7 @@ class SummaryReducerAgent(HushhAgent):
         raw_text = getattr(response, "text", str(response) if response else "")
         if not raw_text or raw_text == "None":
             # Stub for tests if adk LLM isn't linked
-             raw_text = '{"presence_flags": {"has_data": true}, "counts": {"items": 1}, "freshness_markers": {}, "sanctioned_capability_flags": []}'
+            raw_text = '{"presence_flags": {"has_data": true}, "counts": {"items": 1}, "freshness_markers": {}, "sanctioned_capability_flags": []}'
 
         match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
         if match:
