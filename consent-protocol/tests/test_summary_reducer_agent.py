@@ -25,7 +25,7 @@ async def test_summary_reducer_pre_processing_blindfold():
     # Sensitive data is wiped
     assert scrubbed_data["account_info"]["balance"] == "[REDACTED FOR REDUCER]"
     assert scrubbed_data["account_info"]["holdings"] == "[REDACTED FOR REDUCER]"
-    assert scrubbed_data["api_token"] == "[REDACTED FOR REDUCER]"
+    assert scrubbed_data["api_token"] == "[REDACTED FOR REDUCER]"  # noqa: S105
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_summary_reducer_integration(monkeypatch):
         domain="activity",
         candidate_data={"entries": [1, 2, 3]},
         user_id="test_user",
-        consent_token="test_token"
+        consent_token="test_token"  # noqa: S106
     )
     
     assert result.presence_flags["has_activity"] is True
